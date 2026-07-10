@@ -136,6 +136,33 @@ private let PREFIX_LEN: Int64 = 2
 private let MANGLE_CHAR_LEN: Int64 = 1
 private let MANGLE_SPECIAL_NAME_LEN: Int64 = 2
 private let FILE_HASH_LEN: Int64 = 13
+
+// Keep in lockstep with cangjie_compiler/demangler/Utils.h:54.
+private class OperatorKind {
+    public static let AN: Int64 = 13
+    public static let CL: Int64 = 75
+    public static let DV: Int64 = 117
+    public static let EO: Int64 = 142
+    public static let EQ: Int64 = 144
+    public static let GE: Int64 = 196
+    public static let GT: Int64 = 211
+    public static let IX: Int64 = 279
+    public static let LE: Int64 = 356
+    public static let LS: Int64 = 370
+    public static let LT: Int64 = 371
+    public static let ML: Int64 = 395
+    public static let NE: Int64 = 420
+    public static let NG: Int64 = 422
+    public static let NT: Int64 = 435
+    public static let OR: Int64 = 465
+    public static let PL: Int64 = 491
+    public static let PW: Int64 = 502
+    public static let RM: Int64 = 556
+    public static let RS: Int64 = 562
+
+    private init() {}
+}
+
 private func PrimitivePrefixSet(): RtString { return RtLit(167) }
 
 private func StripCangjieAt(identifier: RtString, idx: Int64): Int64 {
@@ -199,29 +226,16 @@ private func IsOperatorName(mangled: RtString, idx: Int64): Bool {
     }
     let operatorIndex = ((Int64(mangled[idx]) - Int64(b'a')) << 5) +
         Int64(mangled[idx + MANGLE_CHAR_LEN]) - Int64(b'a')
-    return match (operatorIndex) {
-        case 279 => true
-        case 435 => true
-        case 422 => true
-        case 502 => true
-        case 395 => true
-        case 117 => true
-        case 556 => true
-        case 491 => true
-        case 370 => true
-        case 562 => true
-        case 371 => true
-        case 211 => true
-        case 356 => true
-        case 196 => true
-        case 144 => true
-        case 420 => true
-        case 13 => true
-        case 142 => true
-        case 465 => true
-        case 75 => true
-        case _ => false
-    }
+    return operatorIndex == OperatorKind.IX || operatorIndex == OperatorKind.NT ||
+        operatorIndex == OperatorKind.NG || operatorIndex == OperatorKind.PW ||
+        operatorIndex == OperatorKind.ML || operatorIndex == OperatorKind.DV ||
+        operatorIndex == OperatorKind.RM || operatorIndex == OperatorKind.PL ||
+        operatorIndex == OperatorKind.LS || operatorIndex == OperatorKind.RS ||
+        operatorIndex == OperatorKind.LT || operatorIndex == OperatorKind.GT ||
+        operatorIndex == OperatorKind.LE || operatorIndex == OperatorKind.GE ||
+        operatorIndex == OperatorKind.EQ || operatorIndex == OperatorKind.NE ||
+        operatorIndex == OperatorKind.AN || operatorIndex == OperatorKind.EO ||
+        operatorIndex == OperatorKind.OR || operatorIndex == OperatorKind.CL
 }
 
 private func IsPrimitiveType(ch: Byte): Bool {
