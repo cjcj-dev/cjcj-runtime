@@ -81,7 +81,7 @@ CJ_MCC_StackGrowStub:
     leaq   21(%rip), %rdi // rdi is addr of unwindPCForStackGrowStub
     callq  MRT_UpdateUwContext@PLT
 
-    // The input rbp after stack expansion is used to determine
+    // The input rbp after stack expansion is used to determine 
     // whether the current stack expansion meets requirements.
     movq   %rbp,     %rdi
     movq   -8(%rbp), %rsi

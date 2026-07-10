@@ -14,9 +14,8 @@
 
     .text
     .align 2
-    .global CJ_MCC_HandleSafepoint
-    .type CJ_MCC_HandleSafepoint, %function
-CJ_MCC_HandleSafepoint:
+    .global _CJ_MCC_HandleSafepoint
+_CJ_MCC_HandleSafepoint:
     .cfi_startproc
 
     // save callee registers
@@ -81,17 +80,17 @@ CJ_MCC_HandleSafepoint:
     movq   %r15,     %rcx
     movq   $3,       %rdx
     leaq   13(%rip), %rdi // rdi is addr of unwindPCForSafepointHandlerStub
-    callq  MRT_UpdateUwContext@PLT
+    callq  _MRT_UpdateUwContext
 
     // call safepoint handler
     movq   %r15,     %rdi
-    callq  HandleSafepoint@PLT
-    .global unwindPCForSafepointHandlerStub
-unwindPCForSafepointHandlerStub:
-    callq  MRT_GetThreadLocalData@PLT
+    callq  _HandleSafepoint
+    .global _unwindPCForSafepointHandlerStub
+_unwindPCForSafepointHandlerStub:
+    callq  _MRT_GetThreadLocalData
     movq   %rax, %r15
     movq   %rax, %rdi
-    callq  MRT_DeleteC2NContext@PLT
+    callq  _MRT_DeleteC2NContext
 
     // restore callee registers
     movapd 0(%rsp), %xmm0
@@ -151,4 +150,3 @@ unwindPCForSafepointHandlerStub:
 
     retq
     .cfi_endproc
-    .size CJ_MCC_HandleSafepoint, .-CJ_MCC_HandleSafepoint

@@ -4,61 +4,58 @@
 //
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
-// stub need to be 16-byte aligned, so we should use (8 * even numbers)
-#define HandleSafepointStubFrameSize           (264)
-
-#define cfi_adjust_cfa_offset(off)	.cfi_adjust_cfa_offset off
 #define cfi_rel_offset(reg, off)	.cfi_rel_offset reg, off
 #define cfi_restore(reg)		.cfi_restore reg
 #define cfi_def_cfa_register(reg)	.cfi_def_cfa_register reg
 
+#define StackGrowStubSize           (0x264)
+
+// This signal handler stub relies on MRT_PrepareToHandleSignal to put continuation pc in x17.
+// Continuation pc describes the control flow after signal handling completes.
+
     .text
     .align 2
-    .global CJ_MCC_HandleSafepoint
-    .type CJ_MCC_HandleSafepoint, %function
-CJ_MCC_HandleSafepoint:
+    .global CJ_MCC_StackGrowStub
+CJ_MCC_StackGrowStub:
     .cfi_startproc
-
-    // save callee registers
-    pushq  %rbp
+    pushq   %rbp
     .cfi_def_cfa_offset 16
     .cfi_offset %rbp, -16
-    movq   %rsp, %rbp
+    movq    %rsp, %rbp
     .cfi_def_cfa_register %rbp
-
     pushq  %rax
-    cfi_rel_offset (%rax, -8)
     pushq  %rbx
-    cfi_rel_offset (%rbx, -16)
     pushq  %rcx
-    cfi_rel_offset (%rcx, -24)
     pushq  %rdx
-    cfi_rel_offset (%rdx, -32)
     pushq  %rdi
-    cfi_rel_offset (%rdi, -40)
     pushq  %rsi
-    cfi_rel_offset (%rsi, -48)
     pushq  %rsp
-    cfi_rel_offset (%rsp, -56)
     pushq  %r8
-    cfi_rel_offset (%r8, -64)
     pushq  %r9
-    cfi_rel_offset (%r9, -72)
     pushq  %r10
-    cfi_rel_offset (%r10, -80)
     pushq  %r11
-    cfi_rel_offset (%r11, -88)
     pushq  %r12
-    cfi_rel_offset (%r12, -96)
     pushq  %r13
-    cfi_rel_offset (%r13, -104)
     pushq  %r14
+    pushq  %r15
+    cfi_rel_offset (%rax, -8)
+    cfi_rel_offset (%rbx, -16)
+    cfi_rel_offset (%rcx, -24)
+    cfi_rel_offset (%rdx, -32)
+    cfi_rel_offset (%rdi, -40)
+    cfi_rel_offset (%rsi, -48)
+    cfi_rel_offset (%rsp, -56)
+    cfi_rel_offset (%r8, -64)
+    cfi_rel_offset (%r9, -72)
+    cfi_rel_offset (%r10, -80)
+    cfi_rel_offset (%r11, -88)
+    cfi_rel_offset (%r12, -96)
+    cfi_rel_offset (%r13, -104)
     cfi_rel_offset (%r14, -112)
-    pushq  %r15    
     cfi_rel_offset (%r15, -120)
 
     // Need to ensure 16-bit alignment
-    subq   $HandleSafepointStubFrameSize, %rsp
+    subq   $264, %rsp
 
     movapd %xmm0, 0(%rsp)
     movapd %xmm1, 16(%rsp)
@@ -78,20 +75,30 @@ CJ_MCC_HandleSafepoint:
     movapd %xmm15, 240(%rsp)
 
     movq   %rbp,     %rsi
+    movq   $1,       %rdx
     movq   %r15,     %rcx
-    movq   $3,       %rdx
-    leaq   13(%rip), %rdi // rdi is addr of unwindPCForSafepointHandlerStub
-    callq  MRT_UpdateUwContext@PLT
+    leaq   21(%rip), %rdi // rdi is addr of unwindPCForStackGrowStub
+    callq  _MRT_UpdateUwContext
 
-    // call safepoint handler
-    movq   %r15,     %rdi
-    callq  HandleSafepoint@PLT
-    .global unwindPCForSafepointHandlerStub
-unwindPCForSafepointHandlerStub:
-    callq  MRT_GetThreadLocalData@PLT
+    // The input rbp after stack expansion is used to determine 
+    // whether the current stack expansion meets requirements.
+    movq   %rbp,     %rdi
+    movq   -8(%rbp), %rsi
+    movq   8(%rbp),  %rdx
+    callq  _MRT_StackGrow
+    .global _unwindPCForStackGrowStub
+_unwindPCForStackGrowStub:
+
+    addq %rax, %rsp
+    addq %rax, %rbp
+
+    movq   %rax, %rdi
+    callq  _MRT_FreeOldStack
+
+    callq  _MRT_GetThreadLocalData
     movq   %rax, %r15
     movq   %rax, %rdi
-    callq  MRT_DeleteC2NContext@PLT
+    callq  _MRT_DeleteC2NContext
 
     // restore callee registers
     movapd 0(%rsp), %xmm0
@@ -112,43 +119,42 @@ unwindPCForSafepointHandlerStub:
     movapd 240(%rsp), %xmm15
 
     // Need to ensure 16-bit alignment
-    addq  $HandleSafepointStubFrameSize, %rsp
+    addq  $264, %rsp
 
-    // do not popq %r15
     popq  %rax
-    cfi_restore (%rax)
     popq  %r14
-    cfi_restore (%r14)
     popq  %r13
-    cfi_restore (%r13)
     popq  %r12
-    cfi_restore (%r12)
     popq  %r11
-    cfi_restore (%r11)
     popq  %r10
-    cfi_restore (%r10)
     popq  %r9
-    cfi_restore (%r9)
     popq  %r8
-    cfi_restore (%r8)
-    popq  %rsp
-    cfi_restore (%rsp)
     popq  %rsi
-    cfi_restore (%rsi)
+    popq  %rsi
     popq  %rdi
-    cfi_restore (%rdi)
     popq  %rdx
-    cfi_restore (%rdx)
     popq  %rcx
-    cfi_restore (%rcx)
     popq  %rbx
-    cfi_restore (%rbx)
     popq  %rax
-    cfi_restore (%rax)
     popq  %rbp
+    cfi_restore (%rax)
+    cfi_restore (%r14)
+    cfi_restore (%r13)
+    cfi_restore (%r12)
+    cfi_restore (%r11)
+    cfi_restore (%r10)
+    cfi_restore (%r9)
+    cfi_restore (%r8)
+    cfi_restore (%rsi)
+    cfi_restore (%rsi)
+    cfi_restore (%rdi)
+    cfi_restore (%rdx)
+    cfi_restore (%rcx)
+    cfi_restore (%rbx)
+    cfi_restore (%rax)
     cfi_restore (%rbp)
     .cfi_def_cfa %rsp, 8
 
     retq
+
     .cfi_endproc
-    .size CJ_MCC_HandleSafepoint, .-CJ_MCC_HandleSafepoint

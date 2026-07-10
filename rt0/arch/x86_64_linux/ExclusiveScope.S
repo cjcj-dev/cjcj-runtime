@@ -40,7 +40,7 @@
     .type CJ_MCC_ExclusiveScope, @function
 CJ_MCC_ExclusiveScope:
     .cfi_startproc
-
+    
     pushq   %rbp
     .cfi_def_cfa_offset 16
     .cfi_offset %rbp, -16
@@ -86,7 +86,7 @@ CJ_MCC_ExclusiveScope:
     movq    -56(%rbp), %rsi     // closurePtr
     movq    -64(%rbp), %rdx     // futureTi
     callq   MCC_NewExclusiveCJThread@PLT
-
+    
     testq   %rax, %rax
     jz      .L_exc_create_failed
     movq    %rax, -160(%rbp)    // newCJThread

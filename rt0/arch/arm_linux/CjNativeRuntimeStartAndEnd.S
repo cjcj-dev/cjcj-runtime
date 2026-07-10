@@ -5,7 +5,7 @@
 // See https://cangjie-lang.cn/pages/LICENSE for license information.
 
     .section  .cjnative.start
-    .p2align  4
+    .p2align  2
 
     .section  .cjnative.end
-    .p2align  4
+    .p2align  2
