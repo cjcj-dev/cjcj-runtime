@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${OUT:-"$ROOT/out/gate"}
-REPO=${REPO:-/root/cj_build/cangjie_compiler_selfhost}
+REPO=${REPO:-/root/cj_build/cjcj}
 CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-CJC=${CJC:-"$REPO/target/release/bin/cangjie_compiler::cjc"}
+CJC=${CJC:-"$REPO/target/release/bin/cjcj::cjc"}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
 RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
 export CANGJIE_HOME
@@ -34,23 +34,61 @@ mkdir -p "$OUT/empty-cwd" "$OUT/empty-object"
 EMPTY_OBJECT="$OUT/empty-object/hybrid_empty.o"
 test -f "$EMPTY_OBJECT"
 
+mkdir -p "$OUT/demangle-cwd" "$OUT/demangle-object" "$OUT/abi-cwd" "$OUT/abi-object"
+(
+    cd "$OUT/demangle-cwd"
+    cjHeapSize=${BUILD_HEAP_SIZE:-2GB} "$CJC" -p "$ROOT/src/rt.demangle" \
+        --output-type staticlib -O2 --int-overflow wrapping \
+        -o "$OUT/librt.demangle.a"
+)
+(
+    cd "$OUT/demangle-object"
+    llvm-ar x "$OUT/librt.demangle.a"
+)
+DEMANGLE_OBJECT="$OUT/demangle-object/rt.demangle.o"
+test -f "$DEMANGLE_OBJECT"
+if nm -u "$DEMANGLE_OBJECT" | grep -Eq 'CJ_MCC_(New|Write|Throw)'; then
+    printf 'RESTRICTED DIALECT FAIL managed allocation/barrier/throw edge found\n' >&2
+    exit 1
+fi
+printf 'RESTRICTED DIALECT PASS managed_edges=0\n'
+(
+    cd "$OUT/abi-cwd"
+    "$CJC" -p "$ROOT/src/rt.abi" --output-type staticlib -O2 \
+        --int-overflow wrapping -o "$OUT/librt.abi.a"
+)
+(
+    cd "$OUT/abi-object"
+    llvm-ar x "$OUT/librt.abi.a"
+)
+ABI_OBJECT="$OUT/abi-object/rt.abi.o"
+test -f "$ABI_OBJECT"
+
 HYBRID="$OUT/hybrid/libcangjie-runtime.so"
 python3 "$ROOT/build/link_hybrid.py" \
     --runtime-root "$RUNTIME_ROOT" \
     --toolchain "$CANGJIE_HOME" \
     --rt0-archive "$OUT/cmake/lib/libcjcj_rt0.a" \
     --inject "$EMPTY_OBJECT" \
+    --inject "$DEMANGLE_OBJECT" \
+    --inject "$ABI_OBJECT" \
     --output "$HYBRID"
 python3 "$ROOT/build/symcheck.py" \
     "$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative/libcangjie-runtime.so" \
     "$HYBRID"
 
-map_hits=$(grep -Fc "$EMPTY_OBJECT" "$HYBRID.map" || true)
-if [ "$map_hits" -eq 0 ]; then
-    printf 'EMPTY INJECT FAIL object absent from link map: %s\n' "$EMPTY_OBJECT" >&2
-    exit 1
-fi
-printf 'EMPTY INJECT PASS objects=1 map_hits=%s\n' "$map_hits"
+for object in "$EMPTY_OBJECT" "$DEMANGLE_OBJECT" "$ABI_OBJECT"; do
+    map_hits=$(grep -Fc "$object" "$HYBRID.map" || true)
+    if [ "$map_hits" -eq 0 ]; then
+        printf 'INJECT FAIL object absent from link map: %s\n' "$object" >&2
+        exit 1
+    fi
+done
+printf 'INJECT PASS objects=3\n'
+
+HYBRID="$HYBRID" SELFHOST="$REPO" CJC="$CJC" \
+    BUILD="$OUT/demangle-parity" bash "$ROOT/test/parity/demangle/run_parity.sh" \
+    | tee "$OUT/demangle-parity.log"
 
 if [ "${SKIP_DIFFTEST:-0}" = 1 ]; then
     printf 'DIFFTEST SKIP SKIP_DIFFTEST=1\n'
@@ -59,7 +97,8 @@ fi
 
 (
     cd "$REPO"
-    LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" bash scripts/difftest.sh
+    LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" \
+        bash scripts/difftest.sh -j "${DIFFTEST_JOBS:-8}"
 ) | tee "$OUT/difftest.log"
 grep -Fq 'TOTAL=114  PASS=114  MISMATCH=0  FAIL=0' "$OUT/difftest.log"
-printf 'W1 GATE PASS rt0=1 inject=1 symcheck=2692/2692 difftest=114/114\n'
+printf 'W2 GATE PASS rt0=1 inject=3 symcheck=2692/2692 demangle=byte-identical difftest=114/114\n'

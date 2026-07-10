@@ -20,6 +20,7 @@ DEFAULT_TOOLCHAIN = Path("/root/.cjv/toolchains/nightly-1.2.0-alpha.202606190200
 ARCHIVE_SUBDIR = Path("target/common/linux_release_x86_64/lib/linux_x86_64_cjnative")
 SO_SUBDIR = Path("target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative")
 TOOLCHAIN_RUNTIME_SUBDIR = Path("runtime/lib/linux_x86_64_cjnative")
+TOOLCHAIN_STATIC_SUBDIR = Path("lib/linux_x86_64_cjnative")
 
 RT0_SHARED_MEMBERS = (
     "C2NStub.S.o",
@@ -129,6 +130,24 @@ def write_export_map(path: Path, names: Iterable[str], version: str) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def write_hybrid_linker_script(path: Path, runtime_script: Path, shared_script: Path) -> None:
+    """Insert the authoritative Cangjie metadata layout into the runtime script."""
+    source = shared_script.read_text(encoding="utf-8")
+    start_marker = "  /* Cangjie Metadata sections start */"
+    end_marker = "  /* Cangjie Metadata sections end */"
+    start = source.find(start_marker)
+    end = source.find(end_marker, start)
+    if start < 0 or end < 0:
+        raise HybridLinkError(f"metadata layout not found in {shared_script}")
+    body = source[start + len(start_marker) : end]
+    runtime = runtime_script.read_text(encoding="utf-8")
+    insertion = "  .bss            :"
+    position = runtime.find(insertion)
+    if position < 0:
+        raise HybridLinkError(f".bss layout not found in {runtime_script}")
+    path.write_text(runtime[:position] + body + runtime[position:], encoding="utf-8")
+
+
 def replacement_members(
     nm: str,
     injections: list[Path],
@@ -155,6 +174,34 @@ def replacement_members(
                 removed[archive_name].add(member_name)
                 reasons[f"{archive_name}:{member_name}"].append(symbol)
     return removed, reasons
+
+
+def rename_replaced_symbols(
+    objcopy: str,
+    work_dir: Path,
+    archives: dict[str, dict[str, Path]],
+    reasons: dict[str, list[str]],
+) -> None:
+    """Keep an oracle member while making only its replaced definitions local.
+
+    Runtime ABI objects intentionally group unrelated entry points.  Dropping a
+    whole member for one collision can therefore remove required definitions
+    such as RunCJTaskSignal.  Localizing the colliding oracle definition keeps
+    its internal references and the remainder of the member intact while the
+    injected definition owns the exported ABI.
+    """
+    renamed_dir = work_dir / "renamed"
+    renamed_dir.mkdir(parents=True, exist_ok=True)
+    for owner, symbols in sorted(reasons.items()):
+        archive_name, member_name = owner.split(":", 1)
+        source = archives[archive_name][member_name]
+        destination = renamed_dir / f"{archive_name}-{member_name}"
+        command = [objcopy]
+        for symbol in sorted(symbols):
+            command.extend(["--localize-symbol", symbol])
+        command.extend([str(source), str(destination)])
+        run(command)
+        archives[archive_name][member_name] = destination
 
 
 def parse_args() -> argparse.Namespace:
@@ -190,6 +237,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--linker", default="clang++")
     parser.add_argument("--ar", default="llvm-ar")
     parser.add_argument("--nm", default="nm")
+    parser.add_argument("--objcopy", default="llvm-objcopy")
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
@@ -215,8 +263,16 @@ def main() -> int:
         linker_script = require_file(
             runtime_root / "build/lds/x86_64_linux/cjnative_runtime.lds", "runtime linker script"
         )
+        shared_linker_script = require_file(
+            runtime_root / "build/lds/x86_64_linux/cjld.shared.lds",
+            "Cangjie shared linker script",
+        )
         boundscheck = require_file(
             toolchain / TOOLCHAIN_RUNTIME_SUBDIR / "libboundscheck.so", "libboundscheck.so"
+        )
+        std_core = require_file(
+            toolchain / TOOLCHAIN_STATIC_SUBDIR / "libcangjie-std-core.a",
+            "static std.core support archive",
         )
         injections = [require_file(path, "injected object") for path in args.inject]
         output = args.output.expanduser().resolve()
@@ -242,7 +298,9 @@ def main() -> int:
             raise HybridLinkError(f"rt0 archive is incomplete: {', '.join(missing_rt0)}")
 
         archives = {"runtime": runtime_members, "thread": thread_members}
-        removed, reasons = replacement_members(args.nm, injections, archives)
+        _, reasons = replacement_members(args.nm, injections, archives)
+        rename_replaced_symbols(args.objcopy, work_dir, archives, reasons)
+        removed = {name: set() for name in archives}
         removed["runtime"].update(RT0_REPLACED_RUNTIME_MEMBERS)
 
         for specification in args.replace_member:
@@ -264,6 +322,8 @@ def main() -> int:
         exports, version = reference_exports(args.nm, reference_so)
         export_map = work_dir / "hybrid-export.map"
         write_export_map(export_map, exports, version)
+        hybrid_linker_script = work_dir / "cjnative-runtime-with-metadata.lds"
+        write_hybrid_linker_script(hybrid_linker_script, linker_script, shared_linker_script)
 
         selected_rt0 = [rt0_members[name] for name in RT0_SHARED_MEMBERS]
         selected_runtime = [
@@ -286,13 +346,14 @@ def main() -> int:
             "-Wl,-soname,libcangjie-runtime.so",
             "-Wl,--defsym,g_runtimeStaticStart=g_runtimeDynamicStart",
             "-Wl,--defsym,g_runtimeStaticEnd=g_runtimeDynamicEnd",
-            f"-Wl,-T{linker_script}",
+            f"-Wl,-T{hybrid_linker_script}",
             f"-Wl,--version-script={export_map}",
             f"-Wl,-Map,{map_file}",
             *[str(path) for path in injections],
             *[str(path) for path in selected_rt0],
             *[str(path) for path in selected_runtime],
             *[str(path) for path in selected_thread],
+            str(std_core),
             f"-L{boundscheck.parent}",
             "-lboundscheck",
             "-lstdc++",

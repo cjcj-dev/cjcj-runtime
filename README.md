@@ -1,7 +1,8 @@
 # cjcj_runtime
 
-W1 establishes the frozen x86_64 Linux Layer0 archive and the mixed-linking
-gate used by later Cangjie runtime modules.
+W1 establishes the frozen x86_64 Linux Layer0 archive and mixed-linking gate.
+W2 adds the restricted-dialect Cangjie demangler and its three `rt.abi` C
+entry points.
 
 Build and relink without an injected module:
 
@@ -15,14 +16,16 @@ python3 build/symcheck.py \
   out/hybrid/libcangjie-runtime.so
 ```
 
-Run the full gate, including selfhost-cjc empty-package injection and the 114
-case differential suite:
+Run the full gate, including empty-package injection, demangler byte parity
+over every selfhost object, ABI parity, and the 114-case differential suite:
 
 ```sh
-REPO=/root/cj_build/cangjie_compiler_selfhost bash test/gate.sh
+REPO=/root/cj_build/cjcj bash test/gate.sh
 ```
 
-`link_hybrid.py --inject module.o` adds PIC Cangjie objects and automatically
-removes any official archive member that defines the same strong symbol. Its
-generated version script is an allowlist from the official shared object, so
-private Cangjie package symbols cannot expand the public ABI.
+`link_hybrid.py --inject module.o` adds PIC Cangjie objects and localizes only
+colliding definitions in official archive members. This symbol-granular
+interposition preserves unrelated definitions that share the same object (for
+example `RunCJTaskSignal`). Its generated version script is an allowlist from
+the official shared object, so private Cangjie package symbols cannot expand
+the public ABI.
