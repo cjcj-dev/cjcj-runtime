@@ -22,7 +22,17 @@ case differential suite:
 REPO=/root/cj_build/cangjie_compiler_selfhost bash test/gate.sh
 ```
 
-`link_hybrid.py --inject module.o` adds PIC Cangjie objects and automatically
-removes any official archive member that defines the same strong symbol. Its
-generated version script is an allowlist from the official shared object, so
-private Cangjie package symbols cannot expand the public ABI.
+`link_hybrid.py --inject module.o` adds PIC Cangjie objects and resolves strong
+symbol collisions by removing fully replaced members or transforming only the
+colliding definitions in mixed members. Its generated version script is an
+allowlist from the official shared object, so private Cangjie package symbols
+cannot expand the public ABI.
+
+W5 adds the `rt.abi` CFunc wrapper for `MRT_DumpLog`. The mixed link preserves
+the byte-identical C++ Base implementation as an internal callee while the
+public C ABI symbol is supplied by Cangjie. Run its export, symbol-parity, and
+114-case mixed-runtime gate with:
+
+```sh
+REPO=/root/cj_build/cjcj bash test/w5_gate.sh
+```

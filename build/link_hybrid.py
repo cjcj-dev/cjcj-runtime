@@ -131,17 +131,23 @@ def write_export_map(path: Path, names: Iterable[str], version: str) -> None:
 
 def replacement_members(
     nm: str,
+    objcopy: str,
     injections: list[Path],
     archives: dict[str, dict[str, Path]],
-) -> tuple[dict[str, set[str]], dict[str, list[str]]]:
+    preserve_collisions: dict[str, str],
+) -> tuple[dict[str, set[str]], dict[str, list[str]], dict[str, list[str]]]:
     owners: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    member_definitions: dict[tuple[str, str], set[str]] = {}
     for archive_name, members in archives.items():
         for member_name, object_path in members.items():
-            for symbol in strong_definitions(nm, object_path):
+            definitions = strong_definitions(nm, object_path)
+            member_definitions[(archive_name, member_name)] = definitions
+            for symbol in definitions:
                 owners[symbol].append((archive_name, member_name))
 
     removed = {name: set() for name in archives}
     reasons: dict[str, list[str]] = defaultdict(list)
+    collisions: dict[tuple[str, str], set[str]] = defaultdict(set)
     injection_owners: dict[str, Path] = {}
     for injection in injections:
         for symbol in strong_definitions(nm, injection):
@@ -152,9 +158,32 @@ def replacement_members(
                 )
             injection_owners[symbol] = injection
             for archive_name, member_name in owners.get(symbol, []):
-                removed[archive_name].add(member_name)
                 reasons[f"{archive_name}:{member_name}"].append(symbol)
-    return removed, reasons
+                collisions[(archive_name, member_name)].add(symbol)
+
+    localized: dict[str, list[str]] = {}
+    for (archive_name, member_name), symbols in collisions.items():
+        definitions = member_definitions[(archive_name, member_name)]
+        preserved = symbols.intersection(preserve_collisions)
+        if definitions <= injection_owners.keys() and not preserved:
+            removed[archive_name].add(member_name)
+            continue
+        object_path = archives[archive_name][member_name]
+        command = [objcopy]
+        for symbol in sorted(symbols):
+            alias = preserve_collisions.get(symbol)
+            if alias:
+                command.append(f"--redefine-sym={symbol}={alias}")
+            else:
+                command.append(f"--localize-symbol={symbol}")
+        command.append(str(object_path))
+        run(command)
+        localized[f"{archive_name}:{member_name}"] = [
+            f"{symbol}->{preserve_collisions[symbol]}"
+            if symbol in preserve_collisions else symbol
+            for symbol in sorted(symbols)
+        ]
+    return removed, reasons, localized
 
 
 def parse_args() -> argparse.Namespace:
@@ -174,6 +203,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--inject", type=Path, action="append", default=[], help="PIC Cangjie .o")
     parser.add_argument(
+        "--preserve-collision",
+        action="append",
+        default=[],
+        metavar="SYMBOL=INTERNAL_ALIAS",
+        help="rename a replaced oracle definition so an injected wrapper can call it",
+    )
+    parser.add_argument(
         "--replace-member",
         action="append",
         default=[],
@@ -190,6 +226,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--linker", default="clang++")
     parser.add_argument("--ar", default="llvm-ar")
     parser.add_argument("--nm", default="nm")
+    parser.add_argument("--objcopy", default="llvm-objcopy")
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args()
 
@@ -219,6 +256,16 @@ def main() -> int:
             toolchain / TOOLCHAIN_RUNTIME_SUBDIR / "libboundscheck.so", "libboundscheck.so"
         )
         injections = [require_file(path, "injected object") for path in args.inject]
+        preserve_collisions: dict[str, str] = {}
+        for specification in args.preserve_collision:
+            if "=" not in specification:
+                raise HybridLinkError(
+                    f"invalid --preserve-collision (expected SYMBOL=ALIAS): {specification}"
+                )
+            symbol, alias = specification.split("=", 1)
+            if not symbol or not alias or symbol in preserve_collisions:
+                raise HybridLinkError(f"invalid --preserve-collision: {specification}")
+            preserve_collisions[symbol] = alias
         output = args.output.expanduser().resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
         map_file = (args.map_file or Path(f"{output}.map")).expanduser().resolve()
@@ -242,7 +289,9 @@ def main() -> int:
             raise HybridLinkError(f"rt0 archive is incomplete: {', '.join(missing_rt0)}")
 
         archives = {"runtime": runtime_members, "thread": thread_members}
-        removed, reasons = replacement_members(args.nm, injections, archives)
+        removed, reasons, localized = replacement_members(
+            args.nm, args.objcopy, injections, archives, preserve_collisions
+        )
         removed["runtime"].update(RT0_REPLACED_RUNTIME_MEMBERS)
 
         for specification in args.replace_member:
@@ -286,6 +335,7 @@ def main() -> int:
             "-Wl,-soname,libcangjie-runtime.so",
             "-Wl,--defsym,g_runtimeStaticStart=g_runtimeDynamicStart",
             "-Wl,--defsym,g_runtimeStaticEnd=g_runtimeDynamicEnd",
+            f"-Wl,-T{REPO_ROOT / 'build/cjmetadata_hybrid.lds'}",
             f"-Wl,-T{linker_script}",
             f"-Wl,--version-script={export_map}",
             f"-Wl,-Map,{map_file}",
@@ -306,13 +356,16 @@ def main() -> int:
             print("LINK COMMAND " + " ".join(command))
             for member, symbols in sorted(reasons.items()):
                 print(f"AUTO REPLACE {member} symbols={','.join(sorted(symbols))}")
+            for member, symbols in sorted(localized.items()):
+                print(f"LOCALIZE ORIGINAL {member} symbols={','.join(symbols)}")
         run(command)
 
         replaced_count = len(removed["runtime"]) + len(removed["thread"])
         print(
             f"HYBRID LINK PASS output={output} exports={len(exports) + 1} "
             f"runtime_objects={len(selected_runtime)} thread_objects={len(selected_thread)} "
-            f"rt0_objects={len(selected_rt0)} injected={len(injections)} replaced={replaced_count}"
+            f"rt0_objects={len(selected_rt0)} injected={len(injections)} replaced={replaced_count} "
+            f"localized={len(localized)}"
         )
         if temporary is not None:
             temporary.cleanup()
