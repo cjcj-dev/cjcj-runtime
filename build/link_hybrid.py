@@ -20,6 +20,7 @@ DEFAULT_TOOLCHAIN = Path("/root/.cjv/toolchains/nightly-1.2.0-alpha.202606190200
 ARCHIVE_SUBDIR = Path("target/common/linux_release_x86_64/lib/linux_x86_64_cjnative")
 SO_SUBDIR = Path("target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative")
 TOOLCHAIN_RUNTIME_SUBDIR = Path("runtime/lib/linux_x86_64_cjnative")
+TOOLCHAIN_STATIC_SUBDIR = Path("lib/linux_x86_64_cjnative")
 
 RT0_SHARED_MEMBERS = (
     "C2NStub.S.o",
@@ -127,6 +128,24 @@ def write_export_map(path: Path, names: Iterable[str], version: str) -> None:
     lines.extend(f"    {name};" for name in names)
     lines.extend(("  local: *;", "};", ""))
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_hybrid_linker_script(path: Path, runtime_script: Path, shared_script: Path) -> None:
+    """Insert the authoritative Cangjie metadata layout into the runtime script."""
+    source = shared_script.read_text(encoding="utf-8")
+    start_marker = "  /* Cangjie Metadata sections start */"
+    end_marker = "  /* Cangjie Metadata sections end */"
+    start = source.find(start_marker)
+    end = source.find(end_marker, start)
+    if start < 0 or end < 0:
+        raise HybridLinkError(f"metadata layout not found in {shared_script}")
+    body = source[start + len(start_marker) : end]
+    runtime = runtime_script.read_text(encoding="utf-8")
+    insertion = "  .bss            :"
+    position = runtime.find(insertion)
+    if position < 0:
+        raise HybridLinkError(f".bss layout not found in {runtime_script}")
+    path.write_text(runtime[:position] + body + runtime[position:], encoding="utf-8")
 
 
 def replacement_members(
@@ -252,8 +271,16 @@ def main() -> int:
         linker_script = require_file(
             runtime_root / "build/lds/x86_64_linux/cjnative_runtime.lds", "runtime linker script"
         )
+        shared_linker_script = require_file(
+            runtime_root / "build/lds/x86_64_linux/cjld.shared.lds",
+            "Cangjie shared linker script",
+        )
         boundscheck = require_file(
             toolchain / TOOLCHAIN_RUNTIME_SUBDIR / "libboundscheck.so", "libboundscheck.so"
+        )
+        std_core = require_file(
+            toolchain / TOOLCHAIN_STATIC_SUBDIR / "libcangjie-std-core.a",
+            "static std.core support archive",
         )
         injections = [require_file(path, "injected object") for path in args.inject]
         preserve_collisions: dict[str, str] = {}
@@ -313,6 +340,8 @@ def main() -> int:
         exports, version = reference_exports(args.nm, reference_so)
         export_map = work_dir / "hybrid-export.map"
         write_export_map(export_map, exports, version)
+        hybrid_linker_script = work_dir / "cjnative-runtime-with-metadata.lds"
+        write_hybrid_linker_script(hybrid_linker_script, linker_script, shared_linker_script)
 
         selected_rt0 = [rt0_members[name] for name in RT0_SHARED_MEMBERS]
         selected_runtime = [
@@ -335,14 +364,14 @@ def main() -> int:
             "-Wl,-soname,libcangjie-runtime.so",
             "-Wl,--defsym,g_runtimeStaticStart=g_runtimeDynamicStart",
             "-Wl,--defsym,g_runtimeStaticEnd=g_runtimeDynamicEnd",
-            f"-Wl,-T{REPO_ROOT / 'build/cjmetadata_hybrid.lds'}",
-            f"-Wl,-T{linker_script}",
+            f"-Wl,-T{hybrid_linker_script}",
             f"-Wl,--version-script={export_map}",
             f"-Wl,-Map,{map_file}",
             *[str(path) for path in injections],
             *[str(path) for path in selected_rt0],
             *[str(path) for path in selected_runtime],
             *[str(path) for path in selected_thread],
+            str(std_core),
             f"-L{boundscheck.parent}",
             "-lboundscheck",
             "-lstdc++",

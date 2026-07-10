@@ -17,7 +17,8 @@ export CANGJIE_HOME
 export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
 rm -rf "$OUT"
-mkdir -p "$OUT/probe" "$OUT/abi" "$OUT/oracle"
+mkdir -p "$OUT/probe" "$OUT/abi" "$OUT/demangle-cwd" \
+    "$OUT/demangle-object" "$OUT/oracle"
 
 "$CJC" "$ROOT/test/compiler_gap/w5_cfunc_export.cj" --output-type dylib \
     -o "$OUT/probe/libw5_probe.so"
@@ -50,6 +51,19 @@ test "$abi_mangled" -eq 0
 nm -u "$OUT/abi/rt.abi.o" | grep -Fq 'CJRT_BaseDumpLog'
 printf 'RT.ABI OBJECT PASS c=%s mangled=%s base_forward=1\n' "$abi_c" "$abi_mangled"
 
+(
+    cd "$OUT/demangle-cwd"
+    cjHeapSize=${BUILD_HEAP_SIZE:-2GB} "$CJC" -p "$ROOT/src/rt.demangle" \
+        --output-type staticlib -O2 --int-overflow wrapping \
+        -o "$OUT/librt.demangle.a"
+)
+(
+    cd "$OUT/demangle-object"
+    llvm-ar x "$OUT/librt.demangle.a"
+)
+DEMANGLE_OBJECT="$OUT/demangle-object/rt.demangle.o"
+test -f "$DEMANGLE_OBJECT"
+
 env -u LD_LIBRARY_PATH cmake -S "$ROOT" -B "$OUT/cmake" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ \
     -DCMAKE_ASM_COMPILER=clang -DCANGJIE_RUNTIME_SOURCE="$RUNTIME_ROOT"
@@ -59,6 +73,7 @@ HYBRID="$OUT/hybrid/libcangjie-runtime.so"
 python3 "$ROOT/build/link_hybrid.py" --runtime-root "$RUNTIME_ROOT" \
     --toolchain "$CANGJIE_HOME" --rt0-archive "$OUT/cmake/lib/libcjcj_rt0.a" \
     --inject "$OUT/abi/rt.abi.o" \
+    --inject "$DEMANGLE_OBJECT" \
     --preserve-collision MRT_DumpLog=CJRT_BaseDumpLog --output "$HYBRID" \
     --work-dir "$OUT/hybrid-work"
 python3 "$ROOT/build/symcheck.py" "$REFERENCE" "$HYBRID"

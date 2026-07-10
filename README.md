@@ -1,7 +1,8 @@
 # cjcj_runtime
 
-W1 establishes the frozen x86_64 Linux Layer0 archive and the mixed-linking
-gate used by later Cangjie runtime modules.
+W1 establishes the frozen x86_64 Linux Layer0 archive and mixed-linking gate.
+W2 adds the restricted-dialect Cangjie demangler and its three `rt.abi` C
+entry points.
 
 Build and relink without an injected module:
 
@@ -15,18 +16,21 @@ python3 build/symcheck.py \
   out/hybrid/libcangjie-runtime.so
 ```
 
-Run the full gate, including selfhost-cjc empty-package injection and the 114
-case differential suite:
+Run the full gate, including empty-package injection, demangler byte parity
+over every selfhost object, ABI parity, and the 114-case differential suite:
 
 ```sh
-REPO=/root/cj_build/cangjie_compiler_selfhost bash test/gate.sh
+REPO=/root/cj_build/cjcj bash test/gate.sh
 ```
 
 `link_hybrid.py --inject module.o` adds PIC Cangjie objects and resolves strong
 symbol collisions by removing fully replaced members or transforming only the
-colliding definitions in mixed members. Its generated version script is an
-allowlist from the official shared object, so private Cangjie package symbols
-cannot expand the public ABI.
+colliding definitions in mixed members. Symbol-granular interposition preserves
+unrelated definitions that share the same object (for example
+`RunCJTaskSignal`), while `--preserve-collision SYMBOL=ALIAS` keeps an original
+implementation callable through an internal alias. Its generated version
+script is an allowlist from the official shared object, so private Cangjie
+package symbols cannot expand the public ABI.
 
 W5 adds the `rt.abi` CFunc wrapper for `MRT_DumpLog`. The mixed link preserves
 the byte-identical C++ Base implementation as an internal callee while the
