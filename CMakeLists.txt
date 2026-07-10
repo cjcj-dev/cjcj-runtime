@@ -1,4 +1,25 @@
 cmake_minimum_required(VERSION 3.20)
-project(cjcj_runtime LANGUAGES CXX ASM)
+
+set(OHOS_FLAG "0" CACHE STRING "OHOS target: 0=off, 1=aarch64, 2=x86_64, 3=arm")
+set(IOS_FLAG "0" CACHE STRING "Build for an iOS device")
+set(IOS_SIMULATOR_FLAG "0" CACHE STRING "iOS simulator: 0=off, 1=aarch64, 2=x86_64")
+if(OHOS_FLAG MATCHES "^[123]$")
+    set(CMAKE_SYSTEM_NAME Linux)
+    if(OHOS_FLAG MATCHES 1)
+        set(CMAKE_SYSTEM_PROCESSOR aarch64)
+    elseif(OHOS_FLAG MATCHES 2)
+        set(CMAKE_SYSTEM_PROCESSOR x86_64)
+    elseif(OHOS_FLAG MATCHES 3)
+        set(CMAKE_SYSTEM_PROCESSOR arm)
+    endif()
+endif()
+
+option(CJCJ_RT0_CONFIGURE_ONLY
+    "Validate rt0 platform source selection without requiring a cross toolchain" OFF)
+if(CJCJ_RT0_CONFIGURE_ONLY)
+    project(cjcj_runtime LANGUAGES NONE)
+else()
+    project(cjcj_runtime LANGUAGES CXX ASM)
+endif()
 
 add_subdirectory(rt0)
