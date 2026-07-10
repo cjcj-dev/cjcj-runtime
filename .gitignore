@@ -1,5 +1,7 @@
-/out/
+*.pyc
+/*.o
 /.cache/
 /.cached/
-*.pyc
+/out/
+/target/
 __pycache__/
