@@ -67,8 +67,26 @@ for alias in "${env_aliases[@]}"; do
     nm -u "$OUT/abi/rt.abi.o" |
         awk -v wanted="$alias" '$NF == wanted { found++ } END { exit found != 1 }'
 done
-printf 'RT.ABI OBJECT PASS c=%s mangled=%s base_forward=1 env_forward=%s\n' \
-    "$abi_c" "$abi_mangled" "${#env_symbols[@]}"
+log_symbols=(
+    _ZN12MapleRuntime7LogFile13CloseLogFilesEv
+    _ZN12MapleRuntime7LogFile8SetFlagsEv
+    _ZN12MapleRuntime7LogFile14SetFlagWithEnvEPKcNS_7LogTypeE
+)
+log_aliases=(
+    CJRT_BaseCloseLogFiles
+    CJRT_BaseSetLogFlags
+    CJRT_BaseSetLogFlagWithEnv
+)
+for symbol in "${log_symbols[@]}"; do
+    nm -g --defined-only "$OUT/abi/rt.abi.o" |
+        awk -v wanted="$symbol" '$3 == wanted { found++ } END { exit found != 1 }'
+done
+for alias in "${log_aliases[@]}"; do
+    nm -u "$OUT/abi/rt.abi.o" |
+        awk -v wanted="$alias" '$NF == wanted { found++ } END { exit found != 1 }'
+done
+printf 'RT.ABI OBJECT PASS c=%s mangled=%s base_forward=1 env_forward=%s log_forward=%s\n' \
+    "$abi_c" "$abi_mangled" "${#env_symbols[@]}" "${#log_symbols[@]}"
 
 (
     cd "$OUT/demangle-cwd"
@@ -97,6 +115,9 @@ python3 "$ROOT/build/link_hybrid.py" --runtime-root "$RUNTIME_ROOT" \
     --preserve-collision _ZN12MapleRuntime7CString15ParseNumFromEnvERKS0_=CJRT_BaseParseNumFromEnv \
     --preserve-collision _ZN12MapleRuntime7CString12IsPosDecimalERKS0_=CJRT_BaseIsPosDecimal \
     --preserve-collision _ZN12MapleRuntime7CString8IsNumberERKS0_=CJRT_BaseIsNumber \
+    --preserve-collision _ZN12MapleRuntime7LogFile13CloseLogFilesEv=CJRT_BaseCloseLogFiles \
+    --preserve-collision _ZN12MapleRuntime7LogFile8SetFlagsEv=CJRT_BaseSetLogFlags \
+    --preserve-collision _ZN12MapleRuntime7LogFile14SetFlagWithEnvEPKcNS_7LogTypeE=CJRT_BaseSetLogFlagWithEnv \
     --output "$HYBRID" \
     --work-dir "$OUT/hybrid-work"
 python3 "$ROOT/build/symcheck.py" "$REFERENCE" "$HYBRID"
@@ -139,13 +160,31 @@ done
 printf 'ENV FORWARD PARITY PASS symbols=%s text_bytes=%s byte_diff=0\n' \
     "${#env_symbols[@]}" "$env_bytes"
 
+log_bytes=0
+for symbol in "${log_symbols[@]}"; do
+    llvm-objcopy --dump-section ".text.$symbol=$OUT/oracle/$symbol.original.text" \
+        "$OUT/oracle/LogFile.cpp.o"
+    llvm-objcopy --dump-section ".text.$symbol=$OUT/oracle/$symbol.renamed.text" \
+        "$OUT/hybrid-work/runtime/LogFile.cpp.o"
+    cmp "$OUT/oracle/$symbol.original.text" "$OUT/oracle/$symbol.renamed.text"
+    bytes=$(wc -c < "$OUT/oracle/$symbol.original.text")
+    log_bytes=$((log_bytes + bytes))
+done
+printf 'LOG FORWARD PARITY PASS symbols=%s text_bytes=%s byte_diff=0\n' \
+    "${#log_symbols[@]}" "$log_bytes"
+
 "$REF_CJC" "$ROOT/test/parity/w5/dump_log.cj" -O2 --set-runtime-rpath \
     -o "$OUT/dump_log"
 "$REF_CJC" "$ROOT/test/parity/w5/env_exports.cj" -O2 --set-runtime-rpath \
     -o "$OUT/env_exports"
+"$REF_CJC" "$ROOT/test/parity/w5/log_leaves.cj" -O2 --set-runtime-rpath \
+    -o "$OUT/log_leaves"
 "$OUT/env_exports"
 LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" "$OUT/env_exports"
 printf 'ENV CALL PARITY PASS fixed_cases=5 official=0 hybrid=0\n'
+"$OUT/log_leaves"
+LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" "$OUT/log_leaves"
+printf 'LOG CALL PARITY PASS leaves=3 official=0 hybrid=0\n'
 MRT_LOG_CJTHREAD="$OUT/cfunc.log" LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" \
     "$OUT/dump_log"
 grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6} [0-9]+ W5_CFUNC_EXPORT$' \
