@@ -49,7 +49,26 @@ abi_mangled=$(nm -g --defined-only "$OUT/abi/rt.abi.o" |
 test "$abi_c" -eq 1
 test "$abi_mangled" -eq 0
 nm -u "$OUT/abi/rt.abi.o" | grep -Fq 'CJRT_BaseDumpLog'
-printf 'RT.ABI OBJECT PASS c=%s mangled=%s base_forward=1\n' "$abi_c" "$abi_mangled"
+env_symbols=(
+    _ZN12MapleRuntime7CString15ParseNumFromEnvERKS0_
+    _ZN12MapleRuntime7CString12IsPosDecimalERKS0_
+    _ZN12MapleRuntime7CString8IsNumberERKS0_
+)
+env_aliases=(
+    CJRT_BaseParseNumFromEnv
+    CJRT_BaseIsPosDecimal
+    CJRT_BaseIsNumber
+)
+for symbol in "${env_symbols[@]}"; do
+    nm -g --defined-only "$OUT/abi/rt.abi.o" |
+        awk -v wanted="$symbol" '$3 == wanted { found++ } END { exit found != 1 }'
+done
+for alias in "${env_aliases[@]}"; do
+    nm -u "$OUT/abi/rt.abi.o" |
+        awk -v wanted="$alias" '$NF == wanted { found++ } END { exit found != 1 }'
+done
+printf 'RT.ABI OBJECT PASS c=%s mangled=%s base_forward=1 env_forward=%s\n' \
+    "$abi_c" "$abi_mangled" "${#env_symbols[@]}"
 
 (
     cd "$OUT/demangle-cwd"
@@ -74,7 +93,11 @@ python3 "$ROOT/build/link_hybrid.py" --runtime-root "$RUNTIME_ROOT" \
     --toolchain "$CANGJIE_HOME" --rt0-archive "$OUT/cmake/lib/libcjcj_rt0.a" \
     --inject "$OUT/abi/rt.abi.o" \
     --inject "$DEMANGLE_OBJECT" \
-    --preserve-collision MRT_DumpLog=CJRT_BaseDumpLog --output "$HYBRID" \
+    --preserve-collision MRT_DumpLog=CJRT_BaseDumpLog \
+    --preserve-collision _ZN12MapleRuntime7CString15ParseNumFromEnvERKS0_=CJRT_BaseParseNumFromEnv \
+    --preserve-collision _ZN12MapleRuntime7CString12IsPosDecimalERKS0_=CJRT_BaseIsPosDecimal \
+    --preserve-collision _ZN12MapleRuntime7CString8IsNumberERKS0_=CJRT_BaseIsNumber \
+    --output "$HYBRID" \
     --work-dir "$OUT/hybrid-work"
 python3 "$ROOT/build/symcheck.py" "$REFERENCE" "$HYBRID"
 
@@ -95,7 +118,7 @@ objdump -p "$HYBRID" | grep -Fq 'SONAME               libcangjie-runtime.so'
 
 (
     cd "$OUT/oracle"
-    llvm-ar x "$RUNTIME_ARCHIVE" LogFile.cpp.o
+    llvm-ar x "$RUNTIME_ARCHIVE" LogFile.cpp.o CString.cpp.o
 )
 llvm-objcopy --dump-section .text.MRT_DumpLog="$OUT/oracle/original.text" "$OUT/oracle/LogFile.cpp.o"
 llvm-objcopy --dump-section .text.MRT_DumpLog="$OUT/oracle/renamed.text" "$OUT/hybrid-work/runtime/LogFile.cpp.o"
@@ -103,8 +126,26 @@ cmp "$OUT/oracle/original.text" "$OUT/oracle/renamed.text"
 text_bytes=$(wc -c < "$OUT/oracle/original.text")
 printf 'BASE FORWARD PARITY PASS text_bytes=%s byte_diff=0\n' "$text_bytes"
 
+env_bytes=0
+for symbol in "${env_symbols[@]}"; do
+    llvm-objcopy --dump-section ".text.$symbol=$OUT/oracle/$symbol.original.text" \
+        "$OUT/oracle/CString.cpp.o"
+    llvm-objcopy --dump-section ".text.$symbol=$OUT/oracle/$symbol.renamed.text" \
+        "$OUT/hybrid-work/runtime/CString.cpp.o"
+    cmp "$OUT/oracle/$symbol.original.text" "$OUT/oracle/$symbol.renamed.text"
+    bytes=$(wc -c < "$OUT/oracle/$symbol.original.text")
+    env_bytes=$((env_bytes + bytes))
+done
+printf 'ENV FORWARD PARITY PASS symbols=%s text_bytes=%s byte_diff=0\n' \
+    "${#env_symbols[@]}" "$env_bytes"
+
 "$REF_CJC" "$ROOT/test/parity/w5/dump_log.cj" -O2 --set-runtime-rpath \
     -o "$OUT/dump_log"
+"$REF_CJC" "$ROOT/test/parity/w5/env_exports.cj" -O2 --set-runtime-rpath \
+    -o "$OUT/env_exports"
+"$OUT/env_exports"
+LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" "$OUT/env_exports"
+printf 'ENV CALL PARITY PASS fixed_cases=5 official=0 hybrid=0\n'
 MRT_LOG_CJTHREAD="$OUT/cfunc.log" LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" \
     "$OUT/dump_log"
 grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6} [0-9]+ W5_CFUNC_EXPORT$' \
