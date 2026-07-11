@@ -17,7 +17,7 @@ export CANGJIE_HOME
 export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
 rm -rf "$OUT"
-mkdir -p "$OUT/probe" "$OUT/abi" "$OUT/demangle-cwd" \
+mkdir -p "$OUT/probe" "$OUT/g11/o0" "$OUT/g11/o2" "$OUT/abi" "$OUT/demangle-cwd" \
     "$OUT/demangle-object" "$OUT/oracle"
 
 "$CJC" "$ROOT/test/compiler_gap/w5_cfunc_export.cj" --output-type dylib \
@@ -34,6 +34,19 @@ test "$probe_so" -eq 1
 test "$probe_obj" -eq 1
 test "$probe_mangled" -eq 0
 printf 'CFUNC PROBE PASS so_c=%s obj_c=%s mangled=%s\n' "$probe_so" "$probe_obj" "$probe_mangled"
+
+"$CJC" "$ROOT/test/compiler_gap/w2_varray_struct_store.cj" --experimental \
+    --output-type obj --compile-target dylib --save-temps "$OUT/g11/o0" \
+    -o "$OUT/g11/o0/probe.o" -Woff unused
+"$CJC" "$ROOT/test/compiler_gap/w2_varray_struct_store.cj" --experimental \
+    --output-type obj --compile-target dylib -O2 --save-temps "$OUT/g11/o2" \
+    -o "$OUT/g11/o2/probe.o" -Woff unused
+g11_o0_bytes=$(wc -c < "$OUT/g11/o0/probe.o")
+g11_o2_bytes=$(wc -c < "$OUT/g11/o2/probe.o")
+file "$OUT/g11/o0/probe.o" "$OUT/g11/o2/probe.o" | grep -Fc 'ELF 64-bit LSB relocatable' |
+    awk '$1 == 2 { found=1 } END { exit !found }'
+printf 'G11-PROBE O0_exit=0 O0_bytes=%s O2_exit=0 O2_bytes=%s\n' \
+    "$g11_o0_bytes" "$g11_o2_bytes"
 
 "$CJC" -p "$ROOT/src/rt.abi" --experimental --output-type obj \
     --compile-target dylib --int-overflow wrapping -O2 \
@@ -200,7 +213,8 @@ fi
 
 (
     cd "$REPO"
-    LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" bash scripts/difftest.sh
+    LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" \
+        bash scripts/difftest.sh -j "${DIFFTEST_JOBS:-4}"
 ) | tee "$OUT/difftest.log"
 grep -Fq 'TOTAL=114  PASS=114  MISMATCH=0  FAIL=0' "$OUT/difftest.log"
 printf 'W5 GATE PASS cfunc=1 symcheck=2692/2692 base_text=%s difftest=114/114\n' "$text_bytes"

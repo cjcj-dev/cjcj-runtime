@@ -32,10 +32,11 @@ implementation callable through an internal alias. Its generated version
 script is an allowlist from the official shared object, so private Cangjie
 package symbols cannot expand the public ABI.
 
-W5 adds the `rt.abi` CFunc wrapper for `MRT_DumpLog`. The mixed link preserves
-the byte-identical C++ Base implementation as an internal callee while the
-public C ABI symbol is supplied by Cangjie. Run its export, symbol-parity, and
-114-case mixed-runtime gate with:
+W5 supplies seven `rt.abi` wrappers: `MRT_DumpLog`, three safe CString Env
+helpers, and three LogFile configuration leaves. The mixed link preserves each
+byte-identical C++ Base implementation as an internal callee while the public
+ABI symbol is supplied by Cangjie. Run the G11, export, byte-parity, behavior,
+and 114-case mixed-runtime gate with:
 
 ```sh
 REPO=/root/cj_build/cjcj bash test/w5_gate.sh

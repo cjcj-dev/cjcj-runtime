@@ -63,6 +63,11 @@ printf 'RESTRICTED DIALECT PASS managed_edges=0\n'
 )
 ABI_OBJECT="$OUT/abi-object/rt.abi.o"
 test -f "$ABI_OBJECT"
+if nm -u "$ABI_OBJECT" | grep -Eq 'CJ_MCC_(New|Write|Throw)'; then
+    printf 'RESTRICTED DIALECT FAIL rt.abi managed allocation/barrier/throw edge found\n' >&2
+    exit 1
+fi
+printf 'RESTRICTED DIALECT PASS rt.abi_managed_edges=0\n'
 
 HYBRID="$OUT/hybrid/libcangjie-runtime.so"
 python3 "$ROOT/build/link_hybrid.py" \
@@ -73,6 +78,12 @@ python3 "$ROOT/build/link_hybrid.py" \
     --inject "$DEMANGLE_OBJECT" \
     --inject "$ABI_OBJECT" \
     --preserve-collision MRT_DumpLog=CJRT_BaseDumpLog \
+    --preserve-collision _ZN12MapleRuntime7CString15ParseNumFromEnvERKS0_=CJRT_BaseParseNumFromEnv \
+    --preserve-collision _ZN12MapleRuntime7CString12IsPosDecimalERKS0_=CJRT_BaseIsPosDecimal \
+    --preserve-collision _ZN12MapleRuntime7CString8IsNumberERKS0_=CJRT_BaseIsNumber \
+    --preserve-collision _ZN12MapleRuntime7LogFile13CloseLogFilesEv=CJRT_BaseCloseLogFiles \
+    --preserve-collision _ZN12MapleRuntime7LogFile8SetFlagsEv=CJRT_BaseSetLogFlags \
+    --preserve-collision _ZN12MapleRuntime7LogFile14SetFlagWithEnvEPKcNS_7LogTypeE=CJRT_BaseSetLogFlagWithEnv \
     --output "$HYBRID"
 python3 "$ROOT/build/symcheck.py" \
     "$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative/libcangjie-runtime.so" \
