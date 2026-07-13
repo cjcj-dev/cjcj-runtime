@@ -5,14 +5,9 @@ import rt.base.*
 // Port of Heap/Allocator/LocalDeque.h (SingleUseDeque, LocalDeque, RTAllocatorT).
 //
 // The C++ types are `template<class ValType>` / `template<size_t, size_t>` but every
-// one carries `static_assert(sizeof(ValType) == sizeof(void*))`, so their only legal
-// instantiation is pointer-sized (they are only ever used with Node* / Node**). The
-// selfhost compiler cannot yet compile a generic parameterised by CType through
-// CPointer<T>/VArray<T,$n>, nor construct a CPointer from a raw integer address, so
-// these are ported as pointer-typed structures whose element is CPointer<Unit> (void*)
-// and whose addresses are byte offsets from a base CPointer reached by pointer
-// arithmetic. That is behaviourally and layout identical to the C++ template's sole
-// valid instantiation; only the generic syntax is dropped.
+// one carries `static_assert(sizeof(ValType) == sizeof(void*))`, and the allocator uses
+// them with Node* / Node**. The port erases the pointee type to CPointer<Unit> while
+// preserving the one-word element representation and byte-addressed storage layout.
 
 // LocalDeque.h:17-22. DEBUG_DEQUE is false, so DEQUE_ASSERT is a no-op; the bounds
 // asserts are compiled out exactly as in C++.
@@ -134,12 +129,12 @@ public class SingleUseDeque {
 // LocalDeque.h:107-179. Stack-local deque fronted by an inline array; it spills to a
 // SingleUseDeque only after the local array fills, avoiding RAM visits and unfreeable
 // memory for the common small case.
-public class LocalDeque {
+public struct LocalDeque {
     // LocalDeque.h:111. ALLOC_UTIL_PAGE_SIZE / sizeof(ValType) = 4096 / 8.
-    public static const LOCAL_LENGTH: Int64 = 512
+    public static const LOCAL_LENGTH: Int32 = 512
 
-    private var front: Int64 = 0
-    private var top: Int64 = -1
+    private var front: Int32 = 0
+    private var top: Int32 = -1
     private let sud: SingleUseDeque
     private var array: VArray<CPointer<Unit>, $512>
 
@@ -155,10 +150,12 @@ public class LocalDeque {
     }
 
     // LocalDeque.h:115-125.
-    public func Push(v: CPointer<Unit>): Unit {
+    public mut func Push(v: CPointer<Unit>): Unit {
         if (top < LOCAL_LENGTH - 1) {
             top += 1
-            array[top] = v
+            var localArray = array
+            unsafe { CPointer<CPointer<Unit>>(inout localArray).write(Int64(top), v) }
+            array = localArray
             return
         } else if (top == LOCAL_LENGTH - 1) {
             top += 1
@@ -170,13 +167,14 @@ public class LocalDeque {
     // LocalDeque.h:126-133.
     public func Top(): CPointer<Unit> {
         if (top < LOCAL_LENGTH) {
-            return array[top]
+            var localArray = array
+            return unsafe { CPointer<CPointer<Unit>>(inout localArray).read(Int64(top)) }
         }
         return sud.Top()
     }
 
     // LocalDeque.h:134-153.
-    public func Pop(): Unit {
+    public mut func Pop(): Unit {
         if (top < LOCAL_LENGTH) {
             top -= 1
             return
@@ -197,13 +195,14 @@ public class LocalDeque {
     // LocalDeque.h:154-162.
     public func Front(): CPointer<Unit> {
         if (front < LOCAL_LENGTH) {
-            return array[front]
+            var localArray = array
+            return unsafe { CPointer<CPointer<Unit>>(inout localArray).read(Int64(front)) }
         }
         return sud.Front()
     }
 
     // LocalDeque.h:163-172.
-    public func PopFront(): Unit {
+    public mut func PopFront(): Unit {
         if (front < LOCAL_LENGTH) {
             front += 1
             return
