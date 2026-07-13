@@ -16,13 +16,30 @@ public func AllocUtilRndUp(x: UIntNative, n: UIntNative): UIntNative {
 foreign {
     @When[os != "Windows"]
     func munmap(address: CPointer<Unit>, size: UIntNative): Int32
+
+    // Windows <memoryapi.h>; BOOL VirtualFree(LPVOID, SIZE_T, DWORD).
+    @When[os == "Windows"]
+    func VirtualFree(address: CPointer<Unit>, size: UIntNative, freeType: UInt32): Int32
 }
 
-// Heap/Allocator/AllocUtil.h:24-29.
+// Heap/Allocator/AllocUtil.h:20 (_WIN64). MEM_RELEASE frees the whole reservation and requires size 0.
+@When[os == "Windows"]
+public const MEM_RELEASE: UInt32 = 0x8000u32
+
+// Heap/Allocator/AllocUtil.h:24-28 (else).
 @When[os != "Windows"]
 public func ALLOCUTIL_MEM_UNMAP(address: CPointer<Unit>, sizeInBytes: UIntNative): Unit {
     if (unsafe { munmap(address, sizeInBytes) } != 0) {
         LOG(RTLOG_FATAL, "munmap failed. Process terminating.")
+    }
+}
+
+// Heap/Allocator/AllocUtil.h:19-23 (_WIN64). VirtualFree returns FALSE (0) on failure.
+@When[os == "Windows"]
+public func ALLOCUTIL_MEM_UNMAP(address: CPointer<Unit>, sizeInBytes: UIntNative): Unit {
+    let _ = sizeInBytes
+    if (unsafe { VirtualFree(address, 0, MEM_RELEASE) } == 0) {
+        LOG(RTLOG_FATAL, "VirtualFree failed. Process terminating.")
     }
 }
 

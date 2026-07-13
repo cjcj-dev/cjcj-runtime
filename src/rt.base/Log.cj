@@ -40,8 +40,9 @@ public const LOG_TYPE_NUMBER: LogType = 21
 foreign {
     func write(fd: Int32, data: CPointer<UInt8>, size: UIntNative): IntNative
 
-    // TRANSITIONAL: cangjie_runtime/runtime/src/Base/Log.cpp:417-419.
-    @When[os == "Linux"]
+    // TRANSITIONAL: cangjie_runtime/runtime/src/Base/Log.cpp:417-419 terminates RTLOG_FATAL with
+    // std::abort(). Provided by the per-target Layer0 bridge: rt0/os/Linux/Panic.cpp (POSIX, also
+    // serves Apple) and rt0/os/Windows/Panic.cpp (Windows).
     func RtFatal(message: CString): Unit
 }
 
