@@ -90,7 +90,9 @@ else()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND RT0_PLATFORM_SOURCES os/Linux/Futex.cpp)
+    list(APPEND RT0_PLATFORM_SOURCES
+        os/Linux/Futex.cpp
+        os/Linux/Panic.cpp)
 endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
