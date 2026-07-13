@@ -21,3 +21,18 @@ public func CHECK_E(condition: Bool, message: String): Unit {
         LOG(RTLOG_ERROR, message)
     }
 }
+
+// Base/Panic.h:18-42. Debug-only assert (release is a no-op). C++ prepends __FILE__:__LINE__
+// via PRINT_INFO then abort(); Cangjie has no __FILE__/__LINE__, so the descriptive message and
+// the abort (through RTLOG_FATAL -> RtFatal) are preserved without the source-location prefix.
+@When[debug]
+public func MRT_ASSERT(condition: Bool, message: String): Unit {
+    if (!condition) {
+        LOG(RTLOG_FATAL, message)
+    }
+}
+@When[!debug]
+public func MRT_ASSERT(condition: Bool, message: String): Unit {
+    let _ = condition
+    let _ = message
+}
