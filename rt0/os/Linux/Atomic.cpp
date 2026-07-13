@@ -16,3 +16,19 @@ extern "C" int32_t cj_atomic_i32_cas(int32_t* p, int32_t expected, int32_t desir
 extern "C" int32_t cj_atomic_i32_load(int32_t* p) { return __atomic_load_n(p, __ATOMIC_SEQ_CST); }
 extern "C" void cj_atomic_i32_store(int32_t* p, int32_t v) { __atomic_store_n(p, v, __ATOMIC_SEQ_CST); }
 extern "C" int32_t cj_atomic_i32_fetch_sub(int32_t* p, int32_t v) { return __atomic_fetch_sub(p, v, __ATOMIC_SEQ_CST); }
+
+// Heap/Allocator/RegionInfo.h:35-62: inline BitField<uint8_t/uint16_t>.
+// Loads are acquire; CAS is acq_rel on success and acquire on failure.
+extern "C" int32_t cj_atomic_u8_cas(uint8_t* p, uint8_t* expected, uint8_t desired)
+{
+    return __atomic_compare_exchange_n(p, expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE) ? 1 : 0;
+}
+extern "C" uint8_t cj_atomic_u8_load(uint8_t* p) { return __atomic_load_n(p, __ATOMIC_ACQUIRE); }
+extern "C" void cj_atomic_u8_store(uint8_t* p, uint8_t v) { __atomic_store_n(p, v, __ATOMIC_RELEASE); }
+
+extern "C" int32_t cj_atomic_u16_cas(uint16_t* p, uint16_t* expected, uint16_t desired)
+{
+    return __atomic_compare_exchange_n(p, expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE) ? 1 : 0;
+}
+extern "C" uint16_t cj_atomic_u16_load(uint16_t* p) { return __atomic_load_n(p, __ATOMIC_ACQUIRE); }
+extern "C" void cj_atomic_u16_store(uint16_t* p, uint16_t v) { __atomic_store_n(p, v, __ATOMIC_RELEASE); }
