@@ -89,6 +89,10 @@ else()
         signal/SignalVectorCompat.cpp)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND RT0_PLATFORM_SOURCES os/Linux/Futex.cpp)
+endif()
+
 list(APPEND RT0_PLATFORM_SOURCES
     os/Loader.h
     os/Path.h
