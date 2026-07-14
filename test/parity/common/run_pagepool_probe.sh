@@ -21,6 +21,36 @@ test -x "$SELFHOST_CJC"
 test -f "$CPP_RUNTIME_LIB/libcangjie-runtime.so"
 df -h / | tail -n 1 | sed 's/^/PAGEPOOL_DISK_BEFORE /'
 
+PAGEPOOL_SOURCE="$ROOT/src/rt.common/PagePool.cj"
+APPLE_RETURN_BLOCK="$TMP/apple_return_page_part2.cj"
+awk '
+$0 == "@When[os == \"macOS\" || os == \"iOS\"]" { candidate = 1; annotation = $0; next }
+candidate {
+    if ($0 == "func ReturnPagePart2(page: CPointer<Unit>, size: UIntNative): Unit {") {
+        print annotation
+        capture = 1
+        print
+        next
+    }
+    candidate = 0
+}
+capture && $0 == "@When[os == \"Windows\"]" { exit }
+capture { print }
+' "$PAGEPOOL_SOURCE" > "$APPLE_RETURN_BLOCK"
+if grep -Eq 'PAGE_POOL_MMAP_(FIXED|WRONG_ADDR)_ERROR' "$PAGEPOOL_SOURCE" ||
+   [[ $(grep -Fc 'var mmapFailedMessage: VArray<UInt8, $28> = [' "$PAGEPOOL_SOURCE") -ne 1 ]] ||
+   [[ $(grep -Fc 'var wrongAddressMessage: VArray<UInt8, $25> = [' "$PAGEPOOL_SOURCE") -ne 1 ]] ||
+   [[ $(grep -Fc '@When[os == "macOS" || os == "iOS"]' "$APPLE_RETURN_BLOCK") -ne 1 ]] ||
+   [[ $(grep -Fc 'func ReturnPagePart2(page: CPointer<Unit>, size: UIntNative): Unit {' "$APPLE_RETURN_BLOCK") -ne 1 ]] ||
+   [[ $(grep -Fc '    var mmapFailedMessage: VArray<UInt8, $28> = [' "$APPLE_RETURN_BLOCK") -ne 1 ]] ||
+   [[ $(grep -Fc '    var wrongAddressMessage: VArray<UInt8, $25> = [' "$APPLE_RETURN_BLOCK") -ne 1 ]] ||
+   [[ $(grep -Fc 'perror(CString(CPointer<UInt8>(inout mmapFailedMessage)))' "$APPLE_RETURN_BLOCK") -ne 1 ]] ||
+   [[ $(grep -Fc 'perror(CString(CPointer<UInt8>(inout wrongAddressMessage)))' "$APPLE_RETURN_BLOCK") -ne 1 ]]; then
+    echo "PAGEPOOL_APPLE_DIAGNOSTIC_BOUNDARY package_globals=FAIL local_arrays=FAIL status=FAIL" >&2
+    exit 1
+fi
+echo "PAGEPOOL_APPLE_DIAGNOSTIC_BOUNDARY package_globals=0 local_arrays=2 status=PASS"
+
 CPP_OUT="$TMP/pagepool.cpp.txt"
 CJ_OUT="$TMP/pagepool.cj.txt"
 

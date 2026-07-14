@@ -45,16 +45,6 @@ var PAGE_POOL_RETURN_ERROR: VArray<UInt8, $28> = [
     108u8, 101u8, 100u8, 32u8, 105u8, 110u8, 32u8, 82u8, 101u8, 116u8,
     117u8, 114u8, 110u8, 80u8, 97u8, 103u8, 101u8, 0u8
 ]
-var PAGE_POOL_MMAP_FIXED_ERROR: VArray<UInt8, $28> = [
-    112u8, 97u8, 103u8, 101u8, 32u8, 112u8, 111u8, 111u8, 108u8, 32u8,
-    109u8, 109u8, 97u8, 112u8, 32u8, 102u8, 105u8, 120u8, 101u8, 100u8,
-    32u8, 102u8, 97u8, 105u8, 108u8, 101u8, 100u8, 0u8
-]
-var PAGE_POOL_MMAP_WRONG_ADDR_ERROR: VArray<UInt8, $25> = [
-    109u8, 109u8, 97u8, 112u8, 32u8, 102u8, 105u8, 120u8, 101u8, 100u8,
-    32u8, 97u8, 116u8, 32u8, 119u8, 114u8, 111u8, 110u8, 103u8, 32u8,
-    97u8, 100u8, 100u8, 114u8, 0u8
-]
 var PAGE_POOL_MAP_FATAL: VArray<UInt8, $55> = [
     97u8, 108u8, 108u8, 111u8, 99u8, 97u8, 116u8, 101u8, 32u8, 99u8,
     114u8, 101u8, 97u8, 116u8, 101u8, 32u8, 112u8, 97u8, 103u8, 101u8,
@@ -303,14 +293,24 @@ func ReturnPagePart2(page: CPointer<Unit>, size: UIntNative): Unit {
 }
 @When[os == "macOS" || os == "iOS"]
 func ReturnPagePart2(page: CPointer<Unit>, size: UIntNative): Unit {
+    var mmapFailedMessage: VArray<UInt8, $28> = [
+        112u8, 97u8, 103u8, 101u8, 32u8, 112u8, 111u8, 111u8, 108u8, 32u8,
+        109u8, 109u8, 97u8, 112u8, 32u8, 102u8, 105u8, 120u8, 101u8, 100u8,
+        32u8, 102u8, 97u8, 105u8, 108u8, 101u8, 100u8, 0u8
+    ]
+    var wrongAddressMessage: VArray<UInt8, $25> = [
+        109u8, 109u8, 97u8, 112u8, 32u8, 102u8, 105u8, 120u8, 101u8, 100u8,
+        32u8, 97u8, 116u8, 32u8, 119u8, 114u8, 111u8, 110u8, 103u8, 32u8,
+        97u8, 100u8, 100u8, 114u8, 0u8
+    ]
     unsafe {
         let _ = memset(page, 0, size)
         let ret = mmap(page, size, MemMap.PROT_READ | MemMap.PROT_WRITE,
             Int32(MemMap.MAP_PRIVATE | MemMap.MAP_ANONYMOUS | MemMap.MAP_FIXED), -1, 0)
         if (ret.toUIntNative() == UIntNative.Max) {
-            perror(CString(CPointer<UInt8>(inout PAGE_POOL_MMAP_FIXED_ERROR)))
+            perror(CString(CPointer<UInt8>(inout mmapFailedMessage)))
         } else if (ret.toUIntNative() != page.toUIntNative()) {
-            perror(CString(CPointer<UInt8>(inout PAGE_POOL_MMAP_WRONG_ADDR_ERROR)))
+            perror(CString(CPointer<UInt8>(inout wrongAddressMessage)))
         }
     }
 }
