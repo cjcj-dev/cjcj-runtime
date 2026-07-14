@@ -32,3 +32,14 @@ extern "C" int32_t cj_atomic_u16_cas(uint16_t* p, uint16_t* expected, uint16_t d
 }
 extern "C" uint16_t cj_atomic_u16_load(uint16_t* p) { return __atomic_load_n(p, __ATOMIC_ACQUIRE); }
 extern "C" void cj_atomic_u16_store(uint16_t* p, uint16_t v) { __atomic_store_n(p, v, __ATOMIC_RELEASE); }
+
+// Common/StateWord.h:66-75. Preserve the source-inline weak x86 CAS and the
+// strong sequentially-consistent non-x86 CAS as one StateWord-specific leaf.
+extern "C" int32_t cj_stateword_u16_cas(uint16_t* p, uint16_t expected, uint16_t desired)
+{
+#if defined(__x86_64__)
+    return __atomic_compare_exchange_n(p, &expected, desired, true, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE) ? 1 : 0;
+#else
+    return __atomic_compare_exchange_n(p, &expected, desired, false, __ATOMIC_SEQ_CST, __ATOMIC_ACQUIRE) ? 1 : 0;
+#endif
+}
