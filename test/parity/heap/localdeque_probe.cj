@@ -1,4 +1,4 @@
-package rt.heap.allocator
+import rt.heap.allocator.*
 
 foreign { func exit(status: Int32): Unit }
 
@@ -56,22 +56,20 @@ main(): Int64 {
     var operations = 0u64
     var records = 0u64
 
-    var allocatorValue = RTAllocatorT()
-    let allocator = unsafe { CPointer<RTAllocatorT>(inout allocatorValue) }
-    allocator.Init(UIntNative(4096))
+    let allocator = RTAllocatorT()
+    allocator.Init(16, UIntNative(4096))
     let alloc0 = allocator.Allocate()
     let alloc1 = allocator.Allocate()
     let alloc2 = allocator.Allocate()
-    Require(alloc1.toUIntNative() - alloc0.toUIntNative() == 24 &&
-        alloc2.toUIntNative() - alloc1.toUIntNative() == 24, "RTAllocatorT spacing")
+    Require(alloc1.toUIntNative() - alloc0.toUIntNative() == 16 &&
+        alloc2.toUIntNative() - alloc1.toUIntNative() == 16, "RTAllocatorT spacing")
     allocator.Deallocate(alloc1)
     Require(allocator.Allocate().toUIntNative() == alloc1.toUIntNative(), "RTAllocatorT reuse")
     allocator.Fini()
-    println("SMOKE RTAllocatorT spacing=24 reuse=1")
+    println("SMOKE RTAllocatorT spacing=16 reuse=1")
     records += 1
 
-    var singleUseValue = SingleUseDeque()
-    let singleUse = unsafe { CPointer<SingleUseDeque>(inout singleUseValue) }
+    let singleUse = SingleUseDeque()
     singleUse.Init(UIntNative(16384))
     Require(singleUse.Empty(), "SingleUseDeque initial empty")
     singleUse.Push(Pointer(base, 11u64))

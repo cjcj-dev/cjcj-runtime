@@ -1,7 +1,7 @@
-package rt.heap.allocator
+import rt.heap.allocator.*
 
 @NoHeapAlloc
-public func LocalDequeNoHeapRoot(singleUseDeque: CPointer<SingleUseDeque>, first: CPointer<Unit>,
+public func LocalDequeNoHeapRoot(singleUseDeque: SingleUseDeque, first: CPointer<Unit>,
     second: CPointer<Unit>): UIntNative {
     var stack = LocalDeque(singleUseDeque)
     var queue = LocalDeque(singleUseDeque)

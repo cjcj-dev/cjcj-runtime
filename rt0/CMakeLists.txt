@@ -92,7 +92,6 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND RT0_PLATFORM_SOURCES
         os/Linux/Futex.cpp
-        os/Linux/PagePoolMutex.cpp
         os/Linux/Panic.cpp)
 endif()
 

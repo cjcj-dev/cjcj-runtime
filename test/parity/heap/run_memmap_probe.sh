@@ -25,15 +25,14 @@ for pkg in rt.base rt.sync rt.heap.allocator; do
 done
 
 # rt0 Linux Layer0 bridges: Futex.cpp (_ZN12MapleRuntime5FutexEPVKiii, pulled in with
-# rt.sync), Panic.cpp (RtFatal), and Atomic.cpp (inline atomics in the allocator package).
+# rt.sync) and Panic.cpp (RtFatal, the RTLOG_FATAL terminator used by rt.base LOG).
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$IMP/Futex.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$IMP/Panic.o"
-g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$IMP/Atomic.o"
 
 "$SELFHOST_CJC" "$ROOT/test/parity/heap/memmap_probe.cj" \
     --import-path "$IMP" --int-overflow wrapping \
     "$IMP/librt.heap.allocator.a" "$IMP/librt.sync.a" "$IMP/librt.base.a" \
-    "$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" \
+    "$IMP/Futex.o" "$IMP/Panic.o" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$OUT"
 
 OUTPUT=$("$OUT")
