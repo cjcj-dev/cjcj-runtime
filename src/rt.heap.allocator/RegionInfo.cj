@@ -1,6 +1,7 @@
 package rt.heap.allocator
 
 import rt.base.*
+import std.overflow.*
 
 foreign {
     func cj_atomic_u8_cas(p: CPointer<UInt8>, expected: CPointer<UInt8>, desired: UInt8): Int32
@@ -232,9 +233,9 @@ private func OnHeapMadvise(unitAddress: CPointer<Unit>, size: UIntNative): Unit 
 // This split also avoids the selfhost backend's loop-carried bitwise-value gap.
 private func SetAtomicValuePart2(oldValue: UInt64, pos: UIntNative, bitLen: UIntNative,
     newValue: UInt64, widthMask: UInt64): UInt64 {
-    let bitMask = ((1u64 << UInt64(bitLen)) - 1u64) << UInt64(pos)
+    let bitMask = (1u64.wrappingShl(UInt64(bitLen)) - 1u64).wrappingShl(UInt64(pos))
     let unchangedBitMask = widthMask ^ bitMask
-    let changedBits = (newValue << UInt64(pos)) & bitMask
+    let changedBits = newValue.wrappingShl(UInt64(pos)) & bitMask
     let unchangedBits = oldValue & unchangedBitMask
     return changedBits | unchangedBits
 }
@@ -254,7 +255,8 @@ public struct BitField<T> where T <: CType {
         unsafe {
             let field = CPointer<UInt8>(bitField)
             let value = cj_atomic_u8_load(field)
-            let bitMask = UInt8(((1u64 << UInt64(bitLen)) - 1u64) << UInt64(pos))
+            let bitMask = UInt8(
+                (1u64.wrappingShl(UInt64(bitLen)) - 1u64).wrappingShl(UInt64(pos)))
             return value & bitMask
         }
     }
@@ -281,7 +283,8 @@ public struct BitField<T> where T <: CType {
         unsafe {
             let field = CPointer<UInt16>(bitField)
             let value = cj_atomic_u16_load(field)
-            let bitMask = UInt16(((1u64 << UInt64(bitLen)) - 1u64) << UInt64(pos))
+            let bitMask = UInt16(
+                (1u64.wrappingShl(UInt64(bitLen)) - 1u64).wrappingShl(UInt64(pos)))
             return value & bitMask
         }
     }
@@ -426,7 +429,9 @@ public struct UnitInfo {
     public static func GetUnitIdxAt(allocAddr: UIntNative): UIntNative {
         if (heapStartAddress <= allocAddr &&
             allocAddr < heapStartAddress + totalUnitCount * RegionInfo.UNIT_SIZE) {
-            return (allocAddr - heapStartAddress) / RegionInfo.UNIT_SIZE
+            // RegionManager.cpp:54 and AllocUtil.cj:4; live UNIT_SIZE=4096 is
+            // guarded by the original-vs-port execution/layout probe.
+            return (allocAddr - heapStartAddress) / 4096
         }
         unsafe { abort() }
         return 0
@@ -1017,12 +1022,8 @@ extend CPointer<RegionInfo> {
 
     // RegionInfo.h:760-763.
     public func SetUnitRole(role: UnitRole): Unit {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.unitRoleBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + Int64(offset)) }
+        // RegionInfo.h:1022-1028; guarded by the live C++-vs-Cangjie layout probe.
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + 76) }
         BitField<UInt8>.SetAtomicValue(field,
             0, BIT_LENGTH, role)
     }
@@ -1041,24 +1042,15 @@ extend CPointer<RegionInfo> {
 
     // RegionInfo.h:768-772.
     public func SetRegionType(regionType: RegionType): Unit {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        // RegionInfo.h:1030-1051; guarded by the live C++-vs-Cangjie layout probe.
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
         BitField<UInt16>.SetAtomicValue(field,
             REGION_TYPE_FLAG, BIT_LENGTH, UInt16(regionType))
     }
 
     // RegionInfo.h:773-776.
     public func SetTraceRegionFlag(flag: UInt8): Unit {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
         BitField<UInt16>.SetAtomicValue(field,
             TRACE_REGION_FLAG, 1, UInt16(flag))
     }
@@ -1077,48 +1069,28 @@ extend CPointer<RegionInfo> {
 
     // RegionInfo.h:782-785.
     public func SetMarkedRegionFlag(flag: UInt8): Unit {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
         BitField<UInt16>.SetAtomicValue(field,
             MARKED_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:787-790.
     public func SetEnqueuedRegionFlag(flag: UInt8): Unit {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
         BitField<UInt16>.SetAtomicValue(field,
             ENQUEUED_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:791-794.
     public func SetResurrectedRegionFlag(flag: UInt8): Unit {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
         BitField<UInt16>.SetAtomicValue(field,
             RESURRECTED_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:796.
     public func GetRegionType(): RegionType {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
         let value = BitField<UInt16>.GetAtomicValue(field, REGION_TYPE_FLAG, BIT_LENGTH)
         let regionType = UInt8(value)
         return regionType
@@ -1126,12 +1098,7 @@ extend CPointer<RegionInfo> {
 
     // RegionInfo.h:797.
     public func GetUnitRole(): UnitRole {
-        var layout = UnitMetadata()
-        let offset = unsafe {
-            CPointer<UInt8>(inout layout.unitRoleBitField).toUIntNative() -
-                CPointer<UInt8>(inout layout).toUIntNative()
-        }
-        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + Int64(offset)) }
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + 76) }
         let value = BitField<UInt8>.GetAtomicValue(field, 0, BIT_LENGTH)
         return value
     }
@@ -1148,7 +1115,9 @@ extend CPointer<RegionInfo> {
         if (ptr >= UnitInfo.heapStartAddress) {
             unsafe { RtFatal(CString(CPointer<UInt8>(inout regionInfoInvariantMessages) + 163)) }
         }
-        let idx = (UnitInfo.heapStartAddress - ptr) / sizeOf<UnitInfo>() - 1
+        // RegionInfo.h:65 and 1087-1092; live sizeof(UnitInfo)=88 is guarded by
+        // the original-vs-port layout oracle, and avoids a runtime generic sizeof.
+        let idx = (UnitInfo.heapStartAddress - ptr) / 88 - 1
         if (idx >= UnitInfo.totalUnitCount) {
             unsafe { RtFatal(CString(CPointer<UInt8>(inout regionInfoInvariantMessages) + 215)) }
         }
@@ -1214,29 +1183,26 @@ extend CPointer<RegionInfo> {
 
     // RegionInfo.h:1180-1195.
     func InitRegionInfo(nUnit: UIntNative, uClass: UnitRole): Unit {
-        var metadata = unsafe { this.read().metadata }
-        metadata.allocPtr = GetRegionStart()
-        metadata.regionEnd = metadata.allocPtr + nUnit * RegionInfo.UNIT_SIZE
-        metadata.prevRegionIdx = UnitInfo.INVALID_IDX
-        metadata.nextRegionIdx = UnitInfo.INVALID_IDX
-        metadata.liveByteCount = 0u32
-        metadata.liveInfo = CPointer<Unit>()
-        var region = RegionInfo()
-        region.metadata = metadata
-        unsafe { this.write(region) }
+        // RegionInfo.h:991-1054 gives the exact live offsets below; the parity
+        // probe derives and checks every one from both production layouts.
+        let allocPtr = GetRegionStart()
+        unsafe {
+            CPointer<UIntNative>(CPointer<UInt8>(this)).write(0, allocPtr)
+            CPointer<UIntNative>(CPointer<UInt8>(this) + 8).write(0,
+                allocPtr + nUnit * RegionInfo.UNIT_SIZE)
+            CPointer<UInt32>(CPointer<UInt8>(this) + 20).write(0, UnitInfo.INVALID_IDX)
+            CPointer<UInt32>(CPointer<UInt8>(this) + 16).write(0, UnitInfo.INVALID_IDX)
+            CPointer<UInt32>(CPointer<UInt8>(this) + 24).write(0, 0u32)
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32).write(0, CPointer<Unit>())
+        }
         SetRegionType(FREE_REGION)
         SetUnitRole(uClass)
         SetTraceRegionFlag(0u8)
         SetMarkedRegionFlag(0u8)
         SetEnqueuedRegionFlag(0u8)
         SetResurrectedRegionFlag(0u8)
-        var rawLayout = UnitMetadata()
-        let rawOffset = unsafe {
-            CPointer<UInt8>(inout rawLayout.rawPointerObjectCount).toUIntNative() -
-                CPointer<UInt8>(inout rawLayout).toUIntNative()
-        }
         unsafe {
-            let field = CPointer<Int32>(CPointer<UInt8>(this) + Int64(rawOffset))
+            let field = CPointer<Int32>(CPointer<UInt8>(this) + 28)
             cj_atomic_i32_store(field, 0)
         }
     }
@@ -1248,12 +1214,25 @@ extend CPointer<RegionInfo> {
         let array = UnitInfoArray(unit, nUnit)
         for (i in 1..nUnit) {
             let subordinate = array[i]
-            CPointer<RegionInfo>(subordinate).SetUnitRole(SUBORDINATE_UNIT)
-            var metadata = unsafe { subordinate.read().metadata }
-            metadata.liveInfo = CPointer<Unit>(this)
-            var unitInfo = UnitInfo()
-            unitInfo.metadata = metadata
-            unsafe { subordinate.write(unitInfo) }
+            subordinate.InitSubordinateUnit(this)
+        }
+    }
+}
+
+// RegionInfo.h:1098-1101 deletes UnitInfo lifecycle; these methods operate only
+// on already-existing native records.
+extend CPointer<UnitInfo> {
+    // RegionInfo.h:1103-1107.
+    func SetUnitRole(role: UnitRole): Unit {
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + 76) }
+        BitField<UInt8>.SetAtomicValue(field, 0, BIT_LENGTH, role)
+    }
+
+    // RegionInfo.h:1141-1145.
+    func InitSubordinateUnit(owner: CPointer<RegionInfo>): Unit {
+        SetUnitRole(SUBORDINATE_UNIT)
+        unsafe {
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32).write(0, CPointer<Unit>(owner))
         }
     }
 }
