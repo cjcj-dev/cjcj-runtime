@@ -12,6 +12,9 @@ foreign {
     @When[os != "Windows"]
     func mprotect(address: CPointer<Unit>, length: UIntNative, prot: Int32): Int32
 
+    @When[os != "Windows"]
+    func munmap(address: CPointer<Unit>, length: UIntNative): Int32
+
     // Linux-only page advice. Apple lacks MADV_NOHUGEPAGE, so MemMap.cpp:44 skips madvise there.
     @When[os == "Linux"]
     func madvise(address: CPointer<Unit>, length: UIntNative, advice: Int32): Int32
@@ -22,6 +25,8 @@ foreign {
         protect: UInt32): CPointer<Unit>
     @When[os == "Windows"]
     func GetLastError(): UInt32
+    @When[os == "Windows"]
+    func VirtualFree(address: CPointer<Unit>, size: UIntNative, freeType: UInt32): Int32
 
     // MemMap.cpp:64 `new (std::nothrow) MemMap` and MemMap.h:57 `delete memMap` resolve to the
     // global operator new / operator delete. The runtime installs no operator-new override, so
@@ -124,20 +129,21 @@ public struct MemMap {
             let protSize = if (opt.protAll) { mappedSize } else { initSize }
             if (!ProtectMemInternal(mappedAddr, protSize, opt.prot)) {
                 failure = true
-                LOG(RTLOG_ERROR, "MemMap::MapMemory mprotect failed")
-                ALLOCUTIL_MEM_UNMAP(mappedAddr, mappedSize)
+                MapMemoryImpl(mappedAddr, mappedSize)
             }
         } else {
             failure = true
         }
-        CHECK_DETAIL(!failure,
-            "MemMap::MapMemory failed reqSize: ${mappedSize} initSize: ${initSize}")
+        if (failure) {
+            unsafe { abort() }
+        }
 
-        DLOG(ALLOC, "MemMap::MapMemory size ${mappedSize} successful at ${mappedAddr.toUIntNative()}")
         // See the foreign block: this mirrors C++ `new (std::nothrow) MemMap`, i.e. operator new = malloc.
         let memMap = CPointer<MemMap>(unsafe { malloc(sizeOf<MemMap>()) })
-        CHECK_DETAIL(!memMap.isNull(), "new MemMap failed")
-        unsafe { memMap.write(MemMap(mappedAddr, initSize, mappedSize)) }
+        if (memMap.isNull()) {
+            unsafe { abort() }
+        }
+        unsafe { memMap.write(0, MemMap(mappedAddr, initSize, mappedSize)) }
         return memMap
     }
 
@@ -145,7 +151,6 @@ public struct MemMap {
     // matching the C++ `#else` block; Windows reserves via VirtualAlloc with no pre-map log.
     @When[os != "Windows"]
     private static func MapMemoryRaw(opt: Option, size: UIntNative): CPointer<Unit> {
-        DLOG(ALLOC, "MemMap::MapMemory size ${size}")
         return unsafe { mmap(opt.reqBase, size, PROT_NONE, Int32(opt.flags), -1, 0) }
     }
     @When[os == "Windows"]
@@ -185,15 +190,16 @@ public struct MemMap {
         let value = unsafe { memMap.read() }
         if (!value.isNull()) {
             var object = unsafe { value.read() }
-            ALLOCUTIL_MEM_UNMAP(object.memBaseAddr, object.memMappedSize)
+            let baseAddress = object.memBaseAddr
+            let mappedSize = object.memMappedSize
             object.memBaseAddr = CPointer<Unit>()
             object.memCurrEndAddr = CPointer<Unit>()
             object.memMappedEndAddr = CPointer<Unit>()
             unsafe {
-                value.write(object)
+                value.write(0, object)
+                DestroyMemMapImpl(CPointer<Unit>(value), baseAddress, mappedSize)
                 // Mirrors C++ `delete memMap`, i.e. operator delete = free (see the foreign block).
-                free(CPointer<Unit>(value))
-                memMap.write(CPointer<MemMap>())
+                memMap.write(0, CPointer<MemMap>())
             }
         }
     }
@@ -234,13 +240,48 @@ public struct MemMap {
     // MemMap.cpp:84-93. Windows relies on the reservation protection and never re-protects.
     @When[os != "Windows"]
     private static func ProtectMemInternal(address: CPointer<Unit>, size: UIntNative, prot: Int32): Bool {
-        DLOG(ALLOC, "MemMap::ProtectMem ${address.toUIntNative()}, size ${size}, prot ${prot}")
         let ret = unsafe { mprotect(address, size, prot) }
         return ret == 0
     }
     @When[os == "Windows"]
     private static func ProtectMemInternal(address: CPointer<Unit>, size: UIntNative, prot: Int32): Bool {
-        DLOG(ALLOC, "MemMap::ProtectMem ${address.toUIntNative()}, size ${size}, prot ${prot}")
+        let _ = address
+        let _ = size
+        let _ = prot
         return true
+    }
+
+    // MemMap.cpp:56 and AllocUtil.h:24-28. Release after failed protection.
+    @When[os != "Windows"]
+    private static func MapMemoryImpl(address: CPointer<Unit>, size: UIntNative): Unit {
+        if (unsafe { munmap(address, size) } != 0) {
+            unsafe { abort() }
+        }
+    }
+    @When[os == "Windows"]
+    private static func MapMemoryImpl(address: CPointer<Unit>, size: UIntNative): Unit {
+        let _ = size
+        if (unsafe { VirtualFree(address, 0, 0x8000u32) } == 0) {
+            unsafe { abort() }
+        }
+    }
+
+    // MemMap.cpp:94-100 and MemMap.h:55-60.
+    @When[os != "Windows"]
+    private static func DestroyMemMapImpl(object: CPointer<Unit>, address: CPointer<Unit>,
+        size: UIntNative): Unit {
+        if (unsafe { munmap(address, size) } != 0) {
+            unsafe { abort() }
+        }
+        unsafe { free(object) }
+    }
+    @When[os == "Windows"]
+    private static func DestroyMemMapImpl(object: CPointer<Unit>, address: CPointer<Unit>,
+        size: UIntNative): Unit {
+        let _ = size
+        if (unsafe { VirtualFree(address, 0, 0x8000u32) } == 0) {
+            unsafe { abort() }
+        }
+        unsafe { free(object) }
     }
 }

@@ -85,16 +85,16 @@ int main()
 {
     PrintLayout();
 
-    RTAllocatorT<16, 8> allocator;
+    RTAllocatorT<24, 8> allocator;
     allocator.Init(4096);
     auto* alloc0 = static_cast<uint8_t*>(allocator.Allocate());
     auto* alloc1 = static_cast<uint8_t*>(allocator.Allocate());
     auto* alloc2 = static_cast<uint8_t*>(allocator.Allocate());
-    Require(alloc1 - alloc0 == 16 && alloc2 - alloc1 == 16, "RTAllocatorT spacing");
+    Require(alloc1 - alloc0 == 24 && alloc2 - alloc1 == 24, "RTAllocatorT spacing");
     allocator.Deallocate(alloc1);
     Require(allocator.Allocate() == alloc1, "RTAllocatorT reuse");
     allocator.Fini();
-    std::printf("SMOKE RTAllocatorT spacing=16 reuse=1\n");
+    std::printf("SMOKE RTAllocatorT spacing=24 reuse=1\n");
     ++records;
 
     SingleUseDeque<Value> singleUse;
