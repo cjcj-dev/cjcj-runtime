@@ -43,15 +43,15 @@ const MERGE_ERROR: MergeResult = 2u8
 type RTAllocator = RTAllocatorT
 
 // CartesianTree.h:278-283. These are the five and only five persistent fields.
-// @C places the actual root slot in AS0 when a tree value is stack/native backed;
-// the three accepted helper objects remain their existing managed references.
+// The two SingleUseDeque values and the specialized RTAllocatorT are embedded
+// inline, preserving the original 128-byte native state closure.
 @C
 public struct CartesianTree {
     var totalCount: Count
     var root: CPointer<CartesianNode>
-    let sud: SingleUseDeque
-    let traversalSud: SingleUseDeque
-    let nodeAllocator: RTAllocator
+    var sud: SingleUseDeque
+    var traversalSud: SingleUseDeque
+    var nodeAllocator: RTAllocator
 
     // CartesianTree.h:45-46 and in-class initializers at :279-283.
     public init() {
@@ -61,6 +61,29 @@ public struct CartesianTree {
         traversalSud = SingleUseDeque()
         nodeAllocator = RTAllocatorT()
     }
+
+    // CartesianTree.h:48-60. Static pointer façade keeps the live inline value
+    // address when called from another Cangjie package.
+    public static func Init(tree: CPointer<CartesianTree>, memoryBlockCount: UIntNative): Unit {
+        tree.Init(memoryBlockCount)
+    }
+
+    // CartesianTree.h:62-67.
+    public static func Fini(tree: CPointer<CartesianTree>): Unit {
+        tree.Fini()
+    }
+
+    // CartesianTree.h:116-123.
+    public static func TakeUnits(tree: CPointer<CartesianTree>, num: Count,
+        idx: CPointer<Index>, refreshRegionInfo: Bool): Bool {
+        return tree.TakeUnits(num, idx, refreshRegionInfo: refreshRegionInfo)
+    }
+
+    // CartesianTree.h:99-113.
+    public static func MergeInsert(tree: CPointer<CartesianTree>, idx: Index,
+        num: Count, refreshRegionInfo: Bool): Bool {
+        return tree.MergeInsert(idx, num, refreshRegionInfo)
+    }
 }
 
 // CartesianTree.h:196-225. Fresh operation-local backwards level iterator.
@@ -69,7 +92,9 @@ public struct Iterator {
 
     // CartesianTree.h:198-203.
     public init(tree: CPointer<CartesianTree>) {
-        let traversalSud = unsafe { tree.read(0).traversalSud }
+        let traversalSud = unsafe {
+            CPointer<SingleUseDeque>(CPointer<UInt8>(tree) + 56)
+        }
         localQueue = LocalDeque(traversalSud)
         let rootSlot = unsafe {
             CPointer<CPointer<CartesianNode>>(CPointer<UInt8>(tree) + 8)
@@ -109,7 +134,7 @@ public struct ForwardIterator {
 
     // CartesianTree.h:231-236.
     public init(tree: CPointer<CartesianTree>) {
-        let sud = unsafe { tree.read(0).sud }
+        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(tree) + 16) }
         localQueue = LocalDeque(sud)
         let rootSlot = unsafe {
             CPointer<CPointer<CartesianNode>>(CPointer<UInt8>(tree) + 8)
@@ -208,20 +233,25 @@ extend CPointer<CartesianTree> {
         let nodeSize = AllocUtilRndUp(sizeOf<CartesianNode>(), alignOf<CartesianNode>())
         let nativeSize = (nodeCount + 7) * nodeSize
         let nativeMapSize = AllocUtilRndUp(nativeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
-        let tree = unsafe { this.read(0) }
-        tree.nodeAllocator.Init(Int64(nodeSize), nativeMapSize)
+        let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
+        nodeAllocator.Init(nativeMapSize)
         let dequeSize = nodeCount * sizeOf<CPointer<CartesianNode>>()
         let dequeMapSize = AllocUtilRndUp(dequeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
-        tree.sud.Init(dequeMapSize)
-        tree.traversalSud.Init(tree.sud.GetMemMap())
+        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 16) }
+        let traversalSud = unsafe {
+            CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 56)
+        }
+        sud.Init(dequeMapSize)
+        traversalSud.Init(sud.GetMemMap())
     }
 
     // CartesianTree.h:62-67. Order is exact.
     public func Fini(): Unit {
         ClearTree()
-        let tree = unsafe { this.read(0) }
-        tree.sud.Fini()
-        tree.nodeAllocator.Fini()
+        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 16) }
+        let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
+        sud.Fini()
+        nodeAllocator.Fini()
     }
 
     // CartesianTree.h:69-80.
@@ -266,7 +296,7 @@ extend CPointer<CartesianTree> {
             CPointer<CPointer<CartesianNode>>(CPointer<UInt8>(this) + 8)
         }
         if ((unsafe { rootSlot.read(0) }).isNull()) {
-            let nodeAllocator = unsafe { this.read(0).nodeAllocator }
+            let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
             let root = CPointer<CartesianNode>(nodeAllocator.Allocate())
             unsafe { root.write(0, CartesianNode(idx, num, refreshRegionInfo)) }
             unsafe { rootSlot.write(0, root) }
@@ -342,7 +372,7 @@ extend CPointer<CartesianTree> {
         if (node.isNull()) {
             return
         }
-        let nodeAllocator = unsafe { this.read(0).nodeAllocator }
+        let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
         nodeAllocator.Deallocate(CPointer<Unit>(node))
     }
 
@@ -393,7 +423,7 @@ extend CPointer<CartesianTree> {
             } else {
                 unsafe { CPointer<CPointer<CartesianNode>>(parent).write(0, nearestRight) }
             }
-            let nodeAllocator = unsafe { this.read(0).nodeAllocator }
+            let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
             nodeAllocator.Deallocate(CPointer<Unit>(nearest))
         }
         return MERGE_SUCCESS
@@ -437,7 +467,7 @@ extend CPointer<CartesianTree> {
             }
             node.UpdateNode(nearest.GetIndex(), node.GetCount() + nearest.GetCount(),
                 refreshRegionInfo)
-            let nodeAllocator = unsafe { this.read(0).nodeAllocator }
+            let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
             nodeAllocator.Deallocate(CPointer<Unit>(nearest))
         }
         return MERGE_SUCCESS
@@ -450,12 +480,12 @@ extend CPointer<CartesianTree> {
         }
         var node = unsafe { rootSlot.read(0) }
         var nodeSlot = rootSlot
-        let sud = unsafe { this.read(0).sud }
+        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 16) }
         var nodeSlotStack = LocalDeque(sud)
         let endIdx = idx + num
         while (true) {
             if (node.isNull()) {
-                let nodeAllocator = unsafe { this.read(0).nodeAllocator }
+                let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
                 node = CPointer<CartesianNode>(nodeAllocator.Allocate())
                 unsafe { node.write(0, CartesianNode(idx, num, refreshRegionInfo)) }
                 unsafe { nodeSlot.write(0, node) }
@@ -641,7 +671,7 @@ extend CPointer<CartesianTree> {
         if (!leafLeft.isNull() || !leafRight.isNull()) {
             unsafe { abort() }
         }
-        let nodeAllocator = unsafe { this.read(0).nodeAllocator }
+        let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
         nodeAllocator.Deallocate(CPointer<Unit>(leaf))
         unsafe { leafSlot.write(0, CPointer<CartesianNode>()) }
     }
@@ -697,7 +727,7 @@ extend CPointer<CartesianTree> {
     // CartesianTree.cpp:190-234.
     func FindBestFitLowAddrPtr(nodeSlot: CPointer<CPointer<CartesianNode>>, num: Count,
         initialBest: CPointer<CPointer<CartesianNode>>): CPointer<CPointer<CartesianNode>> {
-        let sud = unsafe { this.read(0).sud }
+        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 16) }
         var stack = LocalDeque(sud)
         var best = initialBest
         if (!nodeSlot.isNull()) {

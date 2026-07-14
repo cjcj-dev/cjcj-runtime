@@ -3,9 +3,9 @@ package rt.heap.allocator
 import rt.base.*
 
 main(): Int64 {
-    let allocator = RTAllocatorT()
-    let nodeSize = Int64(AllocUtilRndUp(sizeOf<CartesianNode>(), alignOf<CartesianNode>()))
-    allocator.Init(nodeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
+    var allocatorValue = RTAllocatorT()
+    let allocator = unsafe { CPointer<RTAllocatorT>(inout allocatorValue) }
+    allocator.Init(UIntNative(ALLOC_UTIL_PAGE_SIZE))
 
     let first = CPointer<CartesianNode>(allocator.Allocate())
     let second = CPointer<CartesianNode>(allocator.Allocate())

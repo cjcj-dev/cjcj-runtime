@@ -13,6 +13,7 @@ export LD_LIBRARY_PATH="$SELFHOST_RUNTIME:$CPP_RUNTIME_LIB:$RUNTIME_ROOT/output/
 export cjHeapSize=24GB
 
 LLVM_DIS="$CANGJIE_HOME/third_party/llvm/bin/llvm-dis"
+LLVM_LINK="$CANGJIE_HOME/third_party/llvm/bin/llvm-link"
 LLVM_AS="$CANGJIE_HOME/third_party/llvm/bin/llvm-as"
 LLVM_OPT="$CANGJIE_HOME/third_party/llvm/bin/opt"
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_localdeque_probe.XXXXXX")
@@ -53,9 +54,12 @@ g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$TMP/Futex.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
 
-"$SELFHOST_CJC" "$ROOT/test/parity/heap/localdeque_probe.cj" \
+PARITY_SRC="$TMP/rt.heap.allocator.parity"
+cp -a "$ROOT/src/rt.heap.allocator" "$PARITY_SRC"
+cp "$ROOT/test/parity/heap/localdeque_probe.cj" "$PARITY_SRC/LocalDequeProbe.cj"
+"$SELFHOST_CJC" --package "$PARITY_SRC" \
     --import-path "$TMP" --int-overflow wrapping -Woff unused \
-    "$TMP/librt.heap.allocator.a" "$TMP/librt.sync.a" "$TMP/librt.base.a" \
+    "$TMP/librt.sync.a" "$TMP/librt.base.a" \
     "$TMP/Futex.o" "$TMP/Panic.o" "$TMP/Atomic.o" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/localdeque_cj"
 "$TMP/localdeque_cj" > "$CJ_BEHAVIOR"
@@ -74,11 +78,11 @@ if [[ ${#type_lines[@]} -ne 1 ]]; then
     exit 1
 fi
 type_rhs=${type_lines[0]#*= type }
-if [[ $type_rhs =~ ^\{\ i([0-9]+),\ i([0-9]+),\ i8\ addrspace\(([0-9]+)\)\*,\ \[([0-9]+)\ x\ i8\*\]\ \}$ ]]; then
+if [[ $type_rhs =~ ^\{\ i([0-9]+),\ i([0-9]+),\ i8\*,\ \[([0-9]+)\ x\ i8\*\]\ \}$ ]]; then
     front_bits=${BASH_REMATCH[1]}
     top_bits=${BASH_REMATCH[2]}
-    sud_addrspace=${BASH_REMATCH[3]}
-    local_length=${BASH_REMATCH[4]}
+    sud_addrspace=0
+    local_length=${BASH_REMATCH[3]}
 else
     echo "LOCALDEQUE_LAYOUT FAIL unexpected live type: $type_rhs" >&2
     exit 1
@@ -196,27 +200,76 @@ echo "LOCALDEQUE_STACK_COPIES push_memcpy=$push_memcpy top_memcpy=$top_memcpy fr
 
 # Compile the dedicated root with closure checking, then scan the final IR and every
 # object emitted for that compilation. Either source of MCC_New evidence is fatal.
+NOHEAP_SRC="$TMP/rt.heap.allocator.noheap"
+cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_SRC"
+cp "$ROOT/test/parity/heap/localdeque_noheap_probe.cj" \
+    "$NOHEAP_SRC/LocalDequeNoHeapProbe.cj"
 mkdir -p "$TMP/noheap_temps"
 set +e
-"$SELFHOST_CJC" "$ROOT/test/parity/heap/localdeque_noheap_probe.cj" \
+"$SELFHOST_CJC" --package "$NOHEAP_SRC" \
     --output-type=staticlib --import-path "$TMP" --int-overflow wrapping -Woff unused \
     --save-temps "$TMP/noheap_temps" -o "$TMP/localdeque_noheap.a" \
     > "$TMP/noheap.log" 2>&1
 noheap_rc=$?
 set -e
 roots=$(grep -c '^@NoHeapAlloc' "$ROOT/test/parity/heap/localdeque_noheap_probe.cj" || true)
-object_refs=$(find "$TMP/noheap_temps" -type f -name '*.o' -exec nm -u {} \; | \
-    grep -Ec 'MCC_New|CJ_MCC_New' || true)
+PRE_BC=()
+for bc in "$TMP"/noheap_temps/*.bc; do
+    if [[ "$bc" != *.opt.bc ]]; then PRE_BC+=("$bc"); fi
+done
+"$LLVM_LINK" "${PRE_BC[@]}" -o "$TMP/noheap.pre.bc"
+"$LLVM_OPT" -passes=print-callgraph -disable-output "$TMP/noheap.pre.bc" \
+    2> "$TMP/noheap.callgraph"
+awk '
+/^Call graph node for function:/ {
+    line=$0; sub(/^.*function: '\''/, "", line); sub(/'\''.*$/, "", line); current=line; next
+}
+/calls function '\''/ {
+    line=$0; sub(/^.*calls function '\''/, "", line); sub(/'\''.*$/, "", line)
+    if (current != "") print current "\t" line
+}
+' "$TMP/noheap.callgraph" > "$TMP/noheap.calls.tsv"
+mapfile -t ROOT_SYMBOLS < <(awk -F '\t' '$1 ~ /LocalDequeNoHeapRoot/ {print $1}' \
+    "$TMP/noheap.calls.tsv" | sort -u)
+declare -A SEEN=()
+QUEUE=("${ROOT_SYMBOLS[@]}")
+for symbol in "${ROOT_SYMBOLS[@]}"; do SEEN["$symbol"]=1; done
+while [[ ${#QUEUE[@]} -gt 0 ]]; do
+    CURRENT=${QUEUE[0]}
+    QUEUE=("${QUEUE[@]:1}")
+    while IFS=$'\t' read -r _ callee; do
+        if [[ -n "$callee" && -z ${SEEN["$callee"]+present} ]]; then
+            SEEN["$callee"]=1
+            QUEUE+=("$callee")
+        fi
+    done < <(awk -F '\t' -v key="$CURRENT" '$1 == key {print}' "$TMP/noheap.calls.tsv")
+done
+for symbol in "${!SEEN[@]}"; do printf '%s\n' "$symbol"; done | sort > "$TMP/noheap.symbols"
+: > "$TMP/noheap.closure.ll"
 for bc in "$TMP"/noheap_temps/*.opt.bc; do
-    "$LLVM_DIS" "$bc" -o -
-done > "$TMP/noheap.ll" 2>/dev/null || true
-ir_refs=$(grep -Ec 'MCC_New|CJ_MCC_New' "$TMP/noheap.ll" || true)
+    module="$TMP/$(basename "${bc%.bc}").ll"
+    "$LLVM_DIS" "$bc" -o "$module"
+    awk -v symbols="$TMP/noheap.symbols" '
+    BEGIN { while ((getline symbol < symbols) > 0) keep[symbol]=1 }
+    /^define / { name=$0; sub(/^[^@]*@/, "", name); sub(/\(.*/, "", name); gsub(/^"|"$/, "", name); emit=(name in keep) }
+    emit { print; if ($0 ~ /^}/) emit=0 }
+    ' "$module" >> "$TMP/noheap.closure.ll"
+done
+: > "$TMP/noheap.closure.objdump"
+for object in "$TMP"/noheap_temps/*.o; do
+    objdump -dr "$object" | awk -v symbols="$TMP/noheap.symbols" '
+    BEGIN { while ((getline symbol < symbols) > 0) keep[symbol]=1 }
+    /^[[:xdigit:]]+ <.*>:/ { name=$0; sub(/^.*</, "", name); sub(/>.*$/, "", name); emit=(name in keep) }
+    emit { print }
+    ' >> "$TMP/noheap.closure.objdump"
+done
+ir_refs=$(grep -Ec 'MCC_New|CJ_MCC_New' "$TMP/noheap.closure.ll" || true)
+object_refs=$(grep -Ec 'R_X86_64_.*(MCC_New|CJ_MCC_New)' "$TMP/noheap.closure.objdump" || true)
 mcc_new_refs=$((object_refs + ir_refs))
-if [[ $noheap_rc -ne 0 || $roots -ne 1 || $mcc_new_refs -ne 0 ]]; then
+if [[ $noheap_rc -ne 0 || $roots -ne 1 || ${#ROOT_SYMBOLS[@]} -ne 1 || $mcc_new_refs -ne 0 ]]; then
     cat "$TMP/noheap.log" >&2
-    grep -nE 'MCC_New|CJ_MCC_New' "$TMP/noheap.ll" >&2 || true
-    find "$TMP/noheap_temps" -type f -name '*.o' -exec nm -u {} \; | \
-        grep -E 'MCC_New|CJ_MCC_New' >&2 || true
+    grep -nE 'MCC_New|CJ_MCC_New' "$TMP/noheap.closure.ll" >&2 || true
+    grep -nE 'R_X86_64_.*(MCC_New|CJ_MCC_New)' "$TMP/noheap.closure.objdump" >&2 || true
     echo "LOCALDEQUE_NOHEAP roots=$roots mcc_new_refs=$mcc_new_refs status=FAIL" >&2
     exit 1
 fi

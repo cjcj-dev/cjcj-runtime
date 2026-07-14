@@ -37,92 +37,119 @@ func CommitIfWindows(base: CPointer<Unit>, size: UIntNative): Unit {
     let _ = size
 }
 
-// Element pointer at a byte offset from a base, without integer->pointer construction.
-func DequeSlot(base: CPointer<Unit>, off: Int64): CPointer<CPointer<Unit>> {
-    return unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(base) + off) }
-}
-
 // LocalDeque.h:33-101. Single-use deque: usable as a queue or a stack; Clear() is O(1)
 // and the underlying MemMap is reused rather than freed.
-public class SingleUseDeque {
-    private var memMap: CPointer<MemMap> = CPointer<MemMap>()
-    private var baseAddr: CPointer<Unit> = CPointer<Unit>()
-    // Offsets from baseAddr, mirroring the C++ begin/front/top/end MAddress fields.
-    private var beginOff: Int64 = 0
-    private var frontOff: Int64 = 0
-    private var topOff: Int64 = 0
-    private var endOff: Int64 = 0
+@C
+public struct SingleUseDeque {
+    private var memMap: CPointer<MemMap>
+    private var beginAddr: CPointer<Unit>
+    private var frontAddr: CPointer<Unit>
+    private var topAddr: CPointer<Unit>
+    private var endAddr: CPointer<Unit>
 
+    public init() {
+        memMap = CPointer<MemMap>()
+        beginAddr = CPointer<Unit>()
+        frontAddr = CPointer<Unit>()
+        topAddr = CPointer<Unit>()
+        endAddr = CPointer<Unit>()
+    }
+}
+
+extend CPointer<SingleUseDeque> {
     // LocalDeque.h:37-50.
     public func Init(mapSize: UIntNative): Unit {
         let opt = Option(CString(CPointer<UInt8>(inout SUD_TAG)), CPointer<Unit>(),
             MemMap.DEFAULT_MEM_FLAGS, MemMap.DEFAULT_MEM_PROT, false)
-        memMap = MemMap.MapMemory(mapSize, mapSize, opt: opt)
+        let memMap = MemMap.MapMemory(mapSize, mapSize, opt: opt)
         let map = unsafe { memMap.read() }
         CommitIfWindows(map.GetBaseAddr(), mapSize)
-        baseAddr = map.GetBaseAddr()
-        beginOff = 0
-        endOff = OffsetBytes(baseAddr, map.GetCurrEnd())
+        unsafe {
+            CPointer<CPointer<MemMap>>(this).write(0, memMap)
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 8).write(0, map.GetBaseAddr())
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32).write(0, map.GetCurrEnd())
+        }
         Clear()
     }
 
     // LocalDeque.h:51-59. Share the same MemMap as another sud.
     public func Init(other: CPointer<MemMap>): Unit {
-        memMap = other
-        let map = unsafe { memMap.read() }
-        baseAddr = map.GetBaseAddr()
-        beginOff = 0
-        endOff = OffsetBytes(baseAddr, map.GetCurrEnd())
+        let map = unsafe { other.read() }
+        unsafe {
+            CPointer<CPointer<MemMap>>(this).write(0, other)
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 8).write(0, map.GetBaseAddr())
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32).write(0, map.GetCurrEnd())
+        }
         Clear()
     }
 
     // LocalDeque.h:60.
     public func Fini(): Unit {
-        var mm = memMap
-        MemMap.DestroyMemMap(CPointer<CPointer<MemMap>>(inout mm))
-        memMap = mm
+        MemMap.DestroyMemMap(CPointer<CPointer<MemMap>>(this))
     }
 
     // LocalDeque.h:61.
     public func GetMemMap(): CPointer<MemMap> {
-        return memMap
+        return unsafe { CPointer<CPointer<MemMap>>(this).read(0) }
     }
 
     // LocalDeque.h:62.
     public func Empty(): Bool {
-        return topOff < frontOff
+        let front = unsafe {
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 16).read(0)
+        }
+        let top = unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).read(0) }
+        return top.toUIntNative() < front.toUIntNative()
     }
 
     // LocalDeque.h:63-68.
     public func Push(v: CPointer<Unit>): Unit {
-        topOff += DEQUE_VAL_SIZE
-        unsafe { DequeSlot(baseAddr, topOff).write(0, v) }
+        let oldTop = unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).read(0) }
+        let top = unsafe { CPointer<Unit>(CPointer<UInt8>(oldTop) + DEQUE_VAL_SIZE) }
+        unsafe {
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).write(0, top)
+            CPointer<CPointer<Unit>>(top).write(0, v)
+        }
     }
 
     // LocalDeque.h:69-73.
     public func Top(): CPointer<Unit> {
-        return unsafe { DequeSlot(baseAddr, topOff).read(0) }
+        let top = unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).read(0) }
+        return unsafe { CPointer<CPointer<Unit>>(top).read(0) }
     }
 
     // LocalDeque.h:74-78.
     public func Pop(): Unit {
-        topOff -= DEQUE_VAL_SIZE
+        let oldTop = unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).read(0) }
+        let top = unsafe { CPointer<Unit>(CPointer<UInt8>(oldTop) - DEQUE_VAL_SIZE) }
+        unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).write(0, top) }
     }
 
     // LocalDeque.h:79-83.
     public func Front(): CPointer<Unit> {
-        return unsafe { DequeSlot(baseAddr, frontOff).read(0) }
+        let front = unsafe {
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 16).read(0)
+        }
+        return unsafe { CPointer<CPointer<Unit>>(front).read(0) }
     }
 
     // LocalDeque.h:84-88.
     public func PopFront(): Unit {
-        frontOff += DEQUE_VAL_SIZE
+        let oldFront = unsafe {
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 16).read(0)
+        }
+        let front = unsafe { CPointer<Unit>(CPointer<UInt8>(oldFront) + DEQUE_VAL_SIZE) }
+        unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 16).write(0, front) }
     }
 
     // LocalDeque.h:89-93.
     public func Clear(): Unit {
-        frontOff = beginOff
-        topOff = beginOff - DEQUE_VAL_SIZE
+        let begin = unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 8).read(0) }
+        let top = unsafe { CPointer<Unit>(CPointer<UInt8>(begin) - DEQUE_VAL_SIZE) }
+        unsafe {
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 16).write(0, begin)
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 24).write(0, top)
+        }
     }
 }
 
@@ -135,11 +162,11 @@ public struct LocalDeque {
 
     private var front: Int32 = 0
     private var top: Int32 = -1
-    private let sud: SingleUseDeque
+    private let sud: CPointer<SingleUseDeque>
     private var array: VArray<CPointer<Unit>, $512>
 
     // LocalDeque.h:112.
-    public init(singleUseDeque: SingleUseDeque) {
+    public init(singleUseDeque: CPointer<SingleUseDeque>) {
         sud = singleUseDeque
         array = VArray<CPointer<Unit>, $512>(repeat: CPointer<Unit>())
     }
@@ -213,59 +240,67 @@ public struct LocalDeque {
 
 // LocalDeque.h:183-235. Lightweight fixed-size native allocator over a MemMap; it never
 // recycles pages, only individual slots via an intrusive free list. The C++ non-type
-// template params <allocSize, align> become an Init argument since the sole instantiation
-// (CartesianTree's nodeAllocator) supplies concrete sizes; align is enforced by the
-// caller-provided allocSize being a multiple of it, exactly as the static_asserts require.
-public class RTAllocatorT {
+// template specialization is the sole production instantiation
+// RTAllocatorT<sizeof(CartesianTree::Node), alignof(CartesianTree::Node)>.
+@C
+public struct RTAllocatorT {
     // Intrusive free-list head; null means bump from currAddr. LocalDeque.h:231.
-    private var head: CPointer<Unit> = CPointer<Unit>()
-    private var baseAddr: CPointer<Unit> = CPointer<Unit>()
-    private var currOff: Int64 = 0
-    private var endOff: Int64 = 0
-    private var memMap: CPointer<MemMap> = CPointer<MemMap>()
-    private var allocSize: Int64 = 0
+    private var head: CPointer<Unit>
+    private var currAddr: CPointer<Unit>
+    private var endAddr: CPointer<Unit>
+    private var memMap: CPointer<MemMap>
 
+    public init() {
+        head = CPointer<Unit>()
+        currAddr = CPointer<Unit>()
+        endAddr = CPointer<Unit>()
+        memMap = CPointer<MemMap>()
+    }
+}
+
+extend CPointer<RTAllocatorT> {
     // LocalDeque.h:190-205.
-    public func Init(allocSizeBytes: Int64, mapSize: UIntNative): Unit {
-        allocSize = allocSizeBytes
+    public func Init(mapSize: UIntNative): Unit {
         let opt = Option(CString(CPointer<UInt8>(inout RTALLOC_TAG)), CPointer<Unit>(),
             MemMap.DEFAULT_MEM_FLAGS, MemMap.DEFAULT_MEM_PROT, false)
-        memMap = MemMap.MapMemory(mapSize, mapSize, opt: opt)
+        let memMap = MemMap.MapMemory(mapSize, mapSize, opt: opt)
         let map = unsafe { memMap.read() }
         CommitIfWindows(map.GetBaseAddr(), mapSize)
-        baseAddr = map.GetBaseAddr()
-        currOff = 0
-        endOff = OffsetBytes(baseAddr, map.GetCurrEnd())
+        unsafe {
+            CPointer<CPointer<MemMap>>(CPointer<UInt8>(this) + 24).write(0, memMap)
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 8).write(0, map.GetBaseAddr())
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 16).write(0, map.GetCurrEnd())
+        }
     }
 
     // LocalDeque.h:207.
     public func Fini(): Unit {
-        var mm = memMap
-        MemMap.DestroyMemMap(CPointer<CPointer<MemMap>>(inout mm))
-        memMap = mm
+        let memMap = unsafe { CPointer<CPointer<MemMap>>(CPointer<UInt8>(this) + 24) }
+        MemMap.DestroyMemMap(memMap)
     }
 
     // LocalDeque.h:209-222. Bump-allocate a fresh slot, or reuse a freed one. No zeroing.
     public func Allocate(): CPointer<Unit> {
+        let head = unsafe { CPointer<CPointer<Unit>>(this).read(0) }
         if (head.isNull()) {
-            let result = unsafe { CPointer<Unit>(CPointer<UInt8>(baseAddr) + currOff) }
-            currOff += allocSize
+            let result = unsafe {
+                CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 8).read(0)
+            }
+            let next = unsafe { CPointer<Unit>(CPointer<UInt8>(result) + 24) }
+            unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 8).write(0, next) }
             return result
         }
         let result = head
-        head = unsafe { CPointer<CPointer<Unit>>(head).read(0) }
+        unsafe { CPointer<CPointer<Unit>>(this).write(0, CPointer<CPointer<Unit>>(head).read(0)) }
         return result
     }
 
     // LocalDeque.h:224-228. Push the slot onto the intrusive free list.
     public func Deallocate(address: CPointer<Unit>): Unit {
-        unsafe { CPointer<CPointer<Unit>>(address).write(0, head) }
-        head = address
+        let head = unsafe { CPointer<CPointer<Unit>>(this).read(0) }
+        unsafe {
+            CPointer<CPointer<Unit>>(address).write(0, head)
+            CPointer<CPointer<Unit>>(this).write(0, address)
+        }
     }
-}
-
-// Byte distance from base to end, mirroring the C++ MAddress subtraction used to derive
-// the mapped current-size bound.
-func OffsetBytes(base: CPointer<Unit>, end: CPointer<Unit>): Int64 {
-    return Int64(end.toUIntNative() - base.toUIntNative())
 }
