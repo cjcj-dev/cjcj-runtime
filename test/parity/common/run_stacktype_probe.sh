@@ -24,19 +24,22 @@ g++ -std=c++14 -O2 -I"$ORACLE_ROOT/src" \
     -I"$ORACLE_ROOT/third_party/third_party_bounds_checking_function/include" \
     "$ROOT/test/parity/common/stacktype_ref.cpp" -o "$TMP/stacktype_ref"
 
-for pkg in rt.base rt.common; do
-    "$SELFHOST_CJC" --package "$ROOT/src/$pkg" --output-type=staticlib \
-        --int-overflow wrapping --import-path "$TMP" --output-dir "$TMP" -o "lib$pkg.a"
+for pkg in rt.base rt.sync rt.heap.allocator rt.common; do
+    (cd "$TMP" && "$SELFHOST_CJC" --package "$ROOT/src/$pkg" --output-type=staticlib \
+        --int-overflow wrapping --import-path "$TMP" --output-dir "$TMP" -o "lib$pkg.a")
 done
 
-# Existing genuine rt.common -> rt.base/Layer0 link dependencies; StackType itself adds none.
+# Existing genuine rt.common package-closure Layer0 dependencies; StackType itself adds none.
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
+g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$TMP/PagePoolMutex.o"
 
-"$SELFHOST_CJC" "$ROOT/test/parity/common/stacktype_probe.cj" \
+(cd "$TMP" && "$SELFHOST_CJC" "$ROOT/test/parity/common/stacktype_probe.cj" \
     --import-path "$TMP" --int-overflow wrapping \
-    "$TMP/librt.common.a" "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" \
-    --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/stacktype_probe"
+    "$TMP/librt.common.a" "$TMP/librt.heap.allocator.a" "$TMP/librt.sync.a" \
+    "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" \
+    "$TMP/PagePoolMutex.o" --link-option=-lstdc++ --link-option=-lgcc_s \
+    -o "$TMP/stacktype_probe")
 
 "$TMP/stacktype_ref" > "$TMP/cpp.records"
 "$TMP/stacktype_probe" > "$TMP/cangjie.records"
