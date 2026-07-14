@@ -71,10 +71,6 @@ public struct N2CSlotData {
     }
 }
 
-// Common/TypeDef.h:36-40. C++ ArrayRef is the opaque MArray* managed-pointer category.
-// This leaf preserves one native pointer and pointer identity only; it implements no GC container.
-public type ArrayRef = CPointer<Unit>
-
 // Common/StackType.h:83-89. Shared by Linux/OHOS/Apple/Windows; Linux x86_64 gates layout.
 @C
 public struct StackTraceData {
