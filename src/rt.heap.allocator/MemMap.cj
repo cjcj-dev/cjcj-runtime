@@ -16,7 +16,7 @@ foreign {
     func munmap(address: CPointer<Unit>, length: UIntNative): Int32
 
     // Linux-only page advice. Apple lacks MADV_NOHUGEPAGE, so MemMap.cpp:44 skips madvise there.
-    @When[os == "Linux" || env == "ohos"]
+    @When[os == "Linux"]
     func madvise(address: CPointer<Unit>, length: UIntNative, advice: Int32): Int32
 
     // Windows virtual-memory API. <memoryapi.h>.
@@ -70,7 +70,7 @@ public struct MemMap {
 
     @When[os == "macOS" || os == "iOS"]
     public static const MAP_NORESERVE: UInt32 = 0x40u32
-    @When[os == "Linux" || env == "ohos"]
+    @When[os == "Linux"]
     public static const MAP_NORESERVE: UInt32 = 0x4000u32
 
     public static const PROT_NONE: Int32 = 0
@@ -117,26 +117,28 @@ public struct MemMap {
         memMappedSize = mappedSize
     }
 
-    // MemMap.cpp:51-98. Linux/OHOS branch.
-    @When[os == "Linux" || env == "ohos"]
+    // MemMap.cpp:26-67.
     public static func MapMemory(reqSize: UIntNative, initSize: UIntNative,
         opt!: Option = DEFAULT_OPTIONS): CPointer<MemMap> {
         let mappedSize = AllocUtilRndUp(reqSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
-        let mappedAddr = unsafe { mmap(opt.reqBase, mappedSize, PROT_NONE, Int32(opt.flags), -1, 0) }
-        if (mappedAddr.toUIntNative() == UIntNative.Max) {
-            unsafe { abort() }
-        } else {
-            unsafe {
-                let _ = madvise(mappedAddr, mappedSize, MADV_NOHUGEPAGE)
-                MRT_PRCTL(mappedAddr, mappedSize, opt.tag)
-            }
+        let mappedAddr = MapMemoryRaw(opt, mappedSize)
+
+        var failure = false
+        if (MapSucceeded(mappedAddr)) {
+            PostMapConfigure(mappedAddr, mappedSize, opt.tag)
             let protSize = if (opt.protAll) { mappedSize } else { initSize }
             if (!ProtectMemInternal(mappedAddr, protSize, opt.prot)) {
+                failure = true
                 MapMemoryImpl(mappedAddr, mappedSize)
-                unsafe { abort() }
             }
+        } else {
+            failure = true
+        }
+        if (failure) {
+            unsafe { abort() }
         }
 
+        // See the foreign block: this mirrors C++ `new (std::nothrow) MemMap`, i.e. operator new = malloc.
         let memMap = CPointer<MemMap>(unsafe { malloc(sizeOf<MemMap>()) })
         if (memMap.isNull()) {
             unsafe { abort() }
@@ -145,65 +147,42 @@ public struct MemMap {
         return memMap
     }
 
-    // MemMap.cpp:51-98. Windows branch.
+    // MemMap.cpp:31-38. Reserve the raw address range. DLOG is emitted only on the mmap path,
+    // matching the C++ `#else` block; Windows reserves via VirtualAlloc with no pre-map log.
+    @When[os != "Windows"]
+    private static func MapMemoryRaw(opt: Option, size: UIntNative): CPointer<Unit> {
+        return unsafe { mmap(opt.reqBase, size, PROT_NONE, Int32(opt.flags), -1, 0) }
+    }
     @When[os == "Windows"]
-    public static func MapMemory(reqSize: UIntNative, initSize: UIntNative,
-        opt!: Option = DEFAULT_OPTIONS): CPointer<MemMap> {
-        let mappedSize = AllocUtilRndUp(reqSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
+    private static func MapMemoryRaw(opt: Option, size: UIntNative): CPointer<Unit> {
         let _ = opt
-        let mappedAddr = unsafe { VirtualAlloc(CPointer<Unit>(), mappedSize, MEM_RESERVE, PAGE_READWRITE) }
-        if (mappedAddr.isNull()) {
-            unsafe { abort() }
-        }
-
-        let memMap = CPointer<MemMap>(unsafe { malloc(sizeOf<MemMap>()) })
-        if (memMap.isNull()) {
-            unsafe { abort() }
-        }
-        unsafe { memMap.write(0, MemMap(mappedAddr, initSize, mappedSize)) }
-        return memMap
+        return unsafe { VirtualAlloc(CPointer<Unit>(), size, MEM_RESERVE, PAGE_READWRITE) }
     }
 
-    // MemMap.cpp:25-47.
-    @When[os == "macOS" || os == "iOS"]
-    private static func MapMemoryOnApple(reqBase: CPointer<Unit>, reqSize: UIntNative,
-        initSize: UIntNative, opt: Option): CPointer<Unit> {
-        if (IsCangjieHeapTag(opt.tag)) {
-            let flags = opt.flags & !MAP_NORESERVE
-            return unsafe {
-                mmap(reqBase, reqSize, opt.prot, Int32(flags), CANGJIE_HEAP_VM_TAG << 24, 0)
-            }
-        }
-
-        let mappedAddr = unsafe { mmap(reqBase, reqSize, PROT_NONE, Int32(opt.flags), -1, 0) }
-        if (mappedAddr.toUIntNative() == UIntNative.Max) {
-            return mappedAddr
-        }
-
-        let protSize = if (opt.protAll) { reqSize } else { initSize }
-        if (!ProtectMemInternal(mappedAddr, protSize, opt.prot)) {
-            MapMemoryImpl(mappedAddr, reqSize)
-            return CPointer<Unit>(UIntNative.Max)
-        }
-        return mappedAddr
+    // MemMap.cpp:41-46. Linux/OHOS treat MAP_FAILED (-1) as failure; Windows and Apple test NULL.
+    @When[os == "Linux"]
+    private static func MapSucceeded(address: CPointer<Unit>): Bool {
+        return address.toUIntNative() != UIntNative.Max
+    }
+    @When[os == "Windows" || os == "macOS" || os == "iOS"]
+    private static func MapSucceeded(address: CPointer<Unit>): Bool {
+        return !address.isNull()
     }
 
-    // MemMap.cpp:51-98. Apple branch.
-    @When[os == "macOS" || os == "iOS"]
-    public static func MapMemory(reqSize: UIntNative, initSize: UIntNative,
-        opt!: Option = DEFAULT_OPTIONS): CPointer<MemMap> {
-        let mappedSize = AllocUtilRndUp(reqSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
-        let mappedAddr = MapMemoryOnApple(opt.reqBase, mappedSize, initSize, opt)
-        if (mappedAddr.toUIntNative() == UIntNative.Max) {
-            unsafe { abort() }
+    // MemMap.cpp:43-45. Only the Linux/OHOS mmap path advises NOHUGEPAGE and names the VMA; the
+    // `_WIN64 || __APPLE__` branch performs neither.
+    @When[os == "Linux"]
+    private static func PostMapConfigure(address: CPointer<Unit>, size: UIntNative, tag: CString): Unit {
+        unsafe {
+            let _ = madvise(address, size, MADV_NOHUGEPAGE)
+            MRT_PRCTL(address, size, tag)
         }
-
-        let memMap = CPointer<MemMap>(unsafe { malloc(sizeOf<MemMap>()) })
-        if (memMap.isNull()) {
-            unsafe { abort() }
-        }
-        unsafe { memMap.write(0, MemMap(mappedAddr, initSize, mappedSize)) }
-        return memMap
+    }
+    @When[os != "Linux"]
+    private static func PostMapConfigure(address: CPointer<Unit>, size: UIntNative, tag: CString): Unit {
+        let _ = address
+        let _ = size
+        let _ = tag
     }
 
     // MemMap.h:55-61 and MemMap.cpp:94-100. delete is represented by the authorized raw free.

@@ -17,16 +17,6 @@ public const C2R_STUB: FrameType = 6
 public const NATIVE: FrameType = 7
 public const STACKGROW: FrameType = 8
 public const EXSLUSIVE: FrameType = 9
-@When[(os == "Linux" || os == "iOS") && (arch == "x86_64" || arch == "aarch64")]
-public const INTERPRETER: FrameType = 10
-@When[(os == "Linux" || os == "iOS") && (arch == "x86_64" || arch == "aarch64")]
-public const INTERPRETER_C2I: FrameType = 11
-@When[(os == "Linux" || os == "iOS") && (arch == "x86_64" || arch == "aarch64")]
-public const INTERPRETER_I2I: FrameType = 12
-@When[(os == "Linux" || os == "iOS") && (arch == "x86_64" || arch == "aarch64")]
-public const INTERPRETER_I2N: FrameType = 13
-@When[(os == "Linux" || os == "iOS") && (arch == "x86_64" || arch == "aarch64")]
-public const INTERPRETER_PROLOGUE: FrameType = 14
 
 // Common/StackType.h:40-44. C++ scoped enums use the default four-byte signed int ABI.
 public type StackMode = Int32
