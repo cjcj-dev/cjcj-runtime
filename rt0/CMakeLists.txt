@@ -97,7 +97,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
-    RegionListVisitor.cpp
     os/Loader.h
     os/Path.h
     signal/SignalHandler.h

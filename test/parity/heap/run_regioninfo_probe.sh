@@ -386,8 +386,8 @@ private func DumpPrimaryFields(name: String, idx: UIntNative, endIdx: UIntNative
 }
 
 private func DumpLayout(): Unit {
-    var bit8 = BitFieldU8(0u8)
-    var bit16 = BitFieldU16(0u16)
+    var bit8 = BitField<UInt8>(0u8)
+    var bit16 = BitField<UInt16>(0u16)
     var rwlock = RwLock()
     var route = RouteInfo()
     var unit = UnitInfo()
@@ -413,11 +413,11 @@ private func DumpLayout(): Unit {
     let routeTo1 = unsafe { CPointer<UInt8>(inout route.toRegion1StartAddress).toUIntNative() } - routeBase
     let routeUsed = unsafe { CPointer<UInt8>(inout route.toRegion1UsedBytes).toUIntNative() } - routeBase
     let routeTo2 = unsafe { CPointer<UInt8>(inout route.toRegion2Idx).toUIntNative() } - routeBase
-    println("REGIONINFO_ABI bit8_size=${sizeOf<BitFieldU8>()} " +
-        "bit8_align=${alignOf<BitFieldU8>()} bit8_fieldVal=" +
+    println("REGIONINFO_ABI bit8_size=${sizeOf<BitField<UInt8>>()} " +
+        "bit8_align=${alignOf<BitField<UInt8>>()} bit8_fieldVal=" +
         "${unsafe { CPointer<UInt8>(inout bit8.fieldVal).toUIntNative() - CPointer<UInt8>(inout bit8).toUIntNative() }} " +
         "bit8_value=${bit8.fieldVal} " +
-        "bit16_size=${sizeOf<BitFieldU16>()} bit16_align=${alignOf<BitFieldU16>()} bit16_fieldVal=" +
+        "bit16_size=${sizeOf<BitField<UInt16>>()} bit16_align=${alignOf<BitField<UInt16>>()} bit16_fieldVal=" +
         "${unsafe { CPointer<UInt8>(inout bit16.fieldVal).toUIntNative() - CPointer<UInt8>(inout bit16).toUIntNative() }} " +
         "bit16_value=${bit16.fieldVal} " +
         "rwlock_size=${sizeOf<RwLock>()} rwlock_align=${alignOf<RwLock>()} " +

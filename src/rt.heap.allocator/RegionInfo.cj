@@ -240,17 +240,17 @@ private func SetAtomicValuePart2(oldValue: UInt64, pos: UIntNative, bitLen: UInt
     return changedBits | unchangedBits
 }
 
-// Heap/Allocator/RegionInfo.h:35-58; concrete UInt8 instantiation of BitField.
+// Heap/Allocator/RegionInfo.h:35-62.
 @C
-public struct BitFieldU8 {
-    public var fieldVal: UInt8
+public struct BitField<T> where T <: CType {
+    public var fieldVal: T
 
-    public init(value: UInt8) {
+    public init(value: T) {
         fieldVal = value
     }
 
-    // RegionInfo.h:40-45.
-    public static func GetAtomicValue(bitField: CPointer<BitFieldU8>,
+    // RegionInfo.h:40-45; BitField<uint8_t> typed receiver helper.
+    public static func GetAtomicValue(bitField: CPointer<BitField<UInt8>>,
         pos: UIntNative, bitLen: UIntNative): UInt8 {
         unsafe {
             let field = CPointer<UInt8>(bitField)
@@ -261,8 +261,8 @@ public struct BitFieldU8 {
         }
     }
 
-    // RegionInfo.h:46-58.
-    public static func SetAtomicValue(bitField: CPointer<BitFieldU8>,
+    // RegionInfo.h:46-58; BitField<uint8_t> typed receiver helper.
+    public static func SetAtomicValue(bitField: CPointer<BitField<UInt8>>,
         pos: UIntNative, bitLen: UIntNative, newValue: UInt8): Unit {
         unsafe {
             let field = CPointer<UInt8>(bitField)
@@ -277,19 +277,8 @@ public struct BitFieldU8 {
             }
         }
     }
-}
-
-// Heap/Allocator/RegionInfo.h:35-58; concrete UInt16 instantiation of BitField.
-@C
-public struct BitFieldU16 {
-    public var fieldVal: UInt16
-
-    public init(value: UInt16) {
-        fieldVal = value
-    }
-
-    // RegionInfo.h:40-45.
-    public static func GetAtomicValue(bitField: CPointer<BitFieldU16>,
+    // RegionInfo.h:40-45; BitField<uint16_t> typed receiver helper.
+    public static func GetAtomicValue(bitField: CPointer<BitField<UInt16>>,
         pos: UIntNative, bitLen: UIntNative): UInt16 {
         unsafe {
             let field = CPointer<UInt16>(bitField)
@@ -300,8 +289,8 @@ public struct BitFieldU16 {
         }
     }
 
-    // RegionInfo.h:46-58.
-    public static func SetAtomicValue(bitField: CPointer<BitFieldU16>,
+    // RegionInfo.h:46-58; BitField<uint16_t> typed receiver helper.
+    public static func SetAtomicValue(bitField: CPointer<BitField<UInt16>>,
         pos: UIntNative, bitLen: UIntNative, newValue: UInt16): Unit {
         unsafe {
             let field = CPointer<UInt16>(bitField)
@@ -399,8 +388,8 @@ public struct UnitMetadata {
     public var regionEnd0: UIntNative
     public var routeInfo: RouteInfo
     public var nextRegionIdx0: UInt32
-    public var unitRoleBitField: BitFieldU8
-    public var regionStateBitField: BitFieldU16
+    public var unitRoleBitField: BitField<UInt8>
+    public var regionStateBitField: BitField<UInt16>
     public var routeState: RouteState
     public var rwLock: RwLock
 
@@ -416,8 +405,8 @@ public struct UnitMetadata {
         regionEnd0 = 0
         routeInfo = RouteInfo()
         nextRegionIdx0 = 0u32
-        unitRoleBitField = BitFieldU8(0u8)
-        regionStateBitField = BitFieldU16(0u16)
+        unitRoleBitField = BitField<UInt8>(0u8)
+        regionStateBitField = BitField<UInt16>(0u16)
         routeState = NORMAL
         rwLock = RwLock()
     }
@@ -1034,8 +1023,8 @@ extend CPointer<RegionInfo> {
     // RegionInfo.h:760-763.
     public func SetUnitRole(role: UnitRole): Unit {
         // RegionInfo.h:1022-1028; guarded by the live C++-vs-Cangjie layout probe.
-        let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(this) + 76) }
-        BitFieldU8.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + 76) }
+        BitField<UInt8>.SetAtomicValue(field,
             0, BIT_LENGTH, role)
     }
 
@@ -1046,23 +1035,23 @@ extend CPointer<RegionInfo> {
             CPointer<UInt8>(inout layout.unitRoleBitField).toUIntNative() -
                 CPointer<UInt8>(inout layout).toUIntNative()
         }
-        let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(this) + Int64(offset)) }
-        BitFieldU8.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + Int64(offset)) }
+        BitField<UInt8>.SetAtomicValue(field,
             BIT_LENGTH, BIT_LENGTH, role)
     }
 
     // RegionInfo.h:768-772.
     public func SetRegionType(regionType: RegionType): Unit {
         // RegionInfo.h:1030-1051; guarded by the live C++-vs-Cangjie layout probe.
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + 78) }
-        BitFieldU16.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
+        BitField<UInt16>.SetAtomicValue(field,
             REGION_TYPE_FLAG, BIT_LENGTH, UInt16(regionType))
     }
 
     // RegionInfo.h:773-776.
     public func SetTraceRegionFlag(flag: UInt8): Unit {
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + 78) }
-        BitFieldU16.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
+        BitField<UInt16>.SetAtomicValue(field,
             TRACE_REGION_FLAG, 1, UInt16(flag))
     }
 
@@ -1073,44 +1062,44 @@ extend CPointer<RegionInfo> {
             CPointer<UInt8>(inout layout.regionStateBitField).toUIntNative() -
                 CPointer<UInt8>(inout layout).toUIntNative()
         }
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + Int64(offset)) }
-        BitFieldU16.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + Int64(offset)) }
+        BitField<UInt16>.SetAtomicValue(field,
             IN_GHOST_FROM_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:782-785.
     public func SetMarkedRegionFlag(flag: UInt8): Unit {
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + 78) }
-        BitFieldU16.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
+        BitField<UInt16>.SetAtomicValue(field,
             MARKED_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:787-790.
     public func SetEnqueuedRegionFlag(flag: UInt8): Unit {
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + 78) }
-        BitFieldU16.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
+        BitField<UInt16>.SetAtomicValue(field,
             ENQUEUED_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:791-794.
     public func SetResurrectedRegionFlag(flag: UInt8): Unit {
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + 78) }
-        BitFieldU16.SetAtomicValue(field,
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
+        BitField<UInt16>.SetAtomicValue(field,
             RESURRECTED_REGION_FLAG, 1, UInt16(flag))
     }
 
     // RegionInfo.h:796.
     public func GetRegionType(): RegionType {
-        let field = unsafe { CPointer<BitFieldU16>(CPointer<UInt8>(this) + 78) }
-        let value = BitFieldU16.GetAtomicValue(field, REGION_TYPE_FLAG, BIT_LENGTH)
+        let field = unsafe { CPointer<BitField<UInt16>>(CPointer<UInt8>(this) + 78) }
+        let value = BitField<UInt16>.GetAtomicValue(field, REGION_TYPE_FLAG, BIT_LENGTH)
         let regionType = UInt8(value)
         return regionType
     }
 
     // RegionInfo.h:797.
     public func GetUnitRole(): UnitRole {
-        let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(this) + 76) }
-        let value = BitFieldU8.GetAtomicValue(field, 0, BIT_LENGTH)
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + 76) }
+        let value = BitField<UInt8>.GetAtomicValue(field, 0, BIT_LENGTH)
         return value
     }
 
@@ -1235,8 +1224,8 @@ extend CPointer<RegionInfo> {
 extend CPointer<UnitInfo> {
     // RegionInfo.h:1103-1107.
     func SetUnitRole(role: UnitRole): Unit {
-        let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(this) + 76) }
-        BitFieldU8.SetAtomicValue(field, 0, BIT_LENGTH, role)
+        let field = unsafe { CPointer<BitField<UInt8>>(CPointer<UInt8>(this) + 76) }
+        BitField<UInt8>.SetAtomicValue(field, 0, BIT_LENGTH, role)
     }
 
     // RegionInfo.h:1141-1145.
