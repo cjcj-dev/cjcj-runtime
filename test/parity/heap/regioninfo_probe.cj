@@ -41,7 +41,7 @@ main(): Int64 {
         "regionStateBitField=${regionStateBitFieldOffset} routeState=${routeStateOffset} " +
         "rwLock=${rwLockOffset}")
 
-    if (sizeOf<BitField<UInt8>>() != 1 || sizeOf<BitField<UInt16>>() != 2 ||
+    if (sizeOf<BitFieldU8>() != 1 || sizeOf<BitFieldU16>() != 2 ||
         sizeOf<RwLock>() != 4 || sizeOf<UnitInfo>() != 88 || sizeOf<RegionInfo>() != 88 ||
         sizeOf<UnitInfo>() != sizeOf<UnitMetadata>() || sizeOf<RegionInfo>() != sizeOf<UnitMetadata>()) {
         return Fail(1, "descriptor sizes differ")
@@ -128,17 +128,17 @@ main(): Int64 {
 
     RegionInfo.ReleaseUnits(idx, regionUnitCount)
 
-    var bitFieldU8 = BitField<UInt8>(0u8)
-    let bitFieldU8Ptr = unsafe { CPointer<BitField<UInt8>>(inout bitFieldU8) }
-    BitField<UInt8>.SetAtomicValue(bitFieldU8Ptr, 1, 3, 5u8)
-    if (BitField<UInt8>.GetAtomicValue(bitFieldU8Ptr, 1, 3) != 0x0au8) {
-        return Fail(13, "BitField<UInt8>")
+    var bitFieldU8 = BitFieldU8(0u8)
+    let bitFieldU8Ptr = unsafe { CPointer<BitFieldU8>(inout bitFieldU8) }
+    BitFieldU8.SetAtomicValue(bitFieldU8Ptr, 1, 3, 5u8)
+    if (BitFieldU8.GetAtomicValue(bitFieldU8Ptr, 1, 3) != 0x0au8) {
+        return Fail(13, "BitFieldU8")
     }
-    var bitFieldU16 = BitField<UInt16>(0u16)
-    let bitFieldU16Ptr = unsafe { CPointer<BitField<UInt16>>(inout bitFieldU16) }
-    BitField<UInt16>.SetAtomicValue(bitFieldU16Ptr, 4, 4, 9u16)
-    if (BitField<UInt16>.GetAtomicValue(bitFieldU16Ptr, 4, 4) != 0x0090u16) {
-        return Fail(14, "BitField<UInt16>")
+    var bitFieldU16 = BitFieldU16(0u16)
+    let bitFieldU16Ptr = unsafe { CPointer<BitFieldU16>(inout bitFieldU16) }
+    BitFieldU16.SetAtomicValue(bitFieldU16Ptr, 4, 4, 9u16)
+    if (BitFieldU16.GetAtomicValue(bitFieldU16Ptr, 4, 4) != 0x0090u16) {
+        return Fail(14, "BitFieldU16")
     }
 
     var routeInfo = RouteInfo()
