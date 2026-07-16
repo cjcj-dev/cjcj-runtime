@@ -3,6 +3,12 @@ package rt.base
 // Heap/Allocator/AllocUtil.h:15.
 public const ALLOC_UTIL_PAGE_SIZE: UInt32 = 4096
 
+// Heap/Allocator/AllocUtil.h:16-17.
+public func ALLOCUTIL_PAGE_RND_UP(x: UIntNative): UIntNative {
+    return (x + UIntNative(ALLOC_UTIL_PAGE_SIZE) - 1) &
+        (0 - UIntNative(ALLOC_UTIL_PAGE_SIZE))
+}
+
 // Heap/Allocator/AllocUtil.h:31-35. MemMap's size_t instantiation.
 public func AllocUtilRndDown(x: UIntNative, n: UIntNative): UIntNative {
     return x & (0 - n)
