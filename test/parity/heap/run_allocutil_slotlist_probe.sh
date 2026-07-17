@@ -16,6 +16,8 @@ export cjHeapSize=${cjHeapSize:-24GB}
 LLVM_LINK="$CANGJIE_HOME/third_party/llvm/bin/llvm-link"
 LLVM_OPT="$CANGJIE_HOME/third_party/llvm/bin/opt"
 LLVM_DIS="$CANGJIE_HOME/third_party/llvm/bin/llvm-dis"
+WINDOWS_TARGET=x86_64-w64-mingw32
+WINDOWS_RUNTIME="$CANGJIE_HOME/runtime/lib/windows_x86_64_cjnative/libcangjie-runtime.dll.a"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_allocutil_slotlist.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
@@ -283,6 +285,51 @@ echo "ALLOCUTIL_OWNER definitions=${#ALLOCUTIL_OWNERS[@]} owner=rt.base live_cha
 echo "SLOTLIST_NOHEAP_CLOSURE roots=${#ROOT_SYMBOLS[@]} reachable_defs=$REACHABLE_DEFS scanned_defs=$SCANNED_DEFS missing=$MISSING_DEFS mcc_new_refs=$MCC_NEW_REFS status=PASS"
 echo "SLOTLIST_BASEOBJECT_CLOSURE symbol=$BASEOBJECT_SYMBOL target_bytes=$BASEOBJECT_SIZE runtime_sha256=$(sha256sum "$SELFHOST_RUNTIME_LIB" | awk '{print $1}') status=PASS"
 echo 'SLOTLIST_PLATFORM target=Linux-x86_64 abi=Itanium compile=PASS execute=PASS status=PASS'
-echo 'SLOTLIST_PLATFORM target=Apple abi=Itanium compile=UNTESTED execute=UNTESTED debt=no_apple_toolchain status=DEBT'
-echo 'SLOTLIST_PLATFORM target=Win64 abi=MSVC compile=UNTESTED execute=UNTESTED debt=itanium_foreign_symbols_not_ported status=DEBT'
+
+# SlotList has three C++ runtime declarations; each target family must select
+# all three. Apple uses Itanium with Mach-O's external-name prefix. Win64 in the
+# shipped Cangjie toolchain is MinGW/Itanium, as verified against its import lib.
+SLOTLIST_SOURCE="$ROOT/src/rt.heap.allocator/SlotList.cj"
+APPLE_GATES=$(grep -Fc '@When[os == "macOS" || os == "iOS"]' "$SLOTLIST_SOURCE")
+WINDOWS_GATES=$(grep -Fc '@When[os == "Windows"]' "$SLOTLIST_SOURCE")
+LINUX_GATES=$(grep -Fc '@When[os == "Linux" || env == "ohos"]' "$SLOTLIST_SOURCE")
+if [[ $APPLE_GATES -ne 3 || $WINDOWS_GATES -ne 3 || $LINUX_GATES -ne 3 ]]; then
+    echo "SLOTLIST_PLATFORM FAIL linux_gates=$LINUX_GATES apple_gates=$APPLE_GATES windows_gates=$WINDOWS_GATES" >&2
+    exit 1
+fi
+
+clang++ --target=x86_64-apple-darwin -std=c++17 -S -emit-llvm \
+    "$ROOT/test/parity/heap/allocutil_slotlist_abi_probe.cpp" -o "$TMP/apple-abi.ll"
+for symbol in "$BASEOBJECT_SYMBOL" \
+    _ZN12MapleRuntime6Logger9GetLoggerEv \
+    _ZN12MapleRuntime6Logger9FormatLogE10RTLogLevelbPKcz; do
+    if ! grep -Fq "@$symbol(" "$TMP/apple-abi.ll"; then
+        echo "SLOTLIST_PLATFORM FAIL Apple ABI symbol=$symbol" >&2
+        exit 1
+    fi
+done
+
+WINDOWS_OUT="$TMP/windows"
+WINDOWS_SLOT_SOURCE="$WINDOWS_OUT/slotlist"
+mkdir -p "$WINDOWS_SLOT_SOURCE"
+cp "$SLOTLIST_SOURCE" "$WINDOWS_SLOT_SOURCE/SlotList.cj"
+(cd "$TMP" && "$SELFHOST_CJC" --package "$ROOT/src/rt.base" --target "$WINDOWS_TARGET" \
+    --int-overflow wrapping --output-type=staticlib --output-dir "$WINDOWS_OUT" -o librt.base.a)
+(cd "$TMP" && "$SELFHOST_CJC" --package "$WINDOWS_SLOT_SOURCE" --target "$WINDOWS_TARGET" \
+    --int-overflow wrapping --output-type=staticlib --import-path "$WINDOWS_OUT" \
+    --output-dir "$WINDOWS_OUT" -o librt.heap.allocator.a)
+for symbol in "$BASEOBJECT_SYMBOL" \
+    _ZN12MapleRuntime6Logger9GetLoggerEv \
+    _ZN12MapleRuntime6Logger9FormatLogE10RTLogLevelbPKcz; do
+    if ! llvm-nm -u "$WINDOWS_OUT/librt.heap.allocator.a" | awk '{print $2}' | grep -Fxq "$symbol"; then
+        echo "SLOTLIST_PLATFORM FAIL Win64 reference=$symbol" >&2
+        exit 1
+    fi
+    if ! llvm-nm "$WINDOWS_RUNTIME" | awk '{print $3}' | grep -Fxq "$symbol"; then
+        echo "SLOTLIST_PLATFORM FAIL Win64 runtime export=$symbol" >&2
+        exit 1
+    fi
+done
+echo 'SLOTLIST_PLATFORM target=Apple abi=Itanium declarations=3 abi_cross_compile=PASS status=PASS'
+echo 'SLOTLIST_PLATFORM target=Win64 abi=MinGW-Itanium declarations=3 compile=PASS runtime_exports=3 status=PASS'
 echo "ALLOCUTIL_SLOTLIST_COMPILER path=$SELFHOST_CJC sha256=$(sha256sum "$SELFHOST_CJC" | awk '{print $1}') status=PASS"
