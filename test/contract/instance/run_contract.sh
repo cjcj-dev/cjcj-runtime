@@ -32,5 +32,18 @@ for symbol in "${symbols[@]}"; do
     rm -f "$executable"
 done
 
+RUNTIME_ROOT="$RUNTIME_ROOT" CANGJIE_HOME="$CANGJIE_HOME" \
+    OUT="$OUT/official-gnu" bash "$ROOT/test/contract/instance/run_official_control.sh"
+
+SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
+    CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
+    MODE=s4 CYCLES=1 TIMEOUT=30s OUT="$OUT/managed-s4" \
+    bash "$ROOT/test/contract/instance/run_managed_contract.sh"
+
+SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
+    CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" \
+    MODE=official CYCLES=1 TIMEOUT=30s OUT="$OUT/managed-official" \
+    bash "$ROOT/test/contract/instance/run_managed_contract.sh"
+
 printf 'INSTANCE_CONTRACT_DISK_AFTER '
 df -Pk "$ROOT" | tail -n 1
