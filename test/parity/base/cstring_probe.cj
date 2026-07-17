@@ -1,8 +1,8 @@
-import rt.cstring.CString
+import rt.cstring.CString as RuntimeCString
 
 main(): Int64 {
     var bytes: VArray<UInt8, $6> = [97u8, 32u8, 98u8, 32u8, 99u8, 0u8]
-    let source = unsafe { CString(CPointer<UInt8>(inout bytes)) }
+    let source = unsafe { RuntimeCString(CPointer<UInt8>(inout bytes)) }
     if (source.Length() != 5) {
         return 1
     }
@@ -25,7 +25,7 @@ main(): Int64 {
     }
     println("CSTRING_REMOVE_BLANK_SPACE PASS")
 
-    let nullSource = unsafe { CString(CPointer<UInt8>()) }
+    let nullSource = unsafe { RuntimeCString(CPointer<UInt8>()) }
     if (!nullSource.Str().isNull() || nullSource.Length() != 0) {
         return 4
     }
