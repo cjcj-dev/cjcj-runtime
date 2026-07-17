@@ -318,14 +318,16 @@ cp "$SLOTLIST_SOURCE" "$WINDOWS_SLOT_SOURCE/SlotList.cj"
 (cd "$TMP" && "$SELFHOST_CJC" --package "$WINDOWS_SLOT_SOURCE" --target "$WINDOWS_TARGET" \
     --int-overflow wrapping --output-type=staticlib --import-path "$WINDOWS_OUT" \
     --output-dir "$WINDOWS_OUT" -o librt.heap.allocator.a)
+llvm-nm -u "$WINDOWS_OUT/librt.heap.allocator.a" | awk '{print $2}' > "$WINDOWS_OUT/undefined.symbols"
+llvm-nm "$WINDOWS_RUNTIME" | awk '{print $3}' > "$WINDOWS_OUT/runtime.symbols"
 for symbol in "$BASEOBJECT_SYMBOL" \
     _ZN12MapleRuntime6Logger9GetLoggerEv \
     _ZN12MapleRuntime6Logger9FormatLogE10RTLogLevelbPKcz; do
-    if ! llvm-nm -u "$WINDOWS_OUT/librt.heap.allocator.a" | awk '{print $2}' | grep -Fxq "$symbol"; then
+    if ! grep -Fxq "$symbol" "$WINDOWS_OUT/undefined.symbols"; then
         echo "SLOTLIST_PLATFORM FAIL Win64 reference=$symbol" >&2
         exit 1
     fi
-    if ! llvm-nm "$WINDOWS_RUNTIME" | awk '{print $3}' | grep -Fxq "$symbol"; then
+    if ! grep -Fxq "$symbol" "$WINDOWS_OUT/runtime.symbols"; then
         echo "SLOTLIST_PLATFORM FAIL Win64 runtime export=$symbol" >&2
         exit 1
     fi
