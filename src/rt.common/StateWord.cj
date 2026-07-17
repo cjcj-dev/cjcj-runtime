@@ -47,6 +47,36 @@ public struct ObjectState {
     }
 }
 
+// runtime/src/Common/StateWord.h:44.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func GetStateCode(self: CPointer<ObjectState>): ObjectStateCode {
+    return UInt8(self.GetStateBits() & 0x3u16)
+}
+
+// runtime/src/Common/StateWord.h:45.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func SetStateCode(self: CPointer<ObjectState>, state: ObjectStateCode): Unit {
+    let oldState = self.GetStateBits()
+    let newState = (oldState & 0xfffcu16) | (UInt16(state) & 0x3u16)
+    self.SetStateBits(newState)
+}
+
+// runtime/src/Common/StateWord.h:47.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func IsForwardableState(self: CPointer<ObjectState>): Bool {
+    return GetStateCode(self) == NORMAL
+}
+
+// runtime/src/Common/StateWord.h:49.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func IsForwardedState(self: CPointer<ObjectState>): Bool {
+    return GetStateCode(self) == FORWARDED
+}
+
 // Common/StateWord.h:42-76. Pointer receivers keep the live object-header storage in native AS0.
 extend CPointer<ObjectState> {
     // Common/StateWord.h:42.
@@ -55,36 +85,10 @@ extend CPointer<ObjectState> {
         return ObjectState(AtomicGetStateBits())
     }
 
-    // Common/StateWord.h:44.
-    @NoHeapAlloc
-    public func GetStateCode(): ObjectStateCode {
-        return UInt8(GetStateBits() & 0x3u16)
-    }
-
-    // Common/StateWord.h:45. C++ bitfield assignment preserves the upper fourteen bits.
-    @NoHeapAlloc
-    public func SetStateCode(state: ObjectStateCode): Unit {
-        let oldState = GetStateBits()
-        let newState = (oldState & 0xfffcu16) | (UInt16(state) & 0x3u16)
-        SetStateBits(newState)
-    }
-
-    // Common/StateWord.h:47.
-    @NoHeapAlloc
-    public func IsForwardableState(): Bool {
-        return GetStateCode() == NORMAL
-    }
-
     // Common/StateWord.h:48.
     @NoHeapAlloc
     public func IsLockedState(): Bool {
-        return GetStateCode() == LOCKED
-    }
-
-    // Common/StateWord.h:49.
-    @NoHeapAlloc
-    public func IsForwardedState(): Bool {
-        return GetStateCode() == FORWARDED
+        return GetStateCode(this) == LOCKED
     }
 
     // Common/StateWord.h:60. ObjectState has one field at offset zero.
@@ -158,6 +162,42 @@ public struct StateWord {
         typeInfoHigh16 = hi16
         objectState = state
     }
+}
+
+// runtime/src/Common/StateWord.h:127.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func GetStateCode(self: CPointer<StateWord>): ObjectStateCode {
+    var objectStateAddress = unsafe { self.toUIntNative() }.wrappingAdd(6)
+    let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
+    return GetStateCode(objectState)
+}
+
+// runtime/src/Common/StateWord.h:133.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func SetStateCode(self: CPointer<StateWord>, state: ObjectStateCode): Unit {
+    var objectStateAddress = unsafe { self.toUIntNative() }.wrappingAdd(6)
+    let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
+    SetStateCode(objectState, state)
+}
+
+// runtime/src/Common/StateWord.h:129.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func IsForwardableState(self: CPointer<StateWord>): Bool {
+    var objectStateAddress = unsafe { self.toUIntNative() }.wrappingAdd(6)
+    let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
+    return IsForwardableState(objectState)
+}
+
+// runtime/src/Common/StateWord.h:130.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+@NoHeapAlloc
+public func IsForwardedState(self: CPointer<StateWord>): Bool {
+    var objectStateAddress = unsafe { self.toUIntNative() }.wrappingAdd(6)
+    let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
+    return IsForwardedState(objectState)
 }
 
 // Base/Log.h:270-275 and Common/StateWord.h:147.
@@ -248,44 +288,12 @@ extend CPointer<StateWord> {
         return objectState.AtomicGetObjectState()
     }
 
-    // Common/StateWord.h:127.
-    @NoHeapAlloc
-    public func GetStateCode(): ObjectStateCode {
-        var objectStateAddress = unsafe { this.toUIntNative() }.wrappingAdd(6)
-        let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
-        return objectState.GetStateCode()
-    }
-
-    // Common/StateWord.h:129.
-    @NoHeapAlloc
-    public func IsForwardableState(): Bool {
-        var objectStateAddress = unsafe { this.toUIntNative() }.wrappingAdd(6)
-        let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
-        return objectState.IsForwardableState()
-    }
-
-    // Common/StateWord.h:130.
-    @NoHeapAlloc
-    public func IsForwardedState(): Bool {
-        var objectStateAddress = unsafe { this.toUIntNative() }.wrappingAdd(6)
-        let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
-        return objectState.IsForwardedState()
-    }
-
     // Common/StateWord.h:132.
     @NoHeapAlloc
     public func IsLockedWord(): Bool {
         var objectStateAddress = unsafe { this.toUIntNative() }.wrappingAdd(6)
         let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
         return objectState.IsLockedState()
-    }
-
-    // Common/StateWord.h:133.
-    @NoHeapAlloc
-    public func SetStateCode(state: ObjectStateCode): Unit {
-        var objectStateAddress = unsafe { this.toUIntNative() }.wrappingAdd(6)
-        let objectState = unsafe { CPointer<CPointer<ObjectState>>(inout objectStateAddress).read(0) }
-        objectState.SetStateCode(state)
     }
 
     // Common/StateWord.h:135-141. The desired complete raw word is deliberately one.
