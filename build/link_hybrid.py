@@ -41,6 +41,13 @@ RT0_REPLACED_RUNTIME_MEMBERS = frozenset(RT0_SHARED_MEMBERS) - {
     "CjNativeRuntimeStartAndEnd.S.o",
     "SignalVectorCompat.cpp.o",
 }
+INSTANCE_EXPORTS = frozenset(
+    {
+        "CJCJ_MRT_InstanceNew",
+        "CJCJ_MRT_InstanceRunTask",
+        "CJCJ_MRT_InstanceStop",
+    }
+)
 STRONG_NM_TYPES = frozenset("ABCDGIRST")
 VERSION_SYMBOL_RE = re.compile(r"^(?P<name>[A-Za-z_.$][A-Za-z0-9_.$]*)(?:@@(?P<version>[A-Za-z0-9_.$]+))?$")
 
@@ -220,6 +227,12 @@ def parse_args() -> argparse.Namespace:
         default=REPO_ROOT / "out/build/lib/libcjcj_rt0.a",
         help="libcjcj_rt0.a built by this repository",
     )
+    parser.add_argument(
+        "--instance-bridge",
+        type=Path,
+        default=REPO_ROOT / "out/build/lib/instance_bridge.o",
+        help="PIC instance_bridge.o built by this repository",
+    )
     parser.add_argument("--inject", type=Path, action="append", default=[], help="PIC Cangjie .o")
     parser.add_argument(
         "--preserve-collision",
@@ -268,6 +281,7 @@ def main() -> int:
             "official shared runtime",
         )
         rt0_archive = require_file(args.rt0_archive, "rt0 archive")
+        instance_bridge = require_file(args.instance_bridge, "instance bridge object")
         linker_script = require_file(
             runtime_root / "build/lds/x86_64_linux/cjnative_runtime.lds", "runtime linker script"
         )
@@ -282,7 +296,8 @@ def main() -> int:
             toolchain / TOOLCHAIN_STATIC_SUBDIR / "libcangjie-std-core.a",
             "static std.core support archive",
         )
-        injections = [require_file(path, "injected object") for path in args.inject]
+        injections = [instance_bridge]
+        injections.extend(require_file(path, "injected object") for path in args.inject)
         preserve_collisions: dict[str, str] = {}
         for specification in args.preserve_collision:
             if "=" not in specification:
@@ -338,6 +353,7 @@ def main() -> int:
                 removed[archive_name].add(member_name)
 
         exports, version = reference_exports(args.nm, reference_so)
+        exports = sorted(set(exports).union(INSTANCE_EXPORTS))
         export_map = work_dir / "hybrid-export.map"
         write_export_map(export_map, exports, version)
         hybrid_linker_script = work_dir / "cjnative-runtime-with-metadata.lds"

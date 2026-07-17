@@ -9,6 +9,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+INSTANCE_EXPORTS = {
+    "CJCJ_MRT_InstanceNew@@CANGJIE",
+    "CJCJ_MRT_InstanceRunTask@@CANGJIE",
+    "CJCJ_MRT_InstanceStop@@CANGJIE",
+}
+
 
 def dynamic_symbols(nm: str, image: Path) -> set[str]:
     try:
@@ -67,11 +73,12 @@ def main() -> int:
         reference = {name for name in reference if not any(regex.search(name) for regex in ignored)}
         candidate = {name for name in candidate if not any(regex.search(name) for regex in ignored)}
 
-    missing = sorted(reference - candidate)
-    extra = sorted(candidate - reference)
+    expected = reference.union(INSTANCE_EXPORTS)
+    missing = sorted(expected - candidate)
+    extra = sorted(candidate - expected)
     status = "PASS" if not missing and not extra else "FAIL"
     print(
-        f"SYMCHECK {status} reference={len(reference)} candidate={len(candidate)} "
+        f"SYMCHECK {status} reference={len(reference)} expected={len(expected)} candidate={len(candidate)} "
         f"missing={len(missing)} extra={len(extra)}"
     )
     if missing:
