@@ -27,10 +27,23 @@ main(): Int64 {
     println("LAYOUT object_size=${sizeOf<ObjectSlot>()} object_align=${alignOf<ObjectSlot>()} " +
         "list_size=${sizeOf<SlotList>()} list_align=${alignOf<SlotList>()}")
 
-    var slotA: VArray<UInt64, $4> = [0xa5a5a5a5a5a5a5a5u64; 4]
-    var slotB: VArray<UInt64, $6> = [0xa5a5a5a5a5a5a5a5u64; 6]
-    var typeInfoA: VArray<UInt64, $16> = [0u64; 16]
-    var typeInfoB: VArray<UInt64, $16> = [0u64; 16]
+    var slotA: VArray<UInt64, $4> = [
+        0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64,
+        0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64
+    ]
+    var slotB: VArray<UInt64, $6> = [
+        0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64,
+        0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64,
+        0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64
+    ]
+    var typeInfoA: VArray<UInt64, $16> = [
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64,
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64
+    ]
+    var typeInfoB: VArray<UInt64, $16> = [
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64,
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64
+    ]
     let objectA = unsafe { CPointer<Unit>(CPointer<UInt64>(inout slotA)) }
     let objectB = unsafe { CPointer<Unit>(CPointer<UInt64>(inout slotB)) }
     unsafe {
@@ -40,9 +53,15 @@ main(): Int64 {
     let overlayA = unsafe { CPointer<ObjectSlot>(objectA) }
     let overlayB = unsafe { CPointer<ObjectSlot>(objectB) }
 
-    var arrayObject: VArray<UInt64, $6> = [0u64; 6]
-    var arrayTypeInfo: VArray<UInt64, $16> = [0u64; 16]
-    var componentTypeInfo: VArray<UInt64, $16> = [0u64; 16]
+    var arrayObject: VArray<UInt64, $6> = [0u64, 0u64, 0u64, 0u64, 0u64, 0u64]
+    var arrayTypeInfo: VArray<UInt64, $16> = [
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64,
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64
+    ]
+    var componentTypeInfo: VArray<UInt64, $16> = [
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64,
+        0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64, 0u64
+    ]
     let arrayObjectPtr = unsafe { CPointer<Unit>(CPointer<UInt64>(inout arrayObject)) }
     unsafe {
         AllocUtilSlotListInitArray(arrayObjectPtr, CPointer<Unit>(CPointer<UInt64>(inout arrayTypeInfo)),
