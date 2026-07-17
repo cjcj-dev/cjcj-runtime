@@ -6,6 +6,7 @@
 #include "Heap/Allocator/AllocUtil.h"
 #include "Heap/Allocator/SlotList.h"
 #include "ObjectModel/Flags.h"
+#include "ObjectModel/MArray.h"
 #include "ObjectModel/MClass.h"
 
 namespace {
