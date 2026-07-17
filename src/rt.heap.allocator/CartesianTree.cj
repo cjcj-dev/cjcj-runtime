@@ -62,17 +62,6 @@ public struct CartesianTree {
         nodeAllocator = RTAllocatorT()
     }
 
-    // CartesianTree.h:48-60. Static pointer façade keeps the live inline value
-    // address when called from another Cangjie package.
-    public static func Init(tree: CPointer<CartesianTree>, memoryBlockCount: UIntNative): Unit {
-        tree.Init(memoryBlockCount)
-    }
-
-    // CartesianTree.h:62-67.
-    public static func Fini(tree: CPointer<CartesianTree>): Unit {
-        tree.Fini()
-    }
-
     // CartesianTree.h:116-123.
     public static func TakeUnits(tree: CPointer<CartesianTree>, num: Count,
         idx: CPointer<Index>, refreshRegionInfo: Bool): Bool {
@@ -83,6 +72,43 @@ public struct CartesianTree {
     public static func MergeInsert(tree: CPointer<CartesianTree>, idx: Index,
         num: Count, refreshRegionInfo: Bool): Bool {
         return tree.MergeInsert(idx, num, refreshRegionInfo)
+    }
+}
+
+// runtime/src/Heap/Allocator/CartesianTree.h:48-60.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+public func Init(self: CPointer<CartesianTree>, memoryBlockCount: UIntNative): Unit {
+    let nodeCount = (memoryBlockCount >> 1) + 1
+    let nodeSize = AllocUtilRndUp(sizeOf<CartesianNode>(), alignOf<CartesianNode>())
+    let nativeSize = (nodeCount + 7) * nodeSize
+    let nativeMapSize = AllocUtilRndUp(nativeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
+    let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(self) + 96) }
+    Init(nodeAllocator, nativeMapSize)
+    let dequeSize = nodeCount * sizeOf<CPointer<CartesianNode>>()
+    let dequeMapSize = AllocUtilRndUp(dequeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
+    let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(self) + 16) }
+    let traversalSud = unsafe {
+        CPointer<SingleUseDeque>(CPointer<UInt8>(self) + 56)
+    }
+    Init(sud, dequeMapSize)
+    Init(traversalSud, sud.GetMemMap())
+}
+
+// runtime/src/Heap/Allocator/CartesianTree.h:62-67.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+public func Fini(self: CPointer<CartesianTree>): Unit {
+    self.ClearTree()
+    let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(self) + 16) }
+    let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(self) + 96) }
+    Fini(sud)
+    Fini(nodeAllocator)
+}
+
+// runtime/src/Heap/Allocator/CartesianTree.h:261.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+public func Empty(self: CPointer<CartesianTree>): Bool {
+    return unsafe {
+        CPointer<CPointer<CartesianNode>>(CPointer<UInt8>(self) + 8).read(0).isNull()
     }
 }
 
@@ -227,33 +253,6 @@ extend CPointer<CartesianNode> {
 }
 
 extend CPointer<CartesianTree> {
-    // CartesianTree.h:48-60.
-    public func Init(memoryBlockCount: UIntNative): Unit {
-        let nodeCount = (memoryBlockCount >> 1) + 1
-        let nodeSize = AllocUtilRndUp(sizeOf<CartesianNode>(), alignOf<CartesianNode>())
-        let nativeSize = (nodeCount + 7) * nodeSize
-        let nativeMapSize = AllocUtilRndUp(nativeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
-        let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
-        nodeAllocator.Init(nativeMapSize)
-        let dequeSize = nodeCount * sizeOf<CPointer<CartesianNode>>()
-        let dequeMapSize = AllocUtilRndUp(dequeSize, UIntNative(ALLOC_UTIL_PAGE_SIZE))
-        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 16) }
-        let traversalSud = unsafe {
-            CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 56)
-        }
-        sud.Init(dequeMapSize)
-        traversalSud.Init(sud.GetMemMap())
-    }
-
-    // CartesianTree.h:62-67. Order is exact.
-    public func Fini(): Unit {
-        ClearTree()
-        let sud = unsafe { CPointer<SingleUseDeque>(CPointer<UInt8>(this) + 16) }
-        let nodeAllocator = unsafe { CPointer<RTAllocator>(CPointer<UInt8>(this) + 96) }
-        sud.Fini()
-        nodeAllocator.Fini()
-    }
-
     // CartesianTree.h:69-80.
     public func ClearTree(): Unit {
         var it = Iterator(this)
@@ -331,13 +330,6 @@ extend CPointer<CartesianTree> {
             return false
         }
         return TakeUnitsLowAddrImpl(num, idx, refreshRegionInfo)
-    }
-
-    // CartesianTree.h:261.
-    public func Empty(): Bool {
-        return unsafe {
-            CPointer<CPointer<CartesianNode>>(CPointer<UInt8>(this) + 8).read(0).isNull()
-        }
     }
 
     // CartesianTree.h:262.
