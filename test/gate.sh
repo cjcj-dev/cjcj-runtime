@@ -102,7 +102,12 @@ done
 inject_count=${#injected_objects[@]}
 printf 'INJECT PASS objects=%s\n' "$inject_count"
 
-HYBRID="$HYBRID" OUT="$OUT/instance-contract" \
+MANAGED_HOST_STAGE="$OUT/managed-host"
+bash "$ROOT/test/contract/instance/run_staged_managed_host.sh" \
+    "$CJC" "$HYBRID" "$MANAGED_HOST_STAGE"
+
+HYBRID="$HYBRID" SELFHOST_CJC="$MANAGED_HOST_STAGE/bin/$(basename "$CJC")" \
+    OUT="$OUT/instance-contract" \
     bash "$ROOT/test/contract/instance/run_contract.sh"
 
 HYBRID="$HYBRID" SELFHOST="$REPO" CJC="$CJC" \
