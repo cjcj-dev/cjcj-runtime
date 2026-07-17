@@ -108,7 +108,7 @@ extend CPointer<PagePool> {
         unsafe { CPointer<UInt32>(CPointer<UInt8>(this) + 204).write(0, pageCount) }
         let size = UIntNative(pageCount) * MRT_PAGE_SIZE
         let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + 40) }
-        CartesianTree.Init(tree, UIntNative(pageCount))
+        Init(tree, UIntNative(pageCount))
         let tag = unsafe { CPointer<CString>(CPointer<UInt8>(this) + 192).read(0) }
         let base = MapMemory(size, tag)
         unsafe {
@@ -120,7 +120,7 @@ extend CPointer<PagePool> {
     // PagePool.h:44-54.
     public func Fini(): Unit {
         let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + 40) }
-        CartesianTree.Fini(tree)
+        Fini(tree)
         let base = unsafe {
             CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + 168).read(0)
         }
