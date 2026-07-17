@@ -281,6 +281,7 @@ if [[ $FINAL_BC_COUNT -eq 0 || $OBJECT_COUNT -eq 0 || $REACHABLE_DEFS -eq 0 ||
 fi
 
 echo "ALLOCUTIL_SLOTLIST_PARITY lines=$(wc -l < "$CJ_OUT") mismatches=0 status=PASS"
+echo "ALLOCUTIL_SLOTLIST_PROBES cpp_sha256=$(sha256sum "$TMP/cpp_probe" | awk '{print $1}') cj_sha256=$(sha256sum "$TMP/cj_probe" | awk '{print $1}') status=PASS"
 echo "ALLOCUTIL_OWNER definitions=${#ALLOCUTIL_OWNERS[@]} owner=rt.base live_chain=rt.base,rt.sync,rt.heap.allocator status=PASS"
 echo "SLOTLIST_NOHEAP_CLOSURE roots=${#ROOT_SYMBOLS[@]} reachable_defs=$REACHABLE_DEFS scanned_defs=$SCANNED_DEFS missing=$MISSING_DEFS mcc_new_refs=$MCC_NEW_REFS status=PASS"
 echo "SLOTLIST_BASEOBJECT_CLOSURE symbol=$BASEOBJECT_SYMBOL target_bytes=$BASEOBJECT_SIZE runtime_sha256=$(sha256sum "$SELFHOST_RUNTIME_LIB" | awk '{print $1}') status=PASS"
