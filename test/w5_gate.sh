@@ -117,11 +117,13 @@ test -f "$DEMANGLE_OBJECT"
 env -u LD_LIBRARY_PATH cmake -S "$ROOT" -B "$OUT/cmake" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ \
     -DCMAKE_ASM_COMPILER=clang -DCANGJIE_RUNTIME_SOURCE="$RUNTIME_ROOT"
-env -u LD_LIBRARY_PATH cmake --build "$OUT/cmake" --target cjcj_rt0 --parallel
+env -u LD_LIBRARY_PATH cmake --build "$OUT/cmake" \
+    --target cjcj_rt0 cjcj_rt_instance_object --parallel
 
 HYBRID="$OUT/hybrid/libcangjie-runtime.so"
 python3 "$ROOT/build/link_hybrid.py" --runtime-root "$RUNTIME_ROOT" \
     --toolchain "$CANGJIE_HOME" --rt0-archive "$OUT/cmake/lib/libcjcj_rt0.a" \
+    --instance-bridge "$OUT/cmake/lib/instance_bridge.o" \
     --inject "$OUT/abi/rt.abi.o" \
     --inject "$DEMANGLE_OBJECT" \
     --preserve-collision MRT_DumpLog=CJRT_BaseDumpLog \
@@ -134,6 +136,9 @@ python3 "$ROOT/build/link_hybrid.py" --runtime-root "$RUNTIME_ROOT" \
     --output "$HYBRID" \
     --work-dir "$OUT/hybrid-work"
 python3 "$ROOT/build/symcheck.py" "$REFERENCE" "$HYBRID"
+
+HYBRID="$HYBRID" OUT="$OUT/instance-contract" \
+    bash "$ROOT/test/contract/instance/run_contract.sh"
 
 official_symbol=$(objdump -T "$REFERENCE" | awk '$NF == "MRT_DumpLog" { print }')
 hybrid_symbol=$(objdump -T "$HYBRID" | awk '$NF == "MRT_DumpLog" { print }')
@@ -217,4 +222,4 @@ fi
         bash scripts/difftest.sh -j "${DIFFTEST_JOBS:-4}"
 ) | tee "$OUT/difftest.log"
 grep -Fq 'TOTAL=114  PASS=114  MISMATCH=0  FAIL=0' "$OUT/difftest.log"
-printf 'W5 GATE PASS cfunc=1 symcheck=2692/2692 base_text=%s difftest=114/114\n' "$text_bytes"
+printf 'W5 GATE PASS cfunc=1 instance=1 symcheck=2692/2695 base_text=%s difftest=114/114\n' "$text_bytes"
