@@ -30,19 +30,19 @@ public func CJRT_ObjectStateAtomicGetObjectState(state: CPointer<ObjectState>): 
 
 @C
 public func CJRT_ObjectStateGetStateCode(state: CPointer<ObjectState>): UInt8 {
-    return state.GetStateCode()
+    return GetStateCode(state)
 }
 
 @C
 public func CJRT_ObjectStateSetStateCode(state: CPointer<ObjectState>, code: UInt8): Unit {
-    state.SetStateCode(code)
+    SetStateCode(state, code)
 }
 
 @C
 public func CJRT_ObjectStatePredicates(state: CPointer<ObjectState>): UInt8 {
-    let forwardable = if (state.IsForwardableState()) { 1u8 } else { 0u8 }
+    let forwardable = if (IsForwardableState(state)) { 1u8 } else { 0u8 }
     let locked = if (state.IsLockedState()) { 2u8 } else { 0u8 }
-    let forwarded = if (state.IsForwardedState()) { 4u8 } else { 0u8 }
+    let forwarded = if (IsForwardedState(state)) { 4u8 } else { 0u8 }
     return forwardable | locked | forwarded
 }
 
@@ -112,20 +112,20 @@ public func CJRT_StateWordGetObjectState(stateWord: CPointer<StateWord>): UInt16
 
 @C
 public func CJRT_StateWordGetStateCode(stateWord: CPointer<StateWord>): UInt8 {
-    return stateWord.GetStateCode()
+    return GetStateCode(stateWord)
 }
 
 @C
 public func CJRT_StateWordPredicates(stateWord: CPointer<StateWord>): UInt8 {
-    let forwardable = if (stateWord.IsForwardableState()) { 1u8 } else { 0u8 }
-    let forwarded = if (stateWord.IsForwardedState()) { 2u8 } else { 0u8 }
+    let forwardable = if (IsForwardableState(stateWord)) { 1u8 } else { 0u8 }
+    let forwarded = if (IsForwardedState(stateWord)) { 2u8 } else { 0u8 }
     let locked = if (stateWord.IsLockedWord()) { 4u8 } else { 0u8 }
     return forwardable | forwarded | locked
 }
 
 @C
 public func CJRT_StateWordSetStateCode(stateWord: CPointer<StateWord>, code: UInt8): Unit {
-    stateWord.SetStateCode(code)
+    SetStateCode(stateWord, code)
 }
 
 @C
