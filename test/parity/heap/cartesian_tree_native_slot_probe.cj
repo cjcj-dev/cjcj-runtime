@@ -5,7 +5,7 @@ import rt.base.*
 main(): Int64 {
     var allocatorValue = RTAllocatorT()
     let allocator = unsafe { CPointer<RTAllocatorT>(inout allocatorValue) }
-    allocator.Init(UIntNative(ALLOC_UTIL_PAGE_SIZE))
+    Init(allocator, UIntNative(ALLOC_UTIL_PAGE_SIZE))
 
     let first = CPointer<CartesianNode>(allocator.Allocate())
     let second = CPointer<CartesianNode>(allocator.Allocate())
@@ -53,6 +53,6 @@ main(): Int64 {
 
     allocator.Deallocate(CPointer<Unit>(second))
     allocator.Deallocate(CPointer<Unit>(first))
-    allocator.Fini()
+    Fini(allocator)
     return 0
 }
