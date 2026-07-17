@@ -39,10 +39,19 @@ if [[ "$MODE" == official ]]; then
     runtime=$ORACLE
 fi
 test -f "$runtime"
+STAGED_RUNTIME_DIR="$OUT/runtime/lib/linux_x86_64_cjnative"
+STAGED_RUNTIME="$STAGED_RUNTIME_DIR/libcangjie-runtime.so"
+mkdir -p "$STAGED_RUNTIME_DIR"
+cp "$runtime" "$STAGED_RUNTIME"
+printf 'MANAGED_RUNTIME_STAGE '
+stat -c 'inode=%i size=%s path=%n' "$STAGED_RUNTIME"
+sha256sum "$STAGED_RUNTIME"
 
 set +e
 CJCJ_CONTRACT_MODE="$MODE" CJCJ_CONTRACT_CYCLES="$CYCLES" \
-    LD_PRELOAD="$runtime" timeout --signal=KILL "$TIMEOUT" \
+    CJCJ_CONTRACT_RUNTIME_IMAGE="$STAGED_RUNTIME" \
+    LD_LIBRARY_PATH="$STAGED_RUNTIME_DIR:$LD_LIBRARY_PATH" \
+    timeout --signal=KILL "$TIMEOUT" \
     "$OUT/managed_host_contract" 2>&1 | tee "$OUT/$MODE.log"
 rc=${PIPESTATUS[0]}
 set -e

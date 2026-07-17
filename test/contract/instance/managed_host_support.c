@@ -30,6 +30,8 @@ typedef void (*ReleaseHandleFunc)(const void*);
 typedef uintptr_t (*GetThreadLocalDataFunc)(void);
 typedef int (*GetCJThreadStateFunc)(void*);
 
+static void* runtimeImageHandle;
+
 struct ThreadLocalDataPrefix {
     void* buffer;
     void* mutator;
@@ -45,7 +47,7 @@ enum ContractMode {
 static void* Resolve(const char* name)
 {
     dlerror();
-    void* address = dlsym(RTLD_DEFAULT, name);
+    void* address = dlsym(runtimeImageHandle == NULL ? RTLD_DEFAULT : runtimeImageHandle, name);
     const char* error = dlerror();
     if (address == NULL || error != NULL) {
         fprintf(stderr, "MANAGED_CONTRACT FAIL stage=dlsym symbol=%s detail=%s\n",
@@ -264,6 +266,18 @@ int32_t CJRT_ContractVerifyRuntimeImage(void* callback)
         "RunCJTaskToSchedule",
         "MRT_StopSubScheduler",
     };
+    const char* runtimePath = getenv("CJCJ_CONTRACT_RUNTIME_IMAGE");
+    if (runtimePath == NULL || *runtimePath == '\0') {
+        fprintf(stderr, "MANAGED_CONTRACT FAIL stage=runtime_image_path\n");
+        return 1;
+    }
+    runtimeImageHandle = dlopen(runtimePath, RTLD_NOW | RTLD_LOCAL);
+    if (runtimeImageHandle == NULL) {
+        fprintf(stderr, "MANAGED_CONTRACT FAIL stage=runtime_image_open path=%s detail=%s\n",
+            runtimePath, dlerror());
+        return 1;
+    }
+
     struct RuntimeImageAudit audit = {0};
     dl_iterate_phdr(CountRuntimeImages, &audit);
     if (audit.imageCount != 1) {
