@@ -76,7 +76,6 @@ file(GLOB RT0_ARCH_SOURCES CONFIGURE_DEPENDS "arch/${RT0_ARCH}/*.S")
 if(MINGW OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(RT0_PLATFORM_SOURCES
         os/Windows/Loader.cpp
-        os/Windows/PagePoolMutex.cpp
         os/Windows/Path.cpp
         os/Windows/UnwindWin.cpp
         os/Windows/WinModuleManager.cpp
@@ -95,13 +94,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         os/Linux/Futex.cpp
         os/Linux/PagePoolMutex.cpp
         os/Linux/Panic.cpp)
-endif()
-
-# Common/PagePool.h:152 and Heap/Allocator/RegionList.h:169 embed std::mutex.
-# APPLE_ABI_FACTS.md §2-§3 supplies the Darwin libc++ layout and initializer.
-if(APPLE OR IOS_FLAG MATCHES 1 OR IOS_SIMULATOR_FLAG MATCHES "^[12]$")
-    list(APPEND RT0_PLATFORM_SOURCES
-        os/Macos/PagePoolMutex.cpp)
 endif()
 
 list(APPEND RT0_PLATFORM_SOURCES

@@ -57,8 +57,9 @@ var PAGE_POOL_MAP_FATAL: VArray<UInt8, $55> = [
 // Base/Globals.h:29-30 and RegionManager.cpp:49-52.
 public let MRT_PAGE_SIZE: UIntNative = UIntNative(unsafe { getpagesize() })
 
-// Common/PagePool.h:152. Linux/OHOS retain the production 40-byte std::mutex.
-@When[os != "macOS" && os != "iOS" && os != "Windows"]
+// PagePool.h:152. Opaque inline storage for the 40-byte std::mutex ABI used by the
+// production Linux target. PagePool is compiled on other targets with this ABI debt
+// explicitly retained; the Layer0 bridge is Linux-only in this lane.
 @C
 public struct PagePoolMutex {
     var word0: UInt64
@@ -73,46 +74,6 @@ public struct PagePoolMutex {
         word2 = 0u64
         word3 = 0u64
         word4 = 0u64
-    }
-}
-
-// Common/PagePool.h:152. The selected Win64 libc++ std::mutex is 8-byte/align-8;
-// see the target-compiled rt0/os/Windows/PagePoolMutex.cpp static_asserts.
-@When[os == "Windows"]
-@C
-public struct PagePoolMutex {
-    var word0: UInt64
-
-    public init() {
-        word0 = 0u64
-    }
-}
-
-// Common/PagePool.h:152 and APPLE_ABI_FACTS.md §1-§3. Darwin libc++
-// std::mutex is one 64-byte/align-8 pthread_mutex_t. Its static initializer is
-// signature 0x32AAABA7 followed by 56 zero opaque bytes.
-// TODO(apple-verify): static_assert sizeof==64 when SDK available
-@When[os == "macOS" || os == "iOS"]
-@C
-public struct PagePoolMutex {
-    var sig: Int64
-    var opaque0: UInt64
-    var opaque1: UInt64
-    var opaque2: UInt64
-    var opaque3: UInt64
-    var opaque4: UInt64
-    var opaque5: UInt64
-    var opaque6: UInt64
-
-    public init() {
-        sig = 0x32AAABA7
-        opaque0 = 0u64
-        opaque1 = 0u64
-        opaque2 = 0u64
-        opaque3 = 0u64
-        opaque4 = 0u64
-        opaque5 = 0u64
-        opaque6 = 0u64
     }
 }
 
@@ -144,77 +105,56 @@ public struct PagePool {
 extend CPointer<PagePool> {
     // PagePool.h:36-43. Assignment and initialization order is exact.
     public func Init(pageCount: UInt32): Unit {
-        let freePagesTreeOffset = Int64(sizeOf<PagePoolMutex>())
-        let baseOffset = freePagesTreeOffset + Int64(sizeOf<CartesianTree>())
-        let totalSizeOffset = baseOffset + Int64(sizeOf<CPointer<UInt8>>())
-        let tagOffset = totalSizeOffset + Int64(sizeOf<UIntNative>() + sizeOf<UIntNative>())
-        let totalPageCountOffset = tagOffset + Int64(sizeOf<CString>() + sizeOf<UInt32>())
-        unsafe { CPointer<UInt32>(CPointer<UInt8>(this) + totalPageCountOffset).write(0, pageCount) }
+        unsafe { CPointer<UInt32>(CPointer<UInt8>(this) + 204).write(0, pageCount) }
         let size = UIntNative(pageCount) * MRT_PAGE_SIZE
-        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + freePagesTreeOffset) }
+        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + 40) }
         CartesianTree.Init(tree, UIntNative(pageCount))
-        let tag = unsafe { CPointer<CString>(CPointer<UInt8>(this) + tagOffset).read(0) }
+        let tag = unsafe { CPointer<CString>(CPointer<UInt8>(this) + 192).read(0) }
         let base = MapMemory(size, tag)
         unsafe {
-            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + baseOffset).write(0, base)
-            CPointer<UIntNative>(CPointer<UInt8>(this) + totalSizeOffset).write(0, size)
+            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + 168).write(0, base)
+            CPointer<UIntNative>(CPointer<UInt8>(this) + 176).write(0, size)
         }
     }
 
     // PagePool.h:44-54.
     public func Fini(): Unit {
-        let freePagesTreeOffset = Int64(sizeOf<PagePoolMutex>())
-        let baseOffset = freePagesTreeOffset + Int64(sizeOf<CartesianTree>())
-        let totalSizeOffset = baseOffset + Int64(sizeOf<CPointer<UInt8>>())
-        let tagOffset = totalSizeOffset + Int64(sizeOf<UIntNative>() + sizeOf<UIntNative>())
-        let totalPageCountOffset = tagOffset + Int64(sizeOf<CString>() + sizeOf<UInt32>())
-        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + freePagesTreeOffset) }
+        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + 40) }
         CartesianTree.Fini(tree)
         let base = unsafe {
-            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + baseOffset).read(0)
+            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + 168).read(0)
         }
-        let pageCount = unsafe {
-            CPointer<UInt32>(CPointer<UInt8>(this) + totalPageCountOffset).read(0)
-        }
+        let pageCount = unsafe { CPointer<UInt32>(CPointer<UInt8>(this) + 204).read(0) }
         FiniImpl(CPointer<Unit>(base), UIntNative(pageCount) * MRT_PAGE_SIZE)
     }
 
     // PagePool.h:56-83.
     public func GetPage(bytes!: UIntNative = MRT_PAGE_SIZE): CPointer<UInt8> {
-        let freePagesTreeOffset = Int64(sizeOf<PagePoolMutex>())
-        let baseOffset = freePagesTreeOffset + Int64(sizeOf<CartesianTree>())
-        let totalSizeOffset = baseOffset + Int64(sizeOf<CPointer<UInt8>>())
-        let usedZoneOffset = totalSizeOffset + Int64(sizeOf<UIntNative>())
-        let tagOffset = usedZoneOffset + Int64(sizeOf<UIntNative>())
         var idx: Index = 0u32
         let count = (bytes + MRT_PAGE_SIZE - 1).wrappingDiv(MRT_PAGE_SIZE)
         let pageSize = (bytes + MRT_PAGE_SIZE - 1) & (0 - MRT_PAGE_SIZE)
         if (count >= UIntNative(UInt32.Max)) {
             unsafe { abort() }
         }
-        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + freePagesTreeOffset) }
+        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + 40) }
         unsafe { CJRT_PagePoolMutexLock(CPointer<Unit>(this)) }
         if (CartesianTree.TakeUnits(tree, UInt32(count), CPointer<Index>(inout idx), false)) {
             let base = unsafe {
-                CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + baseOffset).read(0)
+                CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + 168).read(0)
             }
             let ret = unsafe { base + Int64(UIntNative(idx) * MRT_PAGE_SIZE) }
             GetPageImpl(CPointer<Unit>(ret), pageSize)
             unsafe { CJRT_PagePoolMutexUnlock(CPointer<Unit>(this)) }
             return ret
         }
-        let usedZone = unsafe {
-            CPointer<UIntNative>(CPointer<UInt8>(this) + usedZoneOffset).read(0)
-        }
-        let totalSize = unsafe {
-            CPointer<UIntNative>(CPointer<UInt8>(this) + totalSizeOffset).read(0)
-        }
+        let usedZone = unsafe { CPointer<UIntNative>(CPointer<UInt8>(this) + 184).read(0) }
+        let totalSize = unsafe { CPointer<UIntNative>(CPointer<UInt8>(this) + 176).read(0) }
         let base = unsafe {
-            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + baseOffset).read(0)
+            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + 168).read(0)
         }
         if (usedZone + pageSize <= totalSize && !base.isNull()) {
             unsafe {
-                CPointer<UIntNative>(CPointer<UInt8>(this) + usedZoneOffset).write(0, usedZone + pageSize)
+                CPointer<UIntNative>(CPointer<UInt8>(this) + 184).write(0, usedZone + pageSize)
             }
             let ret = unsafe { base + Int64(usedZone) }
             GetPageImpl(CPointer<Unit>(ret), pageSize)
@@ -222,21 +162,16 @@ extend CPointer<PagePool> {
             return ret
         }
         unsafe { CJRT_PagePoolMutexUnlock(CPointer<Unit>(this)) }
-        let tag = unsafe { CPointer<CString>(CPointer<UInt8>(this) + tagOffset).read(0) }
+        let tag = unsafe { CPointer<CString>(CPointer<UInt8>(this) + 192).read(0) }
         return MapMemory(pageSize, tag, isCommit: true)
     }
 
     // PagePool.h:85-120.
     public func ReturnPage(page: CPointer<UInt8>, bytes!: UIntNative = MRT_PAGE_SIZE): Unit {
-        let freePagesTreeOffset = Int64(sizeOf<PagePoolMutex>())
-        let baseOffset = freePagesTreeOffset + Int64(sizeOf<CartesianTree>())
-        let totalSizeOffset = baseOffset + Int64(sizeOf<CPointer<UInt8>>())
         let base = unsafe {
-            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + baseOffset).read(0)
+            CPointer<CPointer<UInt8>>(CPointer<UInt8>(this) + 168).read(0)
         }
-        let totalSize = unsafe {
-            CPointer<UIntNative>(CPointer<UInt8>(this) + totalSizeOffset).read(0)
-        }
+        let totalSize = unsafe { CPointer<UIntNative>(CPointer<UInt8>(this) + 176).read(0) }
         let end = unsafe { base + Int64(totalSize) }
         let num = (bytes + MRT_PAGE_SIZE - 1).wrappingDiv(MRT_PAGE_SIZE)
         if (page.toUIntNative() < base.toUIntNative() || page.toUIntNative() >= end.toUIntNative()) {
@@ -249,7 +184,7 @@ extend CPointer<PagePool> {
         let idx = UInt32((page.toUIntNative() - base.toUIntNative()).wrappingDiv(MRT_PAGE_SIZE))
         ReturnPagePart2(CPointer<Unit>(page), num * MRT_PAGE_SIZE)
         unsafe { CJRT_PagePoolMutexLock(CPointer<Unit>(this)) }
-        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + freePagesTreeOffset) }
+        let tree = unsafe { CPointer<CartesianTree>(CPointer<UInt8>(this) + 40) }
         let inserted = CartesianTree.MergeInsert(tree, idx, UInt32(num), false)
         unsafe { CJRT_PagePoolMutexUnlock(CPointer<Unit>(this)) }
         if (!inserted) {
