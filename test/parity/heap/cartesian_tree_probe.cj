@@ -205,8 +205,8 @@ func Validate(tree: CPointer<CartesianTree>, model: CartesianModel): Unit {
     Require(slotCount == model.size)
     Require(tree.GetNodeCount() == UIntNative(model.size))
     Require(UInt64(tree.GetTotalCount()) == model.Total())
-    Require(tree.Empty() == (model.size == 0))
-    if (!tree.Empty()) {
+    Require(Empty(tree) == (model.size == 0))
+    if (!Empty(tree)) {
         let root = tree.RootNode()
         Require(!root.isNull())
         CheckHeap(root, 0u64, UInt64.Max)
@@ -229,7 +229,7 @@ func EmitState(step: UInt32, action: UInt32, argumentIndex: Index,
 func RunFixedCases(): Unit {
     var treeValue = CartesianTree()
     let tree = unsafe { CPointer<CartesianTree>(inout treeValue) }
-    tree.Init(256)
+    Init(tree, 256)
     let model = CartesianModel()
     var out = 0xfeedu32
     Require(!tree.TakeUnits(1u32, CPointer<Index>(inout out), refreshRegionInfo: false))
@@ -290,7 +290,7 @@ func RunFixedCases(): Unit {
     tree.ClearTree()
     model.size = 0
     Validate(tree, model)
-    tree.Fini()
+    Fini(tree)
     println("F fixed=PASS")
     cartesianRecords += 1
 }
@@ -300,7 +300,7 @@ func RunLargeTrees(): Unit {
     while (pass < 2u32) {
         var treeValue = CartesianTree()
         let tree = unsafe { CPointer<CartesianTree>(inout treeValue) }
-        tree.Init(1200)
+        Init(tree, 1200)
         var i = 0u32
         while (i < 600u32) {
             Require(tree.MergeInsert(i * 2u32 + pass, 1u32, false))
@@ -316,7 +316,7 @@ func RunLargeTrees(): Unit {
         Require(count == 600)
         println("D ${pass} 600 ${count}")
         cartesianRecords += 1
-        tree.Fini()
+        Fini(tree)
         pass += 1
     }
 }
@@ -324,7 +324,7 @@ func RunLargeTrees(): Unit {
 func RunIteratorLifetimes(): Unit {
     var treeValue = CartesianTree()
     let tree = unsafe { CPointer<CartesianTree>(inout treeValue) }
-    tree.Init(8)
+    Init(tree, 8)
     Require(tree.MergeInsert(10u32, 2u32, false))
     Require(tree.MergeInsert(20u32, 1u32, false))
     var i = 0u32
@@ -335,7 +335,7 @@ func RunIteratorLifetimes(): Unit {
             iterator.Next().isNull())
         i += 1
     }
-    tree.Fini()
+    Fini(tree)
     println("L 1100 PASS")
     cartesianRecords += 1
 }
@@ -343,7 +343,7 @@ func RunIteratorLifetimes(): Unit {
 func RunTrace(): Unit {
     var treeValue = CartesianTree()
     let tree = unsafe { CPointer<CartesianTree>(inout treeValue) }
-    tree.Init(4096)
+    Init(tree, 4096)
     let model = CartesianModel()
     var seed = 0x4341525445534941u64
     var step = 0u32
@@ -383,7 +383,7 @@ func RunTrace(): Unit {
         EmitState(step, action, argumentIndex, argumentCount, result, resultIndex, model)
         step += 1
     }
-    tree.Fini()
+    Fini(tree)
     println("R seed=${seed} operations=1200")
     cartesianRecords += 1
 }
@@ -397,7 +397,7 @@ func RunRegionInfo(): Unit {
     RegionInfo.Initialize(units, heap)
     var treeValue = CartesianTree()
     let tree = unsafe { CPointer<CartesianTree>(inout treeValue) }
-    tree.Init(16)
+    Init(tree, 16)
     Require(tree.MergeInsert(2u32, 3u32, true))
     let region = RegionInfo.GetRegionInfo(2u32)
     let metadata = unsafe { region.read(0).metadata }
@@ -419,10 +419,10 @@ func RunRegionInfo(): Unit {
     unsafe { unit.write(0, 0xabu8) }
     Require(tree.MergeInsert(1u32, 1u32, false))
     tree.ReleaseRootNode()
-    Require(unsafe { unit.read(0) == 0u8 } && tree.Empty() && tree.GetTotalCount() == 0u32)
+    Require(unsafe { unit.read(0) == 0u8 } && Empty(tree) && tree.GetTotalCount() == 0u32)
     println("G release 1 0")
     cartesianRecords += 1
-    tree.Fini()
+    Fini(tree)
     MemMap.DestroyMemMap(CPointer<CPointer<MemMap>>(inout mapping))
 }
 
