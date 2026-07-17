@@ -3,7 +3,13 @@ package rt.heap.allocator
 import rt.base.RTLOG_ERROR
 
 foreign {
-    // Common/BaseObject.cpp:139-150; retained until ObjectModel is ported.
+    // Common/BaseObject.cpp:139-150. Linux/OHOS and Apple use the Itanium C++ ABI;
+    // the shipped Windows target is MinGW and exports the same Itanium name.
+    @When[os == "Linux" || env == "ohos"]
+    func _ZNK12MapleRuntime10BaseObject7GetSizeEv(baseObject: CPointer<Unit>): UIntNative
+    @When[os == "macOS" || os == "iOS"]
+    func _ZNK12MapleRuntime10BaseObject7GetSizeEv(baseObject: CPointer<Unit>): UIntNative
+    @When[os == "Windows"]
     func _ZNK12MapleRuntime10BaseObject7GetSizeEv(baseObject: CPointer<Unit>): UIntNative
 
     // third_party_bounds_checking_function/include/securec.h.
@@ -11,7 +17,19 @@ foreign {
         value: Int32, count: UIntNative): Int32
 
     // Base/Log.h:292-297. No variadic arguments are needed for this fixed format.
+    @When[os == "Linux" || env == "ohos"]
     func _ZN12MapleRuntime6Logger9GetLoggerEv(): CPointer<Unit>
+    @When[os == "macOS" || os == "iOS"]
+    func _ZN12MapleRuntime6Logger9GetLoggerEv(): CPointer<Unit>
+    @When[os == "Windows"]
+    func _ZN12MapleRuntime6Logger9GetLoggerEv(): CPointer<Unit>
+    @When[os == "Linux" || env == "ohos"]
+    func _ZN12MapleRuntime6Logger9FormatLogE10RTLogLevelbPKcz(logger: CPointer<Unit>,
+        level: Int32, notInSignalHandler: Bool, format: CPointer<UInt8>): Unit
+    @When[os == "macOS" || os == "iOS"]
+    func _ZN12MapleRuntime6Logger9FormatLogE10RTLogLevelbPKcz(logger: CPointer<Unit>,
+        level: Int32, notInSignalHandler: Bool, format: CPointer<UInt8>): Unit
+    @When[os == "Windows"]
     func _ZN12MapleRuntime6Logger9FormatLogE10RTLogLevelbPKcz(logger: CPointer<Unit>,
         level: Int32, notInSignalHandler: Bool, format: CPointer<UInt8>): Unit
 }
