@@ -58,7 +58,7 @@ main(): Int64 {
 
     var allocatorValue = RTAllocatorT()
     let allocator = unsafe { CPointer<RTAllocatorT>(inout allocatorValue) }
-    allocator.Init(UIntNative(4096))
+    Init(allocator, UIntNative(4096))
     let alloc0 = allocator.Allocate()
     let alloc1 = allocator.Allocate()
     let alloc2 = allocator.Allocate()
@@ -66,14 +66,14 @@ main(): Int64 {
         alloc2.toUIntNative() - alloc1.toUIntNative() == 24, "RTAllocatorT spacing")
     allocator.Deallocate(alloc1)
     Require(allocator.Allocate().toUIntNative() == alloc1.toUIntNative(), "RTAllocatorT reuse")
-    allocator.Fini()
+    Fini(allocator)
     println("SMOKE RTAllocatorT spacing=24 reuse=1")
     records += 1
 
     var singleUseValue = SingleUseDeque()
     let singleUse = unsafe { CPointer<SingleUseDeque>(inout singleUseValue) }
-    singleUse.Init(UIntNative(16384))
-    Require(singleUse.Empty(), "SingleUseDeque initial empty")
+    Init(singleUse, UIntNative(16384))
+    Require(Empty(singleUse), "SingleUseDeque initial empty")
     singleUse.Push(Pointer(base, 11u64))
     singleUse.Push(Pointer(base, 22u64))
     singleUse.Push(Pointer(base, 33u64))
@@ -84,7 +84,7 @@ main(): Int64 {
     Require(Token(base, singleUse.Front()) == 22u64 && Token(base, singleUse.Top()) == 22u64,
         "SingleUseDeque pops")
     singleUse.Clear()
-    Require(singleUse.Empty(), "SingleUseDeque clear")
+    Require(Empty(singleUse), "SingleUseDeque clear")
     println("SMOKE SingleUseDeque front=22 top=22 clear_empty=1")
     records += 1
 
@@ -318,7 +318,7 @@ main(): Int64 {
     println("MIXED PASS seed=${seed} steps=${mixedSteps} final_len=${model.length}")
     records += 1
 
-    singleUse.Fini()
+    Fini(singleUse)
     println("LOCALDEQUE_PARITY PASS lifetimes=${lifetimeCount} operations=${operations} records=${records}")
     return 0
 }
