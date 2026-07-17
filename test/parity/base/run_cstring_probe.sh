@@ -19,9 +19,10 @@ trap 'rm -rf "$TMP"' EXIT
     "$SELFHOST_CJC" --package "$ROOT/src/rt.cstring" --output-type=staticlib \
         --int-overflow wrapping --import-path "$TMP" --output-dir "$TMP" -o librt.cstring.a
     g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o Panic.o
+    g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o Atomic.o
     "$SELFHOST_CJC" "$ROOT/test/parity/base/cstring_probe.cj" \
         --import-path "$TMP" --int-overflow wrapping \
-        "$TMP/librt.cstring.a" "$TMP/librt.base.a" "$TMP/Panic.o" \
+        "$TMP/librt.cstring.a" "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" \
         --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/cstring_probe"
 )
 
