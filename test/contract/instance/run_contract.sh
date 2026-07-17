@@ -5,7 +5,7 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 OUT=${OUT:-"$ROOT/out/instance-contract"}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
 CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-HYBRID=${HYBRID:-"$ROOT/out/isolate-s4-hybrid/libcangjie-runtime.so"}
+HYBRID=${HYBRID:-"$ROOT/out/gate/hybrid/libcangjie-runtime.so"}
 BOUNDS="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
 
 rm -rf "$OUT"
@@ -38,6 +38,11 @@ RUNTIME_ROOT="$RUNTIME_ROOT" CANGJIE_HOME="$CANGJIE_HOME" \
 SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
     CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
     MODE=s4 CYCLES=1 TIMEOUT=30s OUT="$OUT/managed-s4" \
+    bash "$ROOT/test/contract/instance/run_managed_contract.sh"
+
+SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
+    CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
+    MODE=s4 CYCLES=100 TIMEOUT=120s OUT="$OUT/managed-s4-100" \
     bash "$ROOT/test/contract/instance/run_managed_contract.sh"
 
 SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
