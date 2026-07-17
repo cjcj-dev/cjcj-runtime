@@ -656,10 +656,6 @@ public struct RegionInfo {
 
     // RegionInfo.h:760-814,868-873,948. The explicit pointer is the C++
     // methods' implicit receiver and keeps the mapped descriptor in place.
-    public static func SetUnitRole(region: CPointer<RegionInfo>, role: UnitRole): Unit {
-        region.SetUnitRole(role)
-    }
-
     public static func SetUnitRole0(region: CPointer<RegionInfo>, role: UnitRole): Unit {
         region.SetUnitRole0(role)
     }
@@ -748,6 +744,20 @@ public struct RegionInfo {
         let free: Bool = region.IsFreeRegion()
         return free
     }
+}
+
+// runtime/src/Heap/Allocator/RegionInfo.h:759-763.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+public func SetUnitRole(self: CPointer<RegionInfo>, role: UnitRole): Unit {
+    let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(self) + 76) }
+    BitFieldU8.SetAtomicValue(field, 0, BIT_LENGTH, role)
+}
+
+// runtime/src/Heap/Allocator/RegionInfo.h:1103-1107.
+// LANG-BOUNDARY: concrete CPointer extension member collision
+func SetUnitRole(self: CPointer<UnitInfo>, role: UnitRole): Unit {
+    let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(self) + 76) }
+    BitFieldU8.SetAtomicValue(field, 0, BIT_LENGTH, role)
 }
 
 // C++ RegionInfo methods use an implicit RegionInfo* receiver. Extending the mapped
@@ -1031,14 +1041,6 @@ extend CPointer<RegionInfo> {
         unsafe { routeInfo.write(value) }
     }
 
-    // RegionInfo.h:760-763.
-    public func SetUnitRole(role: UnitRole): Unit {
-        // RegionInfo.h:1022-1028; guarded by the live C++-vs-Cangjie layout probe.
-        let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(this) + 76) }
-        BitFieldU8.SetAtomicValue(field,
-            0, BIT_LENGTH, role)
-    }
-
     // RegionInfo.h:764-767.
     public func SetUnitRole0(role: UnitRole): Unit {
         var layout = UnitMetadata()
@@ -1207,7 +1209,7 @@ extend CPointer<RegionInfo> {
             CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32).write(0, CPointer<Unit>())
         }
         SetRegionType(FREE_REGION)
-        SetUnitRole(uClass)
+        SetUnitRole(this, uClass)
         SetTraceRegionFlag(0u8)
         SetMarkedRegionFlag(0u8)
         SetEnqueuedRegionFlag(0u8)
@@ -1233,15 +1235,9 @@ extend CPointer<RegionInfo> {
 // RegionInfo.h:1098-1101 deletes UnitInfo lifecycle; these methods operate only
 // on already-existing native records.
 extend CPointer<UnitInfo> {
-    // RegionInfo.h:1103-1107.
-    func SetUnitRole(role: UnitRole): Unit {
-        let field = unsafe { CPointer<BitFieldU8>(CPointer<UInt8>(this) + 76) }
-        BitFieldU8.SetAtomicValue(field, 0, BIT_LENGTH, role)
-    }
-
     // RegionInfo.h:1141-1145.
     func InitSubordinateUnit(owner: CPointer<RegionInfo>): Unit {
-        SetUnitRole(SUBORDINATE_UNIT)
+        SetUnitRole(this, SUBORDINATE_UNIT)
         unsafe {
             CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32).write(0, CPointer<Unit>(owner))
         }
