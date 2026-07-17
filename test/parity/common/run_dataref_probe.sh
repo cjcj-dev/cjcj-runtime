@@ -22,7 +22,7 @@ trap 'rm -rf "$TMP"' EXIT
 
 (
     cd "$TMP"
-    for pkg in rt.base rt.common; do
+    for pkg in rt.base rt.sync rt.heap.allocator rt.common; do
         "$SELFHOST_CJC" --package "$ROOT/src/$pkg" --output-type=staticlib \
             --int-overflow wrapping --import-path "$TMP" --output-dir "$TMP" -o "lib$pkg.a"
     done
@@ -30,10 +30,12 @@ trap 'rm -rf "$TMP"' EXIT
     # Existing rt.common leaves reference these Layer0 bridges; Dataref itself adds no bridge.
     g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
     g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
+    g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$TMP/PagePoolMutex.o"
 
     "$SELFHOST_CJC" "$ROOT/test/parity/common/dataref_probe.cj" \
         --import-path "$TMP" --int-overflow wrapping \
-        "$TMP/librt.common.a" "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" \
+        "$TMP/librt.common.a" "$TMP/librt.heap.allocator.a" "$TMP/librt.sync.a" \
+        "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" "$TMP/PagePoolMutex.o" \
         --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/dataref_probe"
 
     g++ -std=c++14 -O2 -I"$REFERENCE_ROOT" -I"$REFERENCE_SECUREC" \
