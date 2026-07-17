@@ -97,6 +97,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         os/Linux/Panic.cpp)
 endif()
 
+# Common/PagePool.h:152 and Heap/Allocator/RegionList.h:169 embed std::mutex.
+# APPLE_ABI_FACTS.md §2-§3 supplies the Darwin libc++ layout and initializer.
+if(APPLE OR IOS_FLAG MATCHES 1 OR IOS_SIMULATOR_FLAG MATCHES "^[12]$")
+    list(APPEND RT0_PLATFORM_SOURCES
+        os/Macos/PagePoolMutex.cpp)
+endif()
+
 list(APPEND RT0_PLATFORM_SOURCES
     os/Loader.h
     os/Path.h
