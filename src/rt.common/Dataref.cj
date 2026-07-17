@@ -1,8 +1,9 @@
 package rt.common
 
-// Common/Dataref.h:16-34. The type parameter is the C++ pointee type and does not add storage.
+// runtime/src/Common/Dataref.h:20-22.
+// LANG-BOUNDARY: C++ phantom pointee template erased from @C wire record
 @C
-public struct DataRefOffset32<T> where T <: CType {
+public struct DataRefOffset32 {
     // Common/Dataref.h:21. The sole inline field is the signed 32-bit self-relative offset.
     public var refOffset: Int32
 
@@ -12,9 +13,10 @@ public struct DataRefOffset32<T> where T <: CType {
     }
 }
 
-// Common/Dataref.h:36-50. The type parameter is the C++ pointee type and does not add storage.
+// runtime/src/Common/Dataref.h:36-38.
+// LANG-BOUNDARY: C++ phantom pointee template erased from @C wire record
 @C
-public struct DataRefOffset64<T> where T <: CType {
+public struct DataRefOffset64 {
     // Common/Dataref.h:37. The sole inline field is the signed 64-bit self-relative offset.
     public var refOffset: Int64
 
@@ -24,9 +26,11 @@ public struct DataRefOffset64<T> where T <: CType {
     }
 }
 
-// Common/Dataref.h:23-33. A pointer receiver preserves the address denoted by C++ `this`;
+// runtime/src/Common/Dataref.h:23-33.
+// LANG-BOUNDARY: C++ phantom pointee template erased from @C wire record
+// A pointer receiver preserves the address denoted by C++ `this`;
 // a DataRefOffset32 value receiver would copy the wrapper before computing the relative address.
-public func GetDataRef<T>(self: CPointer<DataRefOffset32<T>>): CPointer<T> where T <: CType {
+public func GetDataRef<T>(self: CPointer<DataRefOffset32>): CPointer<T> where T <: CType {
     // Common/Dataref.h:26. Read the offset from the original inline wrapper object.
     let refOffset = unsafe { self.read().refOffset }
     // Common/Dataref.h:25-27,32. Zero is the encoded null reference.
@@ -38,9 +42,11 @@ public func GetDataRef<T>(self: CPointer<DataRefOffset32<T>>): CPointer<T> where
     return unsafe { CPointer<T>(ref) }
 }
 
-// Common/Dataref.h:39-49. A pointer receiver preserves the address denoted by C++ `this`;
+// runtime/src/Common/Dataref.h:39-49.
+// LANG-BOUNDARY: C++ phantom pointee template erased from @C wire record
+// A pointer receiver preserves the address denoted by C++ `this`;
 // a DataRefOffset64 value receiver would copy the wrapper before computing the relative address.
-public func GetDataRef<T>(self: CPointer<DataRefOffset64<T>>): CPointer<T> where T <: CType {
+public func GetDataRef<T>(self: CPointer<DataRefOffset64>): CPointer<T> where T <: CType {
     // Common/Dataref.h:42. Read the offset from the original inline wrapper object.
     let refOffset = unsafe { self.read().refOffset }
     // Common/Dataref.h:41-43,48. Zero is the encoded null reference.
