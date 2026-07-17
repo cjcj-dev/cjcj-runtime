@@ -7,6 +7,7 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
 CJC_BIN_DIR=$(cd "$(dirname "$SELFHOST_CJC")" && pwd)
 SELFHOST_RUNTIME="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
+SELFHOST_RUNTIME_LIB="$SELFHOST_RUNTIME/libcangjie-runtime.so"
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 CPP_RUNTIME_LIB="$RUNTIME_ROOT/target/temp/lib/x86_64_Release"
 export CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
@@ -50,7 +51,10 @@ for pkg in rt.base rt.sync rt.heap.allocator; do
     PACKAGE_TEMPS+=("$temps")
 done
 
-g++ -std=c++17 -O2 -fPIC -c "$ROOT/test/parity/heap/allocutil_slotlist_bridge.cpp" \
+g++ -std=c++17 -O2 -fPIC -DMRT_USE_CJTHREAD_RENAME \
+    -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" \
+    -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" \
+    -c "$ROOT/test/parity/heap/allocutil_slotlist_bridge.cpp" \
     -o "$TMP/bridge.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$TMP/Futex.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
@@ -154,7 +158,15 @@ awk '/^define / {
     name=$0; sub(/^[^@]*@/, "", name); sub(/\(.*/, "", name); gsub(/^"|"$/, "", name)
     print name
 }' "$TMP/noheap.pre.ll" | sort -u > "$TMP/noheap.defined"
-comm -12 "$TMP/noheap.symbols" "$TMP/noheap.defined" > "$TMP/noheap.reachable_defs"
+comm -12 "$TMP/noheap.symbols" "$TMP/noheap.defined" > "$TMP/noheap.reachable_cj_defs"
+BASEOBJECT_SYMBOL='_ZNK12MapleRuntime10BaseObject7GetSizeEv'
+if ! grep -Fxq "$BASEOBJECT_SYMBOL" "$TMP/noheap.symbols"; then
+    echo 'SLOTLIST_NOHEAP FAIL BaseObject::GetSize boundary absent' >&2
+    exit 1
+fi
+printf '%s\n' "$BASEOBJECT_SYMBOL" > "$TMP/noheap.reachable_foreign_defs"
+cat "$TMP/noheap.reachable_cj_defs" "$TMP/noheap.reachable_foreign_defs" |
+    sort -u > "$TMP/noheap.reachable_defs"
 REACHABLE_DEFS=$(wc -l < "$TMP/noheap.reachable_defs")
 
 : > "$TMP/noheap.closure.ll"
@@ -168,7 +180,7 @@ for temps in "${PACKAGE_TEMPS[@]}"; do
         module_defs="$module_ir.defs"
         : > "$module_defs"
         "$LLVM_DIS" "$final_bc" -o "$module_ir"
-        awk -v symbols="$TMP/noheap.reachable_defs" -v defs="$module_defs" '
+        awk -v symbols="$TMP/noheap.reachable_cj_defs" -v defs="$module_defs" '
         BEGIN { while ((getline symbol < symbols) > 0) keep[symbol]=1 }
         /^define / {
             name=$0; sub(/^[^@]*@/, "", name); sub(/\(.*/, "", name); gsub(/^"|"$/, "", name)
@@ -196,7 +208,7 @@ for temps in "${PACKAGE_TEMPS[@]}"; do
         object_defs="$object_dump.defs"
         : > "$object_defs"
         objdump -dr "$object" > "$object_dump"
-        awk -v symbols="$TMP/noheap.reachable_defs" -v defs="$object_defs" '
+        awk -v symbols="$TMP/noheap.reachable_cj_defs" -v defs="$object_defs" '
         BEGIN { while ((getline symbol < symbols) > 0) keep[symbol]=1 }
         /^[[:xdigit:]]+ <.*>:/ {
             name=$0; sub(/^[^<]*</, "", name); sub(/>:[[:space:]]*$/, "", name)
@@ -213,10 +225,37 @@ for temps in "${PACKAGE_TEMPS[@]}"; do
 done
 sort -u -o "$TMP/noheap.object_defs" "$TMP/noheap.object_defs"
 
-comm -23 "$TMP/noheap.reachable_defs" "$TMP/noheap.final_defs" > "$TMP/noheap.missing_final"
-comm -23 "$TMP/noheap.reachable_defs" "$TMP/noheap.object_defs" > "$TMP/noheap.missing_object"
-comm -12 "$TMP/noheap.final_defs" "$TMP/noheap.object_defs" > "$TMP/noheap.scanned_defs"
-cat "$TMP/noheap.missing_final" "$TMP/noheap.missing_object" | sort -u > "$TMP/noheap.missing"
+# Common/BaseObject.cpp:139-149 is the live foreign target-code leaf. The
+# packaged runtime is the implementation used by the executable, so scan that
+# exact definition rather than a test object with a same-named substitute.
+if [[ ! -f "$SELFHOST_RUNTIME_LIB" ]]; then
+    echo "SLOTLIST_NOHEAP FAIL runtime library absent: $SELFHOST_RUNTIME_LIB" >&2
+    exit 1
+fi
+read -r BASEOBJECT_ADDRESS BASEOBJECT_SIZE < <(
+    readelf -Ws "$SELFHOST_RUNTIME_LIB" | awk -v symbol="$BASEOBJECT_SYMBOL" '
+        $8 == symbol "@@CANGJIE" && $4 == "FUNC" && $7 != "UND" { print $2, $3; exit }
+    '
+)
+if [[ -z ${BASEOBJECT_ADDRESS:-} || -z ${BASEOBJECT_SIZE:-} || $BASEOBJECT_SIZE -eq 0 ]]; then
+    echo 'SLOTLIST_NOHEAP FAIL live BaseObject::GetSize definition absent' >&2
+    exit 1
+fi
+BASEOBJECT_START=$((16#$BASEOBJECT_ADDRESS))
+BASEOBJECT_STOP=$((BASEOBJECT_START + BASEOBJECT_SIZE))
+objdump -dr --start-address="$BASEOBJECT_START" --stop-address="$BASEOBJECT_STOP" \
+    "$SELFHOST_RUNTIME_LIB" > "$TMP/noheap.baseobject.objdump"
+if ! grep -Fq "<$BASEOBJECT_SYMBOL@@CANGJIE>:" "$TMP/noheap.baseobject.objdump"; then
+    echo 'SLOTLIST_NOHEAP FAIL BaseObject::GetSize target-code extraction empty' >&2
+    exit 1
+fi
+cat "$TMP/noheap.baseobject.objdump" >> "$TMP/noheap.closure.objdump"
+printf '%s\n' "$BASEOBJECT_SYMBOL" > "$TMP/noheap.foreign_target_defs"
+
+comm -12 "$TMP/noheap.final_defs" "$TMP/noheap.object_defs" > "$TMP/noheap.scanned_cj_defs"
+cat "$TMP/noheap.scanned_cj_defs" "$TMP/noheap.foreign_target_defs" |
+    sort -u > "$TMP/noheap.scanned_defs"
+comm -23 "$TMP/noheap.reachable_defs" "$TMP/noheap.scanned_defs" > "$TMP/noheap.missing"
 SCANNED_DEFS=$(wc -l < "$TMP/noheap.scanned_defs")
 MISSING_DEFS=$(wc -l < "$TMP/noheap.missing")
 
@@ -229,19 +268,11 @@ MCC_NEW_REFS=$( { grep -Eih 'MCC_New|CJ_MCC_New' "$TMP/noheap.closure.ll" || tru
     grep -Eih 'R_X86_64_.*(MCC_New|CJ_MCC_New)' "$TMP/noheap.closure.objdump" || true
 } | wc -l )
 
-# The foreign BaseObject leaf is deliberately unresolved in production and is
-# supplied only by bridge.o for execution. Record, but do not overclaim, it.
-BRIDGE_SYMBOL='_ZNK12MapleRuntime10BaseObject7GetSizeEv'
-if ! grep -Fxq "$BRIDGE_SYMBOL" "$TMP/noheap.symbols"; then
-    echo 'SLOTLIST_NOHEAP FAIL BaseObject bridge boundary absent' >&2
-    exit 1
-fi
 if [[ $FINAL_BC_COUNT -eq 0 || $OBJECT_COUNT -eq 0 || $REACHABLE_DEFS -eq 0 ||
       $SCANNED_DEFS -ne $REACHABLE_DEFS || $MISSING_DEFS -ne 0 ||
       $FORBIDDEN_REFS -ne 0 || $MCC_NEW_REFS -ne 0 ]]; then
     echo "SLOTLIST_NOHEAP FAIL roots=${#ROOT_SYMBOLS[@]} reachable_defs=$REACHABLE_DEFS scanned_defs=$SCANNED_DEFS missing=$MISSING_DEFS forbidden=$FORBIDDEN_REFS mcc=$MCC_NEW_REFS" >&2
-    sed 's/^/missing_final /' "$TMP/noheap.missing_final" >&2
-    sed 's/^/missing_object /' "$TMP/noheap.missing_object" >&2
+    sed 's/^/missing /' "$TMP/noheap.missing" >&2
     grep -Ein "$FORBIDDEN_IR_PATTERN" "$TMP/noheap.closure.ll" >&2 || true
     grep -Ein "$FORBIDDEN_OBJECT_PATTERN" "$TMP/noheap.closure.objdump" >&2 || true
     exit 1
@@ -250,8 +281,8 @@ fi
 echo "ALLOCUTIL_SLOTLIST_PARITY lines=$(wc -l < "$CJ_OUT") mismatches=0 status=PASS"
 echo "ALLOCUTIL_OWNER definitions=${#ALLOCUTIL_OWNERS[@]} owner=rt.base live_chain=rt.base,rt.sync,rt.heap.allocator status=PASS"
 echo "SLOTLIST_NOHEAP_CLOSURE roots=${#ROOT_SYMBOLS[@]} reachable_defs=$REACHABLE_DEFS scanned_defs=$SCANNED_DEFS missing=$MISSING_DEFS mcc_new_refs=$MCC_NEW_REFS status=PASS"
-echo 'SLOTLIST_BASEOBJECT_CLOSURE live=UNPROVEN dependency=BaseObject::GetSize evidence=test-only_bridge debt=bridge_substitute status=DEBT'
+echo "SLOTLIST_BASEOBJECT_CLOSURE symbol=$BASEOBJECT_SYMBOL target_bytes=$BASEOBJECT_SIZE runtime_sha256=$(sha256sum "$SELFHOST_RUNTIME_LIB" | awk '{print $1}') status=PASS"
 echo 'SLOTLIST_PLATFORM target=Linux-x86_64 abi=Itanium compile=PASS execute=PASS status=PASS'
 echo 'SLOTLIST_PLATFORM target=Apple abi=Itanium compile=UNTESTED execute=UNTESTED debt=no_apple_toolchain status=DEBT'
 echo 'SLOTLIST_PLATFORM target=Win64 abi=MSVC compile=UNTESTED execute=UNTESTED debt=itanium_foreign_symbols_not_ported status=DEBT'
-echo "ALLOCUTIL_SLOTLIST_COMPILER path=$SELFHOST_CJC status=PASS"
+echo "ALLOCUTIL_SLOTLIST_COMPILER path=$SELFHOST_CJC sha256=$(sha256sum "$SELFHOST_CJC" | awk '{print $1}') status=PASS"
