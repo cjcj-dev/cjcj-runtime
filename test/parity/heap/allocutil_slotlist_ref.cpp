@@ -5,22 +5,18 @@
 
 #include "Heap/Allocator/AllocUtil.h"
 #include "Heap/Allocator/SlotList.h"
-
-namespace MapleRuntime {
-size_t BaseObject::GetSize() const
-{
-    size_t size = 0;
-    std::memcpy(&size, this, sizeof(size));
-    return size;
-}
-} // namespace MapleRuntime
+#include "ObjectModel/Flags.h"
+#include "ObjectModel/MClass.h"
 
 namespace {
 template<size_t N>
-void InitSlot(std::array<uint64_t, N>& storage, size_t size)
+void InitSlot(std::array<uint64_t, N>& storage, MapleRuntime::TypeInfo& typeInfo)
 {
     storage.fill(0xa5a5a5a5a5a5a5a5ULL);
-    storage[0] = size;
+    std::memset(&typeInfo, 0, sizeof(typeInfo));
+    typeInfo.SetType(MapleRuntime::TypeKind::TYPE_KIND_CLASS);
+    typeInfo.SetInstanceSize(static_cast<uint32_t>(sizeof(storage) - MapleRuntime::TYPEINFO_PTR_SIZE));
+    reinterpret_cast<MapleRuntime::StateWord*>(storage.data())->SetTypeInfo(&typeInfo);
 }
 
 template<size_t N>
@@ -52,12 +48,32 @@ int main()
 
     alignas(ObjectSlot) std::array<uint64_t, 4> slotA;
     alignas(ObjectSlot) std::array<uint64_t, 6> slotB;
-    InitSlot(slotA, sizeof(slotA));
-    InitSlot(slotB, sizeof(slotB));
+    alignas(TypeInfo) std::array<std::byte, sizeof(TypeInfo)> typeInfoAStorage{};
+    alignas(TypeInfo) std::array<std::byte, sizeof(TypeInfo)> typeInfoBStorage{};
+    auto& typeInfoA = *reinterpret_cast<TypeInfo*>(typeInfoAStorage.data());
+    auto& typeInfoB = *reinterpret_cast<TypeInfo*>(typeInfoBStorage.data());
+    InitSlot(slotA, typeInfoA);
+    InitSlot(slotB, typeInfoB);
     auto* objectA = reinterpret_cast<BaseObject*>(slotA.data());
     auto* objectB = reinterpret_cast<BaseObject*>(slotB.data());
     auto* overlayA = reinterpret_cast<ObjectSlot*>(slotA.data());
     auto* overlayB = reinterpret_cast<ObjectSlot*>(slotB.data());
+
+    alignas(TypeInfo) std::array<std::byte, sizeof(TypeInfo)> arrayTypeInfoStorage{};
+    alignas(TypeInfo) std::array<std::byte, sizeof(TypeInfo)> componentTypeInfoStorage{};
+    auto& arrayTypeInfo = *reinterpret_cast<TypeInfo*>(arrayTypeInfoStorage.data());
+    auto& componentTypeInfo = *reinterpret_cast<TypeInfo*>(componentTypeInfoStorage.data());
+    arrayTypeInfo.SetType(TypeKind::TYPE_KIND_RAWARRAY);
+    arrayTypeInfo.SetComponentTypeInfo(&componentTypeInfo);
+    componentTypeInfo.SetType(TypeKind::TYPE_KIND_UINT64);
+    componentTypeInfo.SetInstanceSize(sizeof(uint64_t));
+    alignas(MArray) std::array<uint64_t, 6> arrayObject{};
+    reinterpret_cast<StateWord*>(arrayObject.data())->SetTypeInfo(&arrayTypeInfo);
+    uint32_t arrayLength = 4;
+    std::memcpy(reinterpret_cast<unsigned char*>(arrayObject.data()) + sizeof(StateWord),
+                &arrayLength, sizeof(arrayLength));
+    std::cout << "GETSIZE class=" << objectA->GetSize()
+              << " array=" << reinterpret_cast<BaseObject*>(arrayObject.data())->GetSize() << '\n';
 
     SlotList list;
     list.PushFront(objectA);

@@ -3,6 +3,14 @@ package allocutil.slotlist.probe
 import rt.base.*
 import rt.heap.allocator.*
 
+foreign {
+    func AllocUtilSlotListInitClass(object: CPointer<Unit>, typeInfoStorage: CPointer<Unit>,
+        instanceSize: UInt32): Unit
+    func AllocUtilSlotListInitArray(object: CPointer<Unit>, arrayTypeInfoStorage: CPointer<Unit>,
+        componentTypeInfoStorage: CPointer<Unit>, length: UInt32, componentSize: UInt32): Unit
+    func _ZNK12MapleRuntime10BaseObject7GetSizeEv(baseObject: CPointer<Unit>): UIntNative
+}
+
 private func TailIsZero(words: CPointer<UInt64>, first: UIntNative, count: UIntNative): Bool {
     for (i in first..count) {
         if (unsafe { words.read(Int64(i)) } != 0u64) {
@@ -19,17 +27,29 @@ main(): Int64 {
     println("LAYOUT object_size=${sizeOf<ObjectSlot>()} object_align=${alignOf<ObjectSlot>()} " +
         "list_size=${sizeOf<SlotList>()} list_align=${alignOf<SlotList>()}")
 
-    var slotA: VArray<UInt64, $4> = [
-        32u64, 0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64
-    ]
-    var slotB: VArray<UInt64, $6> = [
-        48u64, 0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64,
-        0xa5a5a5a5a5a5a5a5u64, 0xa5a5a5a5a5a5a5a5u64
-    ]
+    var slotA: VArray<UInt64, $4> = [0xa5a5a5a5a5a5a5a5u64; 4]
+    var slotB: VArray<UInt64, $6> = [0xa5a5a5a5a5a5a5a5u64; 6]
+    var typeInfoA: VArray<UInt64, $16> = [0u64; 16]
+    var typeInfoB: VArray<UInt64, $16> = [0u64; 16]
     let objectA = unsafe { CPointer<Unit>(CPointer<UInt64>(inout slotA)) }
     let objectB = unsafe { CPointer<Unit>(CPointer<UInt64>(inout slotB)) }
+    unsafe {
+        AllocUtilSlotListInitClass(objectA, CPointer<Unit>(CPointer<UInt64>(inout typeInfoA)), 24u32)
+        AllocUtilSlotListInitClass(objectB, CPointer<Unit>(CPointer<UInt64>(inout typeInfoB)), 40u32)
+    }
     let overlayA = unsafe { CPointer<ObjectSlot>(objectA) }
     let overlayB = unsafe { CPointer<ObjectSlot>(objectB) }
+
+    var arrayObject: VArray<UInt64, $6> = [0u64; 6]
+    var arrayTypeInfo: VArray<UInt64, $16> = [0u64; 16]
+    var componentTypeInfo: VArray<UInt64, $16> = [0u64; 16]
+    let arrayObjectPtr = unsafe { CPointer<Unit>(CPointer<UInt64>(inout arrayObject)) }
+    unsafe {
+        AllocUtilSlotListInitArray(arrayObjectPtr, CPointer<Unit>(CPointer<UInt64>(inout arrayTypeInfo)),
+            CPointer<Unit>(CPointer<UInt64>(inout componentTypeInfo)), 4u32, 8u32)
+    }
+    println("GETSIZE class=${unsafe { _ZNK12MapleRuntime10BaseObject7GetSizeEv(objectA) }} " +
+        "array=${unsafe { _ZNK12MapleRuntime10BaseObject7GetSizeEv(arrayObjectPtr) }}")
 
     var list = SlotList()
     list.PushFront(objectA)
