@@ -176,8 +176,123 @@ fi
 echo "STATEWORD_ATOMIC x86_64_weak=1 non_x86_strong=SOURCE_PRESERVED status=PASS"
 
 awk '/GetStateWordHv\(/,/^}/' "$TMP/production.pre.ll" > "$TMP/getstateword.ll"
-AS0_RECEIVERS=$(grep -Ec '^define .*XPRNY_(9StateWord|11ObjectState)E.*\(.*i8\*' \
-    "$TMP/production.pre.ll" || true)
+
+# Common/StateWord.h:42-76,93-151. Fail closed over the exact production operation
+# surface in both pre-opt and final IR: 15 residual extensions plus eight ruled free
+# first-pointer overloads. Mangled names identify the concrete receiver; definition
+# signatures prove that every source receiver is an AS0 i8* rather than AS1 managed data.
+cat > "$TMP/stateword.expected.tsv" <<'EOF'
+extension	ObjectState	AtomicGetObjectState	1	_CN9rt.commonXPRNY_11ObjectStateE20AtomicGetObjectStateHv
+extension	ObjectState	IsLockedState	0	_CN9rt.commonXPRNY_11ObjectStateE13IsLockedStateHv
+extension	ObjectState	GetStateBits	0	_CN9rt.commonXPRNY_11ObjectStateE12GetStateBitsHv
+extension	ObjectState	AtomicGetStateBits	0	_CN9rt.commonXPRNY_11ObjectStateE18AtomicGetStateBitsHv
+extension	ObjectState	SetStateBits	1	_CN9rt.commonXPRNY_11ObjectStateE12SetStateBitsHt
+extension	ObjectState	AtomicSetStateBits	1	_CN9rt.commonXPRNY_11ObjectStateE18AtomicSetStateBitsHt
+extension	ObjectState	CompareExchangeStateBits	0	_CN9rt.commonXPRNY_11ObjectStateE24CompareExchangeStateBitsHtt
+extension	StateWord	GetTypeInfo	0	_CN9rt.commonXPRNY_9StateWordE11GetTypeInfoHv
+extension	StateWord	SetTypeInfo	1	_CN9rt.commonXPRNY_9StateWordE11SetTypeInfoHPu
+extension	StateWord	GetStateWord	1	_CN9rt.commonXPRNY_9StateWordE12GetStateWordHv
+extension	StateWord	IsValidStateWord	0	_CN9rt.commonXPRNY_9StateWordE16IsValidStateWordHv
+extension	StateWord	GetObjectState	1	_CN9rt.commonXPRNY_9StateWordE14GetObjectStateHv
+extension	StateWord	IsLockedWord	0	_CN9rt.commonXPRNY_9StateWordE12IsLockedWordHv
+extension	StateWord	TryLockStateWord	0	_CN9rt.commonXPRNY_9StateWordE16TryLockStateWordHRNY_11ObjectStateE
+extension	StateWord	UnlockStateWord	1	_CN9rt.commonXPRNY_9StateWordE15UnlockStateWordHRNY_11ObjectStateE
+free	ObjectState	GetStateCode	0	_CN9rt.common12GetStateCodeHPRNY_11ObjectStateE
+free	ObjectState	SetStateCode	1	_CN9rt.common12SetStateCodeHPRNY_11ObjectStateEh
+free	ObjectState	IsForwardableState	0	_CN9rt.common18IsForwardableStateHPRNY_11ObjectStateE
+free	ObjectState	IsForwardedState	0	_CN9rt.common16IsForwardedStateHPRNY_11ObjectStateE
+free	StateWord	GetStateCode	0	_CN9rt.common12GetStateCodeHPRNY_9StateWordE
+free	StateWord	SetStateCode	1	_CN9rt.common12SetStateCodeHPRNY_9StateWordEh
+free	StateWord	IsForwardableState	0	_CN9rt.common18IsForwardableStateHPRNY_9StateWordE
+free	StateWord	IsForwardedState	0	_CN9rt.common16IsForwardedStateHPRNY_9StateWordE
+EOF
+awk -F '\t' '{print $5}' "$TMP/stateword.expected.tsv" | sort > "$TMP/stateword.expected.symbols"
+
+extract_stateword_surface() {
+    awk '/^define / {
+        name=$0
+        sub(/^[^@]*@/, "", name)
+        sub(/\(.*/, "", name)
+        gsub(/^"|"$/, "", name)
+        if (name ~ /^_CN9rt\.commonXPRNY_(11ObjectState|9StateWord)E/ ||
+            name ~ /^_CN9rt\.common(12GetStateCode|12SetStateCode|18IsForwardableState|16IsForwardedState)H/) {
+            print name
+        }
+    }' "$1"
+}
+
+validate_stateword_manifest() {
+    local stage=$1
+    local ir=$2
+    local actual="$TMP/stateword.$stage.actual"
+    local signature_errors="$TMP/stateword.$stage.signature_errors"
+    extract_stateword_surface "$ir" > "$actual.raw"
+    sort "$actual.raw" > "$actual"
+    uniq -d "$actual" > "$actual.duplicates"
+    comm -23 "$TMP/stateword.expected.symbols" "$actual" > "$actual.missing"
+    comm -13 "$TMP/stateword.expected.symbols" "$actual" > "$actual.unexpected"
+    : > "$signature_errors"
+    while IFS=$'\t' read -r kind receiver operation receiver_slot symbol; do
+        mapfile -t definition < <(grep '^define ' "$ir" | grep -F "@$symbol(")
+        if [[ ${#definition[@]} -ne 1 ]]; then
+            printf '%s definition_count=%s\n' "$symbol" "${#definition[@]}" >> "$signature_errors"
+            continue
+        fi
+        line=${definition[0]}
+        if [[ "$line" == *'addrspace(1)'* || "$line" != *"i8* %$receiver_slot"* ]]; then
+            printf '%s receiver_slot=%s not_as0\n' "$symbol" "$receiver_slot" >> "$signature_errors"
+        fi
+        if [[ "$kind" == extension && "$line" != *'%outerTI'* ]]; then
+            printf '%s missing_extension_outerTI\n' "$symbol" >> "$signature_errors"
+        elif [[ "$kind" == free && "$line" == *'%outerTI'* ]]; then
+            printf '%s unexpected_free_outerTI\n' "$symbol" >> "$signature_errors"
+        fi
+        if [[ "$kind" == free ]]; then
+            case "$operation" in
+                GetStateCode)
+                    [[ "$line" == 'define i8 '* && "$line" == *'(i8* %0) gc '* ]] ||
+                        printf '%s free_signature_mismatch\n' "$symbol" >> "$signature_errors"
+                    ;;
+                SetStateCode)
+                    [[ "$line" == 'define void '* && "$line" == *'sret(%Unit.Type) %0, i8* %1, i8 %2) gc '* ]] ||
+                        printf '%s free_signature_mismatch\n' "$symbol" >> "$signature_errors"
+                    ;;
+                IsForwardableState|IsForwardedState)
+                    [[ "$line" == 'define i1 '* && "$line" == *'(i8* %0) gc '* ]] ||
+                        printf '%s free_signature_mismatch\n' "$symbol" >> "$signature_errors"
+                    ;;
+            esac
+        fi
+    done < "$TMP/stateword.expected.tsv"
+}
+
+validate_stateword_manifest pre "$TMP/production.pre.ll"
+validate_stateword_manifest final "$TMP/production.final.ll"
+PRE_MANIFEST=$(wc -l < "$TMP/stateword.pre.actual")
+FINAL_MANIFEST=$(wc -l < "$TMP/stateword.final.actual")
+PRE_MISSING=$(wc -l < "$TMP/stateword.pre.actual.missing")
+FINAL_MISSING=$(wc -l < "$TMP/stateword.final.actual.missing")
+PRE_UNEXPECTED=$(wc -l < "$TMP/stateword.pre.actual.unexpected")
+FINAL_UNEXPECTED=$(wc -l < "$TMP/stateword.final.actual.unexpected")
+PRE_DUPLICATE=$(wc -l < "$TMP/stateword.pre.actual.duplicates")
+FINAL_DUPLICATE=$(wc -l < "$TMP/stateword.final.actual.duplicates")
+PRE_SIGNATURE_ERRORS=$(wc -l < "$TMP/stateword.pre.signature_errors")
+FINAL_SIGNATURE_ERRORS=$(wc -l < "$TMP/stateword.final.signature_errors")
+if [[ $PRE_MANIFEST -ne 23 || $FINAL_MANIFEST -ne 23 ||
+      $PRE_MISSING -ne 0 || $FINAL_MISSING -ne 0 ||
+      $PRE_UNEXPECTED -ne 0 || $FINAL_UNEXPECTED -ne 0 ||
+      $PRE_DUPLICATE -ne 0 || $FINAL_DUPLICATE -ne 0 ||
+      $PRE_SIGNATURE_ERRORS -ne 0 || $FINAL_SIGNATURE_ERRORS -ne 0 ]]; then
+    echo "STATEWORD_DEFINITION_MANIFEST extensions=15 free=8 pre_defs=$PRE_MANIFEST final_defs=$FINAL_MANIFEST pre_missing=$PRE_MISSING final_missing=$FINAL_MISSING pre_unexpected=$PRE_UNEXPECTED final_unexpected=$FINAL_UNEXPECTED pre_duplicate=$PRE_DUPLICATE final_duplicate=$FINAL_DUPLICATE pre_signature_errors=$PRE_SIGNATURE_ERRORS final_signature_errors=$FINAL_SIGNATURE_ERRORS status=FAIL" >&2
+    for evidence in "$TMP"/stateword.*.actual.missing "$TMP"/stateword.*.actual.unexpected \
+        "$TMP"/stateword.*.actual.duplicates "$TMP"/stateword.*.signature_errors; do
+        sed "s|^|$(basename "$evidence") |" "$evidence" >&2
+    done
+    exit 1
+fi
+AS0_RECEIVERS=$PRE_MANIFEST
+echo "STATEWORD_DEFINITION_MANIFEST extensions=15 free=8 pre_defs=23 final_defs=23 pre_as0=23 final_as0=23 missing=0 duplicate=0 unexpected=0 ambiguous=0 status=PASS"
+
 CAS_CALLS=$(grep -c 'call i32 @cj_stateword_u16_cas' "$TMP/production.pre.ll" || true)
 LOAD_CALLS=$(grep -c 'call i16 @cj_atomic_u16_load' "$TMP/production.pre.ll" || true)
 STORE_CALLS=$(grep -c 'call void @cj_atomic_u16_store' "$TMP/production.pre.ll" || true)
@@ -194,7 +309,7 @@ SHADOW_DATA=$(nm --defined-only "$TMP/librt.common.production.a" | \
     awk '$2 ~ /^[Bb]$/ && $3 ~ /(StateWord|ObjectState)/ && $3 !~ /stateWordCheckMessage/ {++n} END {print n+0}')
 MEMCPY_RELOCS=$(for object in "$TMP/production_temps"/[0-9]*.o; do readelf -rW "$object"; done | \
     grep -c 'memcpy' || true)
-if [[ $AS0_RECEIVERS -lt 20 || $CAS_CALLS -lt 1 || $LOAD_CALLS -lt 1 || $STORE_CALLS -lt 1 ||
+if [[ $AS0_RECEIVERS -ne 23 || $CAS_CALLS -lt 1 || $LOAD_CALLS -lt 1 || $STORE_CALLS -lt 1 ||
       $ILLEGAL_AS1 -ne 0 || $LIVE_MEMCPY -ne 0 || $GETSTATE_SCALARS -lt 3 ||
       $PRODUCTION_EXPORTS -ne 0 || $REFERENCE_EXPORTS -ne 0 || $SHADOW_DATA -ne 0 ||
       $MEMCPY_RELOCS -ne 0 ]]; then
