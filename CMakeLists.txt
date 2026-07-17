@@ -23,3 +23,6 @@ else()
 endif()
 
 add_subdirectory(rt0)
+if(NOT CJCJ_RT0_CONFIGURE_ONLY)
+    add_subdirectory(src.native/rt.instance)
+endif()
