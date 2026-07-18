@@ -205,6 +205,11 @@ int32_t CJRT_ContractDriverCount(void)
         }
     }
     closedir(tasks);
+    if (getenv("CJCJ_CONTRACT_INJECT_MISSING_DRIVER") != NULL) {
+        printf("MANAGED_NEGATIVE inject=missing_driver observed=%d reported=0\n", count);
+        fflush(stdout);
+        return 0;
+    }
     return count;
 }
 
