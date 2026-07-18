@@ -2,7 +2,9 @@
 
 #include <dirent.h>
 #include <dlfcn.h>
+#include <elf.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <link.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -222,18 +224,108 @@ uint64_t CJRT_ContractResidentBytes(void)
     return pageSize <= 0 ? 0 : (uint64_t)resident * (uint64_t)pageSize;
 }
 
+#define MAX_RUNTIME_IMAGES 8
+#define MAX_BUILD_ID_BYTES 64
+
+struct RuntimeImageIdentity {
+    dev_t device;
+    ino_t inode;
+    uintptr_t base;
+    char buildId[MAX_BUILD_ID_BYTES * 2 + 1];
+    char path[PATH_MAX];
+};
+
 struct RuntimeImageAudit {
     int imageCount;
+    int failed;
+    struct RuntimeImageIdentity images[MAX_RUNTIME_IMAGES];
 };
+
+static size_t AlignNote(size_t value)
+{
+    return (value + 3U) & ~3U;
+}
+
+static int ReadBuildId(const struct dl_phdr_info* info, char* output, size_t outputSize)
+{
+    for (ElfW(Half) index = 0; index < info->dlpi_phnum; ++index) {
+        const ElfW(Phdr)* header = &info->dlpi_phdr[index];
+        if (header->p_type != PT_NOTE) {
+            continue;
+        }
+        const unsigned char* cursor =
+            (const unsigned char*)(info->dlpi_addr + header->p_vaddr);
+        const unsigned char* end = cursor + header->p_memsz;
+        while ((size_t)(end - cursor) >= sizeof(ElfW(Nhdr))) {
+            ElfW(Nhdr) note;
+            memcpy(&note, cursor, sizeof(note));
+            cursor += sizeof(note);
+            size_t nameSize = AlignNote(note.n_namesz);
+            size_t descriptionSize = AlignNote(note.n_descsz);
+            if ((size_t)(end - cursor) < nameSize + descriptionSize) {
+                return 0;
+            }
+            const unsigned char* name = cursor;
+            const unsigned char* description = cursor + nameSize;
+            if (note.n_type == NT_GNU_BUILD_ID && note.n_namesz == 4 &&
+                memcmp(name, "GNU", 4) == 0 && note.n_descsz <= MAX_BUILD_ID_BYTES &&
+                outputSize > (size_t)note.n_descsz * 2U) {
+                for (ElfW(Word) byte = 0; byte < note.n_descsz; ++byte) {
+                    snprintf(output + byte * 2U, outputSize - byte * 2U, "%02x", description[byte]);
+                }
+                return 1;
+            }
+            cursor += nameSize + descriptionSize;
+        }
+    }
+    snprintf(output, outputSize, "<none>");
+    return 1;
+}
+
+static int SameIdentity(const struct RuntimeImageIdentity* left,
+    const struct RuntimeImageIdentity* right)
+{
+    return left->device == right->device && left->inode == right->inode &&
+        strcmp(left->buildId, right->buildId) == 0;
+}
 
 static int CountRuntimeImages(struct dl_phdr_info* info, size_t size, void* data)
 {
     (void)size;
     struct RuntimeImageAudit* audit = (struct RuntimeImageAudit*)data;
-    if (info->dlpi_name != NULL && strstr(info->dlpi_name, "libcangjie-runtime.so") != NULL) {
-        ++audit->imageCount;
-        printf("MANAGED_IMAGE loaded=%s base=%p\n", info->dlpi_name, (void*)info->dlpi_addr);
+    if (info->dlpi_name == NULL) {
+        return 0;
     }
+    const char* basename = strrchr(info->dlpi_name, '/');
+    basename = basename == NULL ? info->dlpi_name : basename + 1;
+    if (strcmp(basename, "libcangjie-runtime.so") != 0) {
+        return 0;
+    }
+
+    struct RuntimeImageIdentity identity = {0};
+    char* canonical = realpath(info->dlpi_name, identity.path);
+    struct stat status;
+    if (canonical == NULL || stat(identity.path, &status) != 0 ||
+        !ReadBuildId(info, identity.buildId, sizeof(identity.buildId))) {
+        audit->failed = 1;
+        return 1;
+    }
+    identity.device = status.st_dev;
+    identity.inode = status.st_ino;
+    identity.base = (uintptr_t)info->dlpi_addr;
+    for (int index = 0; index < audit->imageCount; ++index) {
+        if (SameIdentity(&audit->images[index], &identity)) {
+            return 0;
+        }
+    }
+    if (audit->imageCount >= MAX_RUNTIME_IMAGES) {
+        audit->failed = 1;
+        return 1;
+    }
+    audit->images[audit->imageCount++] = identity;
+    printf("MANAGED_IMAGE runtime device=%ju inode=%ju build_id=%s base=0x%" PRIxPTR
+           " path=%s\n", (uintmax_t)identity.device, (uintmax_t)identity.inode,
+        identity.buildId, identity.base, identity.path);
     return 0;
 }
 
@@ -247,7 +339,7 @@ static int SameImage(const char* expected, const char* actual)
 
 int32_t CJRT_ContractVerifyRuntimeImage(void* callback)
 {
-    const char* commonSymbols[] = {
+    const char* wakeSymbols[] = {
         "MRT_ResumeAll",
         "CJ_WaitqueueWakeAll",
         "CJ_CJThreadReady",
@@ -256,15 +348,19 @@ int32_t CJRT_ContractVerifyRuntimeImage(void* callback)
         "GetTaskRet",
         "ReleaseHandle",
     };
-    const char* modeSymbolsS4[] = {
+    const char* ownershipSymbolsS4[] = {
+        "InitCJRuntime",
+        "RunCJTaskToSchedule",
+        "MRT_StopSubScheduler",
         "CJCJ_MRT_InstanceNew",
         "CJCJ_MRT_InstanceRunTask",
         "CJCJ_MRT_InstanceStop",
     };
-    const char* modeSymbolsOfficial[] = {
-        "MRT_RuntimeNewSubScheduler",
+    const char* ownershipSymbolsOfficial[] = {
+        "InitCJRuntime",
         "RunCJTaskToSchedule",
         "MRT_StopSubScheduler",
+        "MRT_RuntimeNewSubScheduler",
     };
     const char* runtimePath = getenv("CJCJ_CONTRACT_RUNTIME_IMAGE");
     if (runtimePath == NULL || *runtimePath == '\0') {
@@ -280,7 +376,7 @@ int32_t CJRT_ContractVerifyRuntimeImage(void* callback)
 
     struct RuntimeImageAudit audit = {0};
     dl_iterate_phdr(CountRuntimeImages, &audit);
-    if (audit.imageCount != 1) {
+    if (audit.failed || audit.imageCount != 1) {
         fprintf(stderr, "MANAGED_CONTRACT FAIL stage=runtime_image_count count=%d\n", audit.imageCount);
         return 1;
     }
@@ -292,40 +388,48 @@ int32_t CJRT_ContractVerifyRuntimeImage(void* callback)
     printf("MANAGED_IMAGE callback=%p image=%s\n", callback,
         callbackInfo.dli_fname == NULL ? "<unknown>" : callbackInfo.dli_fname);
 
-    const char* runtimeImage = NULL;
-    for (size_t index = 0; index < sizeof(commonSymbols) / sizeof(commonSymbols[0]); ++index) {
-        void* address = Resolve(commonSymbols[index]);
+    const char* runtimeImage = audit.images[0].path;
+    int32_t mode = CJRT_ContractMode();
+    const char** ownershipSymbols = mode == CONTRACT_S4 ? ownershipSymbolsS4 : ownershipSymbolsOfficial;
+    size_t ownershipSymbolCount = mode == CONTRACT_S4 ?
+        sizeof(ownershipSymbolsS4) / sizeof(ownershipSymbolsS4[0]) :
+        sizeof(ownershipSymbolsOfficial) / sizeof(ownershipSymbolsOfficial[0]);
+    const char* negativeSymbol = getenv("CJCJ_CONTRACT_NEGATIVE_SYMBOL");
+    for (size_t index = 0; index < ownershipSymbolCount; ++index) {
+        void* address = negativeSymbol != NULL && strcmp(negativeSymbol, ownershipSymbols[index]) == 0 ?
+            callback : Resolve(ownershipSymbols[index]);
         Dl_info info;
         if (address == NULL || dladdr(address, &info) == 0 || info.dli_fname == NULL) {
             return 1;
         }
-        if (runtimeImage == NULL) {
-            runtimeImage = info.dli_fname;
-        } else if (!SameImage(runtimeImage, info.dli_fname)) {
+        if (!SameImage(runtimeImage, info.dli_fname)) {
             fprintf(stderr, "MANAGED_CONTRACT FAIL stage=runtime_symbol_image symbol=%s image=%s expected=%s\n",
-                commonSymbols[index], info.dli_fname, runtimeImage);
+                ownershipSymbols[index], info.dli_fname, runtimeImage);
             return 1;
         }
         printf("MANAGED_IMAGE symbol=%s address=%p image=%s\n",
-            commonSymbols[index], address, info.dli_fname);
+            ownershipSymbols[index], address, info.dli_fname);
     }
 
-    int32_t mode = CJRT_ContractMode();
-    const char** modeSymbols = mode == CONTRACT_S4 ? modeSymbolsS4 : modeSymbolsOfficial;
-    size_t modeSymbolCount = mode == CONTRACT_S4 ?
-        sizeof(modeSymbolsS4) / sizeof(modeSymbolsS4[0]) :
-        sizeof(modeSymbolsOfficial) / sizeof(modeSymbolsOfficial[0]);
-    for (size_t index = 0; index < modeSymbolCount; ++index) {
-        void* address = Resolve(modeSymbols[index]);
+    for (size_t index = 0; index < sizeof(wakeSymbols) / sizeof(wakeSymbols[0]); ++index) {
+        void* address = Resolve(wakeSymbols[index]);
         Dl_info info;
         if (address == NULL || dladdr(address, &info) == 0 || info.dli_fname == NULL ||
             !SameImage(runtimeImage, info.dli_fname)) {
-            fprintf(stderr, "MANAGED_CONTRACT FAIL stage=mode_symbol_image symbol=%s\n", modeSymbols[index]);
+            fprintf(stderr, "MANAGED_CONTRACT FAIL stage=runtime_symbol_image symbol=%s\n", wakeSymbols[index]);
             return 1;
         }
         printf("MANAGED_IMAGE symbol=%s address=%p image=%s\n",
-            modeSymbols[index], address, info.dli_fname);
+            wakeSymbols[index], address, info.dli_fname);
     }
+
+    struct ThreadLocalDataPrefix* threadLocal = CurrentThreadLocalData();
+    if (threadLocal == NULL || threadLocal->schedule == NULL) {
+        fprintf(stderr, "MANAGED_CONTRACT FAIL stage=runtime_singleton_owner\n");
+        return 1;
+    }
+    printf("MANAGED_SINGLETON schedule=%p cjthread=%p image=%s\n",
+        threadLocal->schedule, threadLocal->cjthread, runtimeImage);
     fflush(stdout);
     return 0;
 }
