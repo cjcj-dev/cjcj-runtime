@@ -47,6 +47,7 @@ let STAGE_WAITER_RESUMED: Int32 = 9
 let STAGE_RETURN_MATCHED: Int32 = 10
 let STAGE_HANDLE_RELEASED: Int32 = 11
 let STAGE_INSTANCE_STOPPED: Int32 = 12
+let STAGE_DRIVER_LIVE: Int32 = 13
 
 class ManagedWakeState {
     let mtx = Mutex()
@@ -147,6 +148,7 @@ main(): Int64 {
 
         var instance = CPointer<Unit>()
         var task = CPointer<Unit>()
+        var driverLive = false
         let argument = unsafe { CJRT_ContractToken(cycle) }
         var callbackSchedule: UIntNative = 0
         var callbackCJThread: UIntNative = 0
@@ -161,8 +163,14 @@ main(): Int64 {
                     CJRT_ContractStage(STAGE_INSTANCE_CREATED, cycle, waiterSchedule, waiterCJThread,
                         waiterState, waiterOSThread)
                 }
-                task = unsafe {
-                    CJRT_ContractRun(mode, instance, CPointer<Unit>(ManagedWakeCallback), argument)
+                let driverCount = unsafe { CJRT_ContractDriverCount() }
+                if (driverCount == 1) {
+                    driverLive = true
+                    unsafe {
+                        CJRT_ContractStage(STAGE_DRIVER_LIVE, cycle, waiterSchedule, waiterCJThread,
+                            waiterState, waiterOSThread)
+                        task = CJRT_ContractRun(mode, instance, CPointer<Unit>(ManagedWakeCallback), argument)
+                    }
                 }
             }
             if (!task.isNull()) {
@@ -184,6 +192,9 @@ main(): Int64 {
 
         if (instance.isNull()) {
             return fail("instance_new", cycle)
+        }
+        if (!driverLive) {
+            return fail("driver_live_before_submit", cycle)
         }
         if (task.isNull()) {
             return fail("task_submit", cycle)
