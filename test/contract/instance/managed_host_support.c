@@ -451,6 +451,7 @@ void CJRT_ContractStage(int32_t stage, int32_t cycle, uintptr_t schedule,
         "return_matched",
         "handle_released",
         "instance_stopped",
+        "driver_live",
     };
     const char* name = stage > 0 && (size_t)stage < sizeof(names) / sizeof(names[0]) ?
         names[stage] : names[0];
