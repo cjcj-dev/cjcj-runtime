@@ -42,6 +42,24 @@ SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj
 
 SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
     CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
+    LOADER_RUNTIME_DIR="$BOUNDS" EXPECT_FAIL_STAGE=runtime_image_count \
+    MODE=s4 CYCLES=1 TIMEOUT=30s OUT="$OUT/managed-negative-second-image" \
+    bash "$ROOT/test/contract/instance/run_managed_contract.sh"
+
+SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
+    CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
+    CJCJ_CONTRACT_NEGATIVE_SYMBOL=InitCJRuntime EXPECT_FAIL_STAGE=runtime_symbol_image \
+    MODE=s4 CYCLES=1 TIMEOUT=30s OUT="$OUT/managed-negative-symbol-image" \
+    bash "$ROOT/test/contract/instance/run_managed_contract.sh"
+
+SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
+    CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
+    CJCJ_CONTRACT_INJECT_MISSING_DRIVER=1 EXPECT_FAIL_STAGE=driver_live_before_submit \
+    MODE=s4 CYCLES=1 TIMEOUT=30s OUT="$OUT/managed-negative-driver" \
+    bash "$ROOT/test/contract/instance/run_managed_contract.sh"
+
+SELFHOST_CJC="${SELFHOST_CJC:-${CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}}" \
+    CANGJIE_HOME="$CANGJIE_HOME" RUNTIME_ROOT="$RUNTIME_ROOT" HYBRID="$HYBRID" \
     MODE=s4 CYCLES=100 TIMEOUT=120s OUT="$OUT/managed-s4-100" \
     bash "$ROOT/test/contract/instance/run_managed_contract.sh"
 
