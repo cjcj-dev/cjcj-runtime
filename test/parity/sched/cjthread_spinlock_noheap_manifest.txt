@@ -1,0 +1,27 @@
+# stage symbol classification
+root _CN23cjthreadspinlock.noheap4InitHPRN8rt.sched16CJthreadSpinLockE base.h:120-123,144-147
+root _CN23cjthreadspinlock.noheap4LockHPRN8rt.sched16CJthreadSpinLockE base.h:125-128,149-152
+root _CN23cjthreadspinlock.noheap6UnlockHPRN8rt.sched16CJthreadSpinLockE base.h:130-133,154-157
+root _CN23cjthreadspinlock.noheap7DestroyHPRN8rt.sched16CJthreadSpinLockE base.h:135-138,159-162
+pre _CGPatiiHv std-package-initializer
+pre cj_cjthread_pthread_spin_init native-pthread-init
+pre cj_cjthread_pthread_spin_lock native-pthread-lock
+pre cj_cjthread_pthread_spin_unlock native-pthread-unlock
+pre cj_cjthread_pthread_spin_destroy native-pthread-destroy
+final CJ_MCC_HandleSafepoint runtime-safepoint
+final CJ_MCC_StackCheck runtime-stack-check
+final CJ_MRT_PreInitializePackage runtime-package-initializer
+final _CGPatiiHv std-package-initializer
+final cj_cjthread_pthread_spin_init native-pthread-init
+final cj_cjthread_pthread_spin_lock native-pthread-lock
+final cj_cjthread_pthread_spin_unlock native-pthread-unlock
+final cj_cjthread_pthread_spin_destroy native-pthread-destroy
+object CJ_MCC_C2NStub runtime-native-transition
+object CJ_MCC_HandleSafepoint runtime-safepoint
+object CJ_MCC_StackGrowStub runtime-stack-growth
+object CJ_MRT_PreInitializePackage runtime-package-initializer
+object _CGPatiiHv std-package-initializer
+object pthread_spin_init libc-pthread-init
+object pthread_spin_lock libc-pthread-lock
+object pthread_spin_unlock libc-pthread-unlock
+object pthread_spin_destroy libc-pthread-destroy
