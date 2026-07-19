@@ -41,6 +41,41 @@ ENGINE.PROJECT_PREFIXES = (
 )
 
 
+# @C object stubs keep their Cangjie body address in a .data slot. The shared
+# engine already follows that relocation but normally receives a symbol name;
+# this compiler spells the target as .text+0xNN. Resolve it only when the same
+# object has exactly one definition at that address, otherwise fail closed.
+ORIGINAL_OBJECT_CALLS = ENGINE.object_calls
+
+
+def object_calls_with_text_offsets(key, body, relocations, definitions, symbols):
+    calls = ORIGINAL_OBJECT_CALLS(key, body, relocations, definitions, symbols)
+    resolved = []
+    for target in calls:
+        match = re.fullmatch(r"\.text\+0x([0-9a-fA-F]+)", target)
+        if match is None:
+            resolved.append(target)
+            continue
+        address = int(match.group(1), 16)
+        candidates = []
+        for candidate, candidate_body in definitions.items():
+            if candidate[0] != key[0]:
+                continue
+            first = candidate_body.splitlines()[0]
+            definition = re.match(r"^([0-9a-fA-F]+) <", first)
+            if definition is not None and int(definition.group(1), 16) == address:
+                candidates.append(candidate[1])
+        if len(candidates) != 1:
+            raise ENGINE.ClosureError(
+                f"object text-offset target count {target} in {key[1]}: {len(candidates)}"
+            )
+        resolved.append(candidates[0])
+    return resolved
+
+
+ENGINE.object_calls = object_calls_with_text_offsets
+
+
 def check_thread_semaphore_contract(pre_definitions, final_definitions, object_definitions):
     native_for_operation = {
         "init": "cj_cjthread_semaphore_init",
