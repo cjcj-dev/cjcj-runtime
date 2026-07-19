@@ -12,7 +12,18 @@ foreign {
     func cj_atomic_i32_load(p: CPointer<Int32>): Int32
     func cj_atomic_i32_store(p: CPointer<Int32>, v: Int32): Unit
     func cj_atomic_i32_fetch_sub(p: CPointer<Int32>, v: Int32): Int32
+    func abort(): Unit
+    func RtFatal(message: CString): Unit
 }
+
+// Base/Log.h:270-275. NUL-terminated static expansion of
+// CHECK(lockCount.load() == WRITE_LOCKED), consumed by the existing native fatal path.
+private var rwLockWriteCheckMessage: VArray<UInt8, $47> = [
+    67u8, 104u8, 101u8, 99u8, 107u8, 32u8, 102u8, 97u8, 105u8, 108u8, 101u8, 100u8,
+    58u8, 32u8, 108u8, 111u8, 99u8, 107u8, 67u8, 111u8, 117u8, 110u8, 116u8, 46u8,
+    108u8, 111u8, 97u8, 100u8, 40u8, 41u8, 32u8, 61u8, 61u8, 32u8, 87u8, 82u8,
+    73u8, 84u8, 69u8, 95u8, 76u8, 79u8, 67u8, 75u8, 69u8, 68u8, 0u8
+]
 
 // Base/RwLock.h:15,70-75. Inline 4-byte lock state (mirrors std::atomic<int> lockCount),
 // so RwLock is byte-faithful and value-embeddable in UnitMetadata. Atomics go through the
@@ -90,14 +101,18 @@ public struct RwLock {
         let p = unsafe { CPointer<Int32>(inout this.lockCount) }
         let count = unsafe { cj_atomic_i32_fetch_sub(p, 1) }
         if (count < 0) {
-            LOG(RTLOG_FATAL, "RwLock read count underflow")
+            unsafe { abort() }
         }
     }
 
-    // Base/RwLock.h:64-68. Require WRITE_LOCKED, then release it to 0.
+    // Base/RwLock.h:64-68 and Base/Log.h:270-275. Diagnose and abort before the
+    // release store on failure; only the successful check releases the lock.
     public mut func UnlockWrite(): Unit {
         let p = unsafe { CPointer<Int32>(inout this.lockCount) }
-        CHECK(unsafe { cj_atomic_i32_load(p) == WRITE_LOCKED })
-        unsafe { cj_atomic_i32_store(p, 0) }
+        if (unsafe { cj_atomic_i32_load(p) != WRITE_LOCKED }) {
+            unsafe { RtFatal(CString(CPointer<UInt8>(inout rwLockWriteCheckMessage))) }
+        } else {
+            unsafe { cj_atomic_i32_store(p, 0) }
+        }
     }
 }
