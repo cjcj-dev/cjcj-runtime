@@ -12,4 +12,8 @@ final CJ_MRT_PreInitializePackage runtime-package-initializer
 final _CGPatiiHv std-package-initializer
 final cj_atomic_flag_test_and_set native-acquire-exchange
 final cj_atomic_flag_clear native-release-clear
-object MANIFEST_PENDING exact-object-external
+object CJ_MCC_C2NStub runtime-native-transition
+object CJ_MCC_HandleSafepoint runtime-safepoint
+object CJ_MCC_StackGrowStub runtime-stack-growth
+object CJ_MRT_PreInitializePackage runtime-package-initializer
+object _CGPatiiHv std-package-initializer
