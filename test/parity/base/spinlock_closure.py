@@ -42,6 +42,55 @@ ENGINE.PROJECT_PREFIXES = (
 )
 
 
+def object_calls(key, body, relocations, definitions, symbols):
+    owner, symbol = key
+    calls = []
+    indirect = 0
+    resolved_indirect = 0
+    for line in body.splitlines():
+        relocation = ENGINE.RELOCATION.search(line)
+        if relocation:
+            kind, raw_target = relocation.groups()
+            target = ENGINE.clean_relocation_target(raw_target)
+            if target.startswith(".data"):
+                target = ENGINE.resolve_data_target(target, relocations[owner], symbol)
+                calls.append(target)
+                if target == "CJ_MCC_HandleSafepoint":
+                    resolved_indirect += 1
+            elif target.startswith((".cjmetadata", ".rodata", ".text")):
+                pass
+            elif kind == "PLT32":
+                calls.append(target)
+        instruction = re.search(r"\bcall\w*\s+(.+?)\s*$", line)
+        if not instruction:
+            continue
+        operand = instruction.group(1)
+        if operand.startswith("*"):
+            indirect += 1
+            continue
+        direct = re.search(r"<(.+)>", operand)
+        if not direct:
+            continue
+        target = direct.group(1)
+        if "+0x" in target:
+            base = target.split("+0x", 1)[0]
+            if base != symbol:
+                raise ENGINE.ClosureError(f"unknown resolved object call in {symbol}: {target}")
+        elif ENGINE.resolve_object_symbol(owner, target, symbols) is not None:
+            calls.append(target)
+        else:
+            raise ENGINE.ClosureError(f"missing resolved object target in {symbol}: {target}")
+    if indirect != resolved_indirect:
+        raise ENGINE.ClosureError(
+            f"ambiguous indirect object calls in {symbol}: calls={indirect} "
+            f"resolved_safepoints={resolved_indirect}"
+        )
+    return calls
+
+
+ENGINE.object_calls = object_calls
+
+
 def check_spinlock_contract(pre_definitions, final_definitions, object_definitions):
     for stage, definitions in (("pre", pre_definitions), ("final", final_definitions)):
         for symbol in ENGINE.PRODUCTION.values():
