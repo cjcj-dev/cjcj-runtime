@@ -94,6 +94,7 @@ build_base()
         fail "rt.base build artifacts absent"
     g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$IMP/Panic.o"
     g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$IMP/Atomic.o"
+    g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$IMP/SpinLock.o"
 }
 
 build_cj_executable()
@@ -101,7 +102,7 @@ build_cj_executable()
     local source=$1 output=$2
     check_compiler
     "$SELFHOST_CJC" "$source" --import-path "$IMP" --int-overflow wrapping \
-        "$IMP/librt.base.a" "$IMP/Panic.o" "$IMP/Atomic.o" \
+        "$IMP/librt.base.a" "$IMP/Panic.o" "$IMP/Atomic.o" "$IMP/SpinLock.o" \
         --link-option=-lstdc++ --link-option=-lgcc_s -o "$output"
     [[ -x "$output" ]] || fail "Cangjie executable absent: $output"
 }
