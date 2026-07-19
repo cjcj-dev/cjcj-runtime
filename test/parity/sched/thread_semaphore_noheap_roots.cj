@@ -1,9 +1,17 @@
 package threadsemaphore.noheap
 
-import rt.sched.*
+import rt.sched.Thread as SchedThread
+import rt.sched.LuaCJThread
+import rt.sched.Semaphore
+import rt.sched.THREAD_SLEEP
+import rt.sched.SemaphoreInit
+import rt.sched.SemaphoreWait
+import rt.sched.SemaphoreWaitNoIntr
+import rt.sched.SemaphorePost
+import rt.sched.SemaphoreDestroy
 
 foreign func ThreadSemaphorePrepare(
-    thread: CPointer<Thread>, threadSem: CPointer<Semaphore>,
+    thread: CPointer<SchedThread>, threadSem: CPointer<Semaphore>,
     lua: CPointer<LuaCJThread>, luaSem: CPointer<Semaphore>
 ): Int32
 foreign func ThreadSemaphoreSnapshot(stage: Int32): Int32
@@ -17,7 +25,7 @@ foreign func ThreadSemaphoreFinish(
 // no integer offset, accessor, owner allocation, copy, or shadow pointer exists.
 @C
 public func CJRT_ThreadOwnerRun(): Int32 {
-    var thread = Thread()
+    var thread = SchedThread()
     var lua = LuaCJThread()
 
     // thread.h:64,68-76 and cjthread.h:166. Nonzero scalars make the complete
@@ -38,7 +46,7 @@ public func CJRT_ThreadOwnerRun(): Int32 {
     thread.isSearching = true
     lua.state = 0x11223344
 
-    let threadPointer = unsafe { CPointer<Thread>(inout thread) }
+    let threadPointer = unsafe { CPointer<SchedThread>(inout thread) }
     let threadSem = unsafe { CPointer<Semaphore>(inout thread.sem) }
     let luaPointer = unsafe { CPointer<LuaCJThread>(inout lua) }
     let luaSem = unsafe { CPointer<Semaphore>(inout lua.sem) }
