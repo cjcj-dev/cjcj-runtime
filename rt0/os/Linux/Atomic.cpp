@@ -6,6 +6,14 @@
 
 #include <cstdint>
 
+// Base/AtomicSpinLock.h:19-26. Operate on the caller-owned inline atomic-flag
+// byte with the exact source orders; no lock object or storage is owned here.
+extern "C" bool cj_atomic_flag_test_and_set(uint8_t* p)
+{
+    return __atomic_test_and_set(p, __ATOMIC_ACQUIRE);
+}
+extern "C" void cj_atomic_flag_clear(uint8_t* p) { __atomic_clear(p, __ATOMIC_RELEASE); }
+
 // Layer0 atomic primitives for runtime types that embed an inline atomic int by value
 // (Cangjie has no value-type atomic). C++ RwLock uses acquire/release + a default-order
 // fetch_sub; SeqCst is the strongest-correct mapping.
