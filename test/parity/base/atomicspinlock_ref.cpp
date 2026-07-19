@@ -35,19 +35,16 @@ using MapleRuntime::AtomicSpinLock;
 
 void ApiLock(void* lock) { static_cast<AtomicSpinLock*>(lock)->Lock(); }
 void ApiUnlock(void* lock) { static_cast<AtomicSpinLock*>(lock)->Unlock(); }
-bool ApiTryLock(void* lock) { return static_cast<AtomicSpinLock*>(lock)->TryLock(); }
 bool AttachThread() { return true; }
 bool DetachThread() { return true; }
 #else
 extern "C" void CJRT_AtomicSpinLockLock(void*);
 extern "C" void CJRT_AtomicSpinLockUnlock(void*);
-extern "C" bool CJRT_AtomicSpinLockTryLock(void*);
 extern "C" bool MRT_NewForeignCJThread();
 extern "C" bool MRT_EndForeignCJThread();
 
 void ApiLock(void* lock) { CJRT_AtomicSpinLockLock(lock); }
 void ApiUnlock(void* lock) { CJRT_AtomicSpinLockUnlock(lock); }
-bool ApiTryLock(void* lock) { return CJRT_AtomicSpinLockTryLock(lock); }
 bool AttachThread() { return MRT_NewForeignCJThread(); }
 bool DetachThread() { return MRT_EndForeignCJThread(); }
 #endif
@@ -181,6 +178,7 @@ bool RunBehavior(void* lock, AtomicSpinLockResult* result)
     return true;
 }
 
+#ifdef ATOMICSPINLOCK_ORACLE
 void PrintBehavior(const AtomicSpinLockResult& result)
 {
     std::printf("ATOMICSPINLOCK_BLOCK pre_release=%llu acquired_before_release=%llu "
@@ -198,6 +196,7 @@ void PrintBehavior(const AtomicSpinLockResult& result)
         static_cast<unsigned long long>(result.handoffObserved),
         static_cast<unsigned long long>(result.handoffFinalByte));
 }
+#endif
 } // namespace
 
 #ifdef ATOMICSPINLOCK_ORACLE
