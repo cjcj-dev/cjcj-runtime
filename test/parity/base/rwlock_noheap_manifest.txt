@@ -1,0 +1,20 @@
+# stage symbol classification
+final CJ_MCC_StackCheck runtime-stack-check
+final CJ_MCC_HandleSafepoint runtime-safepoint
+final cj_atomic_i32_cas native-atomic
+final cj_atomic_i32_load native-atomic
+final cj_atomic_i32_store native-atomic
+final cj_atomic_i32_fetch_sub native-atomic
+final sched_yield libc-scheduler
+final abort libc-termination
+final RtFatal native-termination
+object CJ_MCC_StackGrowStub runtime-stack-growth
+object CJ_MCC_C2NStub runtime-native-transition
+object CJ_MCC_HandleSafepoint runtime-safepoint
+object cj_atomic_i32_cas native-atomic
+object cj_atomic_i32_load native-atomic
+object cj_atomic_i32_store native-atomic
+object cj_atomic_i32_fetch_sub native-atomic
+object sched_yield libc-scheduler
+object abort libc-termination
+object RtFatal native-termination
