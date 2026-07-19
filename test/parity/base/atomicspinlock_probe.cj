@@ -30,17 +30,17 @@ foreign func AtomicSpinLockRun(lock: CPointer<AtomicSpinLock>,
 // the production AtomicSpinLock operation over the original inline object.
 @C
 public func CJRT_AtomicSpinLockLock(lock: CPointer<AtomicSpinLock>): Unit {
-    lock.Lock()
+    Lock(lock)
 }
 
 @C
 public func CJRT_AtomicSpinLockUnlock(lock: CPointer<AtomicSpinLock>): Unit {
-    lock.Unlock()
+    Unlock(lock)
 }
 
 @C
 public func CJRT_AtomicSpinLockTryLock(lock: CPointer<AtomicSpinLock>): Bool {
-    return lock.TryLock()
+    return TryLock(lock)
 }
 
 main(): Int64 {
@@ -55,15 +55,15 @@ main(): Int64 {
     let lockPointer = unsafe { CPointer<AtomicSpinLock>(inout lock) }
     let statePointer = CPointer<UInt8>(lockPointer)
     let constructByte = unsafe { statePointer.read() }
-    let first = lockPointer.TryLock()
+    let first = TryLock(lockPointer)
     let trySuccessByte = unsafe { statePointer.read() }
-    let second = lockPointer.TryLock()
+    let second = TryLock(lockPointer)
     let tryFailedByte = unsafe { statePointer.read() }
-    lockPointer.Unlock()
+    Unlock(lockPointer)
     let unlockByte = unsafe { statePointer.read() }
-    lockPointer.Lock()
+    Lock(lockPointer)
     let lockByte = unsafe { statePointer.read() }
-    lockPointer.Unlock()
+    Unlock(lockPointer)
     let finalUnlockByte = unsafe { statePointer.read() }
 
     println("ATOMICSPINLOCK_LAYOUT sizeof=${lockSize} align=${lockAlign} state=0")
