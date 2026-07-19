@@ -53,6 +53,7 @@ void ResetCalls(const volatile void* address)
     addressMismatches.store(0, std::memory_order_relaxed);
 }
 
+#ifdef CJTHREAD_SPINLOCK_ORACLE
 void Snapshot(unsigned char* destination, const void* storage, size_t size)
 {
     const auto* bytes = static_cast<const volatile unsigned char*>(storage);
@@ -68,6 +69,7 @@ void PrintBytes(const char* label, const unsigned char* bytes, size_t size)
         std::printf("%02x", static_cast<unsigned>(bytes[i]));
     }
 }
+#endif
 
 #ifdef CJTHREAD_SPINLOCK_ORACLE
 int ApiInit(void* lock) { return PthreadSpinInit(static_cast<CJthreadSpinLock*>(lock)); }
