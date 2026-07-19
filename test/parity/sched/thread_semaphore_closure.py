@@ -41,6 +41,22 @@ ENGINE.PROJECT_PREFIXES = (
 )
 
 
+# objdump encloses the whole symbol in angle brackets, while Cangjie constructor
+# manglings themselves contain <init>. Make only that shared-engine search greedy
+# to the final bracket; delegate every other regular-expression operation.
+class ObjectSymbolRegex:
+    def search(self, pattern, string, flags=0):
+        if pattern == r"<([^>]+)>":
+            return re.search(r"<(.+)>", string, flags)
+        return re.search(pattern, string, flags)
+
+    def __getattr__(self, name):
+        return getattr(re, name)
+
+
+ENGINE.re = ObjectSymbolRegex()
+
+
 # @C object stubs keep their Cangjie body address in a .data slot. The shared
 # engine already follows that relocation but normally receives a symbol name;
 # this compiler spells the target as .text+0xNN. Resolve it only when the same
