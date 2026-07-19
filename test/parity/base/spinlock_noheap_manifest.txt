@@ -21,3 +21,7 @@ object CJ_MCC_HandleSafepoint runtime-safepoint
 object CJ_MCC_StackGrowStub runtime-stack-growth
 object CJ_MRT_PreInitializePackage runtime-package-initializer
 object _CGPatiiHv std-package-initializer
+object pthread_spin_init libc-pthread-init
+object pthread_spin_lock libc-pthread-lock
+object pthread_spin_unlock libc-pthread-unlock
+object pthread_spin_trylock libc-pthread-trylock
