@@ -48,7 +48,8 @@ require_host_tools_and_inputs()
         "$ROOT/test/parity/base/types_ref.cpp" \
         "$CPP_RUNTIME_ROOT/src/Base/Types.h" \
         "$ROOT/rt0/os/Linux/Panic.cpp" \
-        "$ROOT/rt0/os/Linux/Atomic.cpp"; do
+        "$ROOT/rt0/os/Linux/Atomic.cpp" \
+        "$ROOT/rt0/os/Linux/SpinLock.cpp"; do
         [[ -r "$input" ]] || fail "missing oracle input $input"
     done
     [[ -d "$SELFHOST_RT" ]] || fail "missing pinned selfhost runtime libraries"
@@ -85,10 +86,11 @@ check_compiler
 
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
+g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$TMP/SpinLock.o"
 
 check_compiler
 "$SELFHOST_CJC" "$ROOT/test/parity/base/types_probe.cj" --import-path "$TMP" \
-    --int-overflow wrapping "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" \
+    --int-overflow wrapping "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" "$TMP/SpinLock.o" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/types_probe"
 
 g++ -std=c++14 -O2 -I "$CPP_RUNTIME_ROOT/src" \
