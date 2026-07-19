@@ -21,7 +21,9 @@ PRODUCTION = {
     "try": "_CN7rt.base7TryLockHPRNY_14AtomicSpinLockE",
 }
 NATIVE = ("cj_atomic_flag_test_and_set", "cj_atomic_flag_clear")
-PROJECT_PREFIXES = ("_CN21atomicspinlock.noheap", "_CN7rt.base", "_CG")
+PROJECT_PREFIXES = (
+    "_CN21atomicspinlock.noheap", "_CN7rt.base", "_CGP21atomicspinlock.noheap", "_CGP7rt.base",
+)
 FORBIDDEN = re.compile(
     r"(?:CJ_)?MCC_New|RawArrayAllocate|Create[A-Za-z0-9_]*Exception|"
     r"llvm\.cj\.(?:malloc|gcwrite|throw)|ThrowException|StringBuilder|"
