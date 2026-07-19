@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <new>
 #include <pthread.h>
 
 #include "schedule.h"
@@ -378,34 +379,39 @@ extern "C" int32_t ThreadSemaphoreFinish(int32_t threadInit, int32_t luaInit,
 #ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
 int main()
 {
-    Thread thread {};
-    LuaCJThread lua {};
-    SetOracleFields(thread, lua);
-    if (ThreadSemaphorePrepare(&thread, &thread.sem, &lua, &lua.sem) != 0 ||
+    alignas(Thread) unsigned char threadStorage[sizeof(Thread)] {};
+    alignas(LuaCJThread) unsigned char luaStorage[sizeof(LuaCJThread)] {};
+    Thread* thread = new (threadStorage) Thread {};
+    LuaCJThread* lua = new (luaStorage) LuaCJThread {};
+    SetOracleFields(*thread, *lua);
+    if (ThreadSemaphorePrepare(thread, &thread->sem, lua, &lua->sem) != 0 ||
         ThreadSemaphoreSnapshot(0) != 0) {
         return 1;
     }
-    const int threadInit = ApiInit(&thread.sem, 0, 1);
-    const int luaInit = ApiInit(&lua.sem, 0, 0);
+    const int threadInit = ApiInit(&thread->sem, 0, 1);
+    const int luaInit = ApiInit(&lua->sem, 0, 0);
     if (ThreadSemaphoreSnapshot(1) != 0) {
         return 2;
     }
-    const int threadWait = ApiWaitNoIntr(&thread.sem);
-    const int luaPost = ApiPost(&lua.sem);
+    const int threadWait = ApiWaitNoIntr(&thread->sem);
+    const int luaPost = ApiPost(&lua->sem);
     if (ThreadSemaphoreSnapshot(2) != 0) {
         return 3;
     }
-    const int threadPost = ApiPost(&thread.sem);
-    const int luaWait = ApiWait(&lua.sem);
+    const int threadPost = ApiPost(&thread->sem);
+    const int luaWait = ApiWait(&lua->sem);
     if (ThreadSemaphoreSnapshot(3) != 0) {
         return 4;
     }
-    const int threadDestroy = ApiDestroy(&thread.sem);
-    const int luaDestroy = ApiDestroy(&lua.sem);
+    const int threadDestroy = ApiDestroy(&thread->sem);
+    const int luaDestroy = ApiDestroy(&lua->sem);
     if (ThreadSemaphoreSnapshot(4) != 0) {
         return 5;
     }
-    return ThreadSemaphoreFinish(threadInit, luaInit, threadWait, luaPost, threadPost, luaWait,
+    const int result = ThreadSemaphoreFinish(threadInit, luaInit, threadWait, luaPost, threadPost, luaWait,
         threadDestroy, luaDestroy);
+    thread->~Thread();
+    lua->~LuaCJThread();
+    return result;
 }
 #endif
