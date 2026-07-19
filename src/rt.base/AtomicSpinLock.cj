@@ -24,19 +24,19 @@ public struct AtomicSpinLock {
     }
 }
 
-extend CPointer<AtomicSpinLock> {
-    // Base/AtomicSpinLock.h:19-22. Tight empty-body acquire test-and-set loop.
-    public func Lock(): Unit {
-        while (unsafe { cj_atomic_flag_test_and_set(CPointer<UInt8>(this)) }) {}
-    }
+// Base/AtomicSpinLock.h:19-22. Tight empty-body acquire test-and-set loop.
+// LANG-BOUNDARY: use an explicit self pointer because concrete CPointer extensions
+// are not exported across package boundaries by the mandated compiler.
+public func Lock(self: CPointer<AtomicSpinLock>): Unit {
+    while (unsafe { cj_atomic_flag_test_and_set(CPointer<UInt8>(self)) }) {}
+}
 
-    // Base/AtomicSpinLock.h:24. Release the caller-owned inline flag.
-    public func Unlock(): Unit {
-        unsafe { cj_atomic_flag_clear(CPointer<UInt8>(this)) }
-    }
+// Base/AtomicSpinLock.h:24. Release the caller-owned inline flag.
+public func Unlock(self: CPointer<AtomicSpinLock>): Unit {
+    unsafe { cj_atomic_flag_clear(CPointer<UInt8>(self)) }
+}
 
-    // Base/AtomicSpinLock.h:26. Exactly one acquire test-and-set attempt.
-    public func TryLock(): Bool {
-        return !unsafe { cj_atomic_flag_test_and_set(CPointer<UInt8>(this)) }
-    }
+// Base/AtomicSpinLock.h:26. Exactly one acquire test-and-set attempt.
+public func TryLock(self: CPointer<AtomicSpinLock>): Bool {
+    return !unsafe { cj_atomic_flag_test_and_set(CPointer<UInt8>(self)) }
 }
