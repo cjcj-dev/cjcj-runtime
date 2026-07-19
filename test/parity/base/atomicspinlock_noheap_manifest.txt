@@ -6,5 +6,10 @@ root _CN21atomicspinlock.noheap7TryLockHPRN7rt.base14AtomicSpinLockE AtomicSpinL
 pre _CGPatiiHv std-package-initializer
 pre cj_atomic_flag_test_and_set native-acquire-exchange
 pre cj_atomic_flag_clear native-release-clear
-final MANIFEST_PENDING exact-final-external
+final CJ_MCC_HandleSafepoint runtime-safepoint
+final CJ_MCC_StackCheck runtime-stack-check
+final CJ_MRT_PreInitializePackage runtime-package-initializer
+final _CGPatiiHv std-package-initializer
+final cj_atomic_flag_test_and_set native-acquire-exchange
+final cj_atomic_flag_clear native-release-clear
 object MANIFEST_PENDING exact-object-external
