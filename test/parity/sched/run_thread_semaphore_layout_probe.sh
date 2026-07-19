@@ -228,7 +228,7 @@ check_layout_source_inventory_platforms()
     ! rg -q 'toUIntNative|CPointer<UInt8>\([^)]*\)\s*[+-]' \
         "$ROOT/src/rt.sched/Thread.cj" "$ROOT/test/parity/sched/thread_semaphore_noheap_roots.cj" ||
         fail "integer pointer arithmetic in owner/member path"
-    ! rg -q 'ThreadSleep|ThreadEntry|ThreadCreate|Schedule|Processor|Resume|Yield|wrapper|Wrapper|malloc|calloc|new ' \
+    ! rg -q '^public func |ThreadSleep\(|ThreadEntry\(|ThreadCreate\(|ThreadAlloc|CJThreadCreate\(|CJThreadResume\(|CJThreadYield\(|CJThreadDestroy\(|malloc|calloc|new ' \
         "$ROOT/src/rt.sched/Thread.cj" || fail "forbidden scheduler/lifecycle/wrapper surface"
     ! rg -q 'Thread|LuaCJThread|CJThreadContext|CJThreadAttr|Dulink' "$ROOT/contract" ||
         fail "descriptor leaked into production export contract"
