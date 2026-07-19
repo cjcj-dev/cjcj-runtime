@@ -45,6 +45,7 @@ void ResetCounts()
     tryCalls.store(0, std::memory_order_relaxed);
 }
 
+#ifdef SPINLOCK_ORACLE
 void PrintBytes(const char* label, const void* object, size_t size)
 {
     std::printf("%s=", label);
@@ -53,7 +54,6 @@ void PrintBytes(const char* label, const void* object, size_t size)
         std::printf("%02x", static_cast<unsigned>(bytes[i]));
     }
 }
-
 void SnapshotBytes(unsigned char* destination, const void* storage, size_t size)
 {
     const auto* bytes = static_cast<const volatile unsigned char*>(storage);
@@ -61,6 +61,7 @@ void SnapshotBytes(unsigned char* destination, const void* storage, size_t size)
         destination[i] = bytes[i];
     }
 }
+#endif
 
 #ifdef SPINLOCK_ORACLE
 using MapleRuntime::ScopedEnterSpinLock;
@@ -74,17 +75,13 @@ bool ApiTryLock(void* lock) { return static_cast<SpinLock*>(lock)->TryLock(); }
 bool AttachThread() { return true; }
 bool DetachThread() { return true; }
 #else
-extern "C" void CJRT_SpinLockInit(void*);
 extern "C" void CJRT_SpinLockLock(void*);
 extern "C" void CJRT_SpinLockUnlock(void*);
-extern "C" bool CJRT_SpinLockTryLock(void*);
 extern "C" bool MRT_NewForeignCJThread();
 extern "C" bool MRT_EndForeignCJThread();
 
-void ApiInit(void* storage) { CJRT_SpinLockInit(storage); }
 void ApiLock(void* lock) { CJRT_SpinLockLock(lock); }
 void ApiUnlock(void* lock) { CJRT_SpinLockUnlock(lock); }
-bool ApiTryLock(void* lock) { return CJRT_SpinLockTryLock(lock); }
 bool AttachThread() { return MRT_NewForeignCJThread(); }
 bool DetachThread() { return MRT_EndForeignCJThread(); }
 #endif
@@ -218,6 +215,7 @@ __attribute__((unused)) bool RunBehavior(void* lock, SpinLockResult* result)
     return true;
 }
 
+#ifdef SPINLOCK_ORACLE
 void PrintBehavior(const SpinLockResult& result)
 {
     std::printf("SPINLOCK_BLOCK pre_release=%llu acquired_before_release=%llu "
@@ -235,6 +233,7 @@ void PrintBehavior(const SpinLockResult& result)
         static_cast<unsigned long long>(result.handoffObserved),
         static_cast<unsigned long long>(result.handoffFinalState));
 }
+#endif
 
 #ifdef SPINLOCK_ORACLE
 void GuardEarlyReturn(SpinLock& lock)
