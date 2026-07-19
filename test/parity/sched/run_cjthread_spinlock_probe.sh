@@ -175,7 +175,7 @@ check_layout_calls_and_abi()
         "$ROOT/src/rt.sched/CJthreadSpinLock.cj") -eq 9 ]] || fail "local compiled branch count mismatch"
     [[ $(grep -Fc 'CJTHREAD-SPINLOCK-PLATFORM-LAYOUT:' \
         "$ROOT/src/rt.sched/CJthreadSpinLock.cj") -eq 3 ]] || fail "local platform debt count mismatch"
-    [[ $(grep -Fc 'struct CJthreadSpinLock' "$BASE_HEADER") -eq 3 ]] ||
+    [[ $(grep -Fxc 'struct CJthreadSpinLock {' "$BASE_HEADER") -eq 3 ]] ||
         fail "C++ representation branch count mismatch"
     for operation in Init Lock Unlock Destroy; do
         [[ $(grep -Fc "static inline int PthreadSpin$operation" "$BASE_HEADER") -eq 3 ]] ||
