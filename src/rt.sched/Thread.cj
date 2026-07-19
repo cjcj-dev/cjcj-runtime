@@ -134,7 +134,7 @@ public struct Thread {
 @C
 public struct LuaCJThread {
     public var cjthread: CJThreadHandle
-    public var func: LuaCJThreadFunc
+    public var `func`: LuaCJThreadFunc
     public var arg: CPointer<Unit>
     public var result: CPointer<Unit>
     public var sem: Semaphore
@@ -143,7 +143,7 @@ public struct LuaCJThread {
 
     public init() {
         cjthread = CPointer<Unit>()
-        func = CPointer<Unit>()
+        `func` = CPointer<Unit>()
         arg = CPointer<Unit>()
         result = CPointer<Unit>()
         sem = Semaphore()
