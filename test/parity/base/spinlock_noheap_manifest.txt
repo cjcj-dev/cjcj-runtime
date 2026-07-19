@@ -1,0 +1,23 @@
+# stage symbol classification
+root _CN15spinlock.noheap9ConstructHv SpinLock.h:18,28-30
+root _CN15spinlock.noheap4LockHPRN7rt.base8SpinLockE SpinLock.h:22
+root _CN15spinlock.noheap6UnlockHPRN7rt.base8SpinLockE SpinLock.h:24
+root _CN15spinlock.noheap7TryLockHPRN7rt.base8SpinLockE SpinLock.h:26
+pre _CGPatiiHv std-package-initializer
+pre cj_pthread_spin_init native-pthread-init
+pre cj_pthread_spin_lock native-pthread-lock
+pre cj_pthread_spin_unlock native-pthread-unlock
+pre cj_pthread_spin_trylock native-pthread-trylock
+final CJ_MCC_HandleSafepoint runtime-safepoint
+final CJ_MCC_StackCheck runtime-stack-check
+final CJ_MRT_PreInitializePackage runtime-package-initializer
+final _CGPatiiHv std-package-initializer
+final cj_pthread_spin_init native-pthread-init
+final cj_pthread_spin_lock native-pthread-lock
+final cj_pthread_spin_unlock native-pthread-unlock
+final cj_pthread_spin_trylock native-pthread-trylock
+object CJ_MCC_C2NStub runtime-native-transition
+object CJ_MCC_HandleSafepoint runtime-safepoint
+object CJ_MCC_StackGrowStub runtime-stack-growth
+object CJ_MRT_PreInitializePackage runtime-package-initializer
+object _CGPatiiHv std-package-initializer
