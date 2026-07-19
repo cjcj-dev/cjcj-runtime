@@ -1,0 +1,22 @@
+# owner|operation|file|line|exact source text
+Thread|WaitNoIntr|thread.cpp|29|        error = SemaphoreWaitNoIntr(&(thread->sem));
+Thread|Wait|thread.cpp|82|    SemaphoreWait(&thread->sem);
+Thread|Destroy|thread.cpp|87|        SemaphoreDestroy(&thread->sem);
+Thread|Destroy|thread.cpp|94|        SemaphoreDestroy(&thread->sem);
+Thread|Init|thread.cpp|193|    SemaphoreInit(&newThread->sem, 0, 0);
+Thread|Destroy|thread.cpp|200|        SemaphoreDestroy(&newThread->sem);
+Thread|Post|thread.cpp|272|    error = SemaphorePost(&(thread->sem));
+Thread|Wait|thread.cpp|356|    ret = SemaphoreWait(&(thread->sem));
+Thread|Init|schedule.cpp|392|    int error = SemaphoreInit(&(thread0->sem), 0, 0);
+Thread|Destroy|schedule.cpp|454|        SemaphoreDestroy(&(schedule->thread0->sem));
+Thread|Post|schedule.cpp|822|        int error = SemaphorePost(&(schedule->thread0->sem));
+Thread|Post|schedule.cpp|846|        SemaphorePost(&thread->sem);
+Thread|Post|processor.cpp|727|    error = SemaphorePost(&(thread->sem));
+Thread|Post|processor.cpp|869|            int error = SemaphorePost(&(schedule->thread0->sem));
+Thread|Wait|cjthread.cpp|1224|    int ret = SemaphoreWait(&(thread->sem));
+LuaCJThread|Post|cjthread.cpp|1974|    SemaphorePost(&luaCJThread->sem);
+LuaCJThread|Init|cjthread.cpp|2006|    if (SemaphoreInit(&luaCJThread->sem, 0, 0) != 0) {
+LuaCJThread|Post|cjthread.cpp|2020|    SemaphorePost(&luaCJThread->sem);
+LuaCJThread|Wait|cjthread.cpp|2068|            SemaphoreWait(&luaCJThread->sem);
+LuaCJThread|Wait|cjthread.cpp|2074|            SemaphoreWait(&luaCJThread->sem);
+LuaCJThread|Destroy|cjthread.cpp|2103|    SemaphoreDestroy(&cjthread->sem);
