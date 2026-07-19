@@ -1,0 +1,14 @@
+# classification|line|exact source
+store|1972|    luaCJThread->state = LUA_CJTHREAD_DONE;
+store|2001|    luaCJThread->state = LUA_CJTHREAD_INIT;
+store|2019|    luaCJThread->state = LUA_CJTHREAD_SUSPENDING;
+compare|2038|    if (state == LUA_CJTHREAD_RUNNING) {
+switch_label|2059|        case LUA_CJTHREAD_INIT: {
+store|2060|            luaCJThread->state = LUA_CJTHREAD_RUNNING;
+store|2064|                luaCJThread->state = LUA_CJTHREAD_INIT;
+switch_label|2071|        case LUA_CJTHREAD_SUSPENDING: {
+store|2072|            luaCJThread->state = LUA_CJTHREAD_RUNNING;
+return|2091|    return cjthread->state;
+compare|2098|    if (cjthread == nullptr || cjthread->state == LUA_CJTHREAD_SUSPENDING ||
+compare|2099|        cjthread->state == LUA_CJTHREAD_RUNNING) {
+compare|2111|    if (cjthread == nullptr || cjthread->state != LUA_CJTHREAD_DONE) {
