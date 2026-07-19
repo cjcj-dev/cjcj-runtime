@@ -1,6 +1,7 @@
 // CJThread schedule/include/inner/base.h:55-77,115-164 layout/state oracle
 // and native pthread contention driver for the caller-owned inline lock.
 #include <pthread.h>
+#include <cerrno>
 
 #include "macro_def.h"
 #include "base.h"
@@ -35,14 +36,14 @@ struct CJthreadSpinLockResult {
     uint64_t workerFailures;
 };
 
-void RecordAddress(const void* address)
+void RecordAddress(const volatile void* address)
 {
     if (reinterpret_cast<uintptr_t>(address) != expectedAddress.load(std::memory_order_relaxed)) {
         addressMismatches.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
-void ResetCalls(void* address)
+void ResetCalls(const volatile void* address)
 {
     expectedAddress.store(reinterpret_cast<uintptr_t>(address), std::memory_order_relaxed);
     initCalls.store(0, std::memory_order_relaxed);
