@@ -15,6 +15,7 @@ foreign func ThreadSemaphorePrepare(
     lua: CPointer<LuaCJThread>, luaSem: CPointer<Semaphore>
 ): Int32
 foreign func ThreadSemaphoreSnapshot(stage: Int32): Int32
+foreign func memset(dest: CPointer<Unit>, value: Int32, count: UIntNative): CPointer<Unit>
 foreign func ThreadSemaphoreFinish(
     threadInit: Int32, luaInit: Int32, threadWait: Int32, luaPost: Int32,
     threadPost: Int32, luaWait: Int32, threadDestroy: Int32, luaDestroy: Int32
@@ -27,6 +28,18 @@ foreign func ThreadSemaphoreFinish(
 public func CJRT_ThreadOwnerRun(): Int32 {
     var thread = SchedThread()
     var lua = LuaCJThread()
+
+    let threadPointer = unsafe { CPointer<SchedThread>(inout thread) }
+    let threadSem = unsafe { CPointer<Semaphore>(inout thread.sem) }
+    let luaPointer = unsafe { CPointer<LuaCJThread>(inout lua) }
+    let luaSem = unsafe { CPointer<Semaphore>(inout lua.sem) }
+    // Test-only deterministic storage preparation corresponding to the C++
+    // zeroed placement storage. This touches the complete existing AS0 owners;
+    // it neither computes nor returns a field address.
+    unsafe {
+        memset(CPointer<Unit>(threadPointer), 0, sizeOf<SchedThread>())
+        memset(CPointer<Unit>(luaPointer), 0, sizeOf<LuaCJThread>())
+    }
 
     // thread.h:64,68-76 and cjthread.h:166. Nonzero scalars make the complete
     // C++ transcript sensitive to field order, widths, and implicit padding.
@@ -46,10 +59,6 @@ public func CJRT_ThreadOwnerRun(): Int32 {
     thread.isSearching = true
     lua.state = 0x11223344
 
-    let threadPointer = unsafe { CPointer<SchedThread>(inout thread) }
-    let threadSem = unsafe { CPointer<Semaphore>(inout thread.sem) }
-    let luaPointer = unsafe { CPointer<LuaCJThread>(inout lua) }
-    let luaSem = unsafe { CPointer<Semaphore>(inout lua.sem) }
     if (unsafe { ThreadSemaphorePrepare(threadPointer, threadSem, luaPointer, luaSem) } != 0 ||
         unsafe { ThreadSemaphoreSnapshot(0) } != 0) {
         return 10
