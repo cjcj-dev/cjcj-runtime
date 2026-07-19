@@ -24,6 +24,9 @@ SYMBOL_REF = re.compile(r'@(?:"([^"]+)"|([A-Za-z0-9_.$:-]+))')
 IR_DEFINITION = re.compile(r'^define\b.*?@(?:"([^"]+)"|([^\s(]+))\(')
 OBJECT_DEFINITION = re.compile(r'^([0-9a-fA-F]+) <(.+)>:$')
 RELOCATION = re.compile(r'R_X86_64_(PLT32|PC32)\s+(.+?)\s*$')
+CALL_INSTRUCTION = re.compile(
+    r'(?:^|\s)(?:(?:tail|musttail|notail)\s+)?(?:call|invoke)\s'
+)
 
 
 class ClosureError(RuntimeError):
@@ -65,7 +68,7 @@ def parse_ir(path):
 def ir_calls(symbol, body):
     calls = []
     for line in body.splitlines():
-        if not re.search(r'\b(?:call|invoke)\b', line):
+        if not CALL_INSTRUCTION.search(line):
             continue
         refs = symbol_refs(line)
         if "@llvm.cj.gc.statepoint" in line:
@@ -280,7 +283,7 @@ def check_as1_escapes(bodies):
             lhs = re.match(r'\s*(%[A-Za-z0-9_.$-]+)\s*=', line)
             if lhs and lhs.group(1) in tainted:
                 continue
-            if re.search(r'\b(?:call|invoke)\b', line):
+            if CALL_INSTRUCTION.search(line):
                 target = call_target(line)
                 if target in allowed_consumers or (target and target.startswith("llvm.lifetime.")):
                     continue
