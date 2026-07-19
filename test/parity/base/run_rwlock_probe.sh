@@ -132,10 +132,15 @@ run_invalid_read()
     local child_rc=$?
     set -e
     [[ $child_rc -eq 134 ]] || fail "invalid read rc=$child_rc expected=134"
-    [[ ! -s "$IMP/invalid_read.err" ]] || fail "invalid read emitted diagnostic"
+    ! grep -Fq 'RwLock read count underflow' "$IMP/invalid_read.err" ||
+        fail "invalid read emitted invented managed diagnostic"
+    ! grep -Fq 'Check failed:' "$IMP/invalid_read.err" ||
+        fail "invalid read emitted invented CHECK diagnostic"
     ! grep -Fq 'POST_UNLOCK_READ_REACHED' "$IMP/invalid_read.out" "$IMP/invalid_read.err" ||
         fail "invalid read post-call marker reached"
-    echo "RWLOCK_INVALID_READ rc=$child_rc diagnostic_bytes=0 post_marker=0 status=PASS"
+    grep -Fq 'CJNative Handle signal: 6.' "$IMP/invalid_read.err" ||
+        fail "invalid read native SIGABRT observation absent"
+    echo "RWLOCK_INVALID_READ rc=$child_rc native_signal=6 invented_message=0 post_marker=0 status=PASS"
 }
 
 run_invalid_write()
