@@ -347,6 +347,8 @@ build_closure_inputs
 run_closure
 run_negative_self_tests
 
+echo "THREAD_SEMAPHORE_BINARIES oracle_sha256=$(sha256sum "$CPP_ORACLE" | awk '{print $1}') oracle_size=$(stat -c %s "$CPP_ORACLE") cj_sha256=$(sha256sum "$CJ_PROBE" | awk '{print $1}') cj_size=$(stat -c %s "$CJ_PROBE") status=PASS"
+
 disk_after=$(df -Pk / | awk 'NR==2 {print $4}')
 disk_delta=$((disk_before - disk_after))
 echo "THREAD_SEMAPHORE_DISK_AFTER available_kb=$disk_after consumed_kb=$disk_delta"
