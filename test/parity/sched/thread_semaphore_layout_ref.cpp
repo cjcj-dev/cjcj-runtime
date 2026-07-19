@@ -184,10 +184,7 @@ void PrintLayouts()
 
 void SetOracleFields(Thread& thread, LuaCJThread& lua)
 {
-    std::memset(&thread, 0, sizeof(thread));
-    std::memset(&lua, 0, sizeof(lua));
-    ThreadState state = THREAD_SLEEP;
-    std::memcpy(&thread.state, &state, sizeof(state));
+    thread.state.store(THREAD_SLEEP, std::memory_order_relaxed);
     thread.tid = 0x1020304;
     thread.osThread = static_cast<pthread_t>(UINT64_C(0x0102030405060708));
     thread.context.rsp = 1;
@@ -381,8 +378,8 @@ extern "C" int32_t ThreadSemaphoreFinish(int32_t threadInit, int32_t luaInit,
 #ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
 int main()
 {
-    Thread thread;
-    LuaCJThread lua;
+    Thread thread {};
+    LuaCJThread lua {};
     SetOracleFields(thread, lua);
     if (ThreadSemaphorePrepare(&thread, &thread.sem, &lua, &lua.sem) != 0 ||
         ThreadSemaphoreSnapshot(0) != 0) {
