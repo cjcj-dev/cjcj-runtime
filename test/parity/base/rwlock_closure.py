@@ -16,7 +16,8 @@ PROJECT_PREFIXES = ("_CN13rwlock.noheap", "_CN7rt.base")
 FORBIDDEN = re.compile(
     r"(?:CJ_)?MCC_New|RawArrayAllocate|StringBuilder|std\.core[:.]String|"
     r"std\.core[:.]Array|ArrayList|HashMap|HashSet|LinkedList|mallocCString|"
-    r"llvm\.cj\.throw|Create[A-Za-z0-9_]*Exception|(?:^|[^A-Za-z0-9_])"
+    r"std[.:]collection|lambda|closure|llvm\.cj\.throw|Create[A-Za-z0-9_]*Exception|"
+    r"(?:^|[^A-Za-z0-9_])"
     r"(?:malloc|calloc|realloc|free)(?:$|[^A-Za-z0-9_])",
     re.IGNORECASE,
 )
