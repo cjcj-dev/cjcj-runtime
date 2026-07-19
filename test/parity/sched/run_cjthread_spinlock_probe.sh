@@ -57,6 +57,7 @@ require_inputs()
         "$BASE_HEADER" \
         "$CJTHREAD_ROOT/base/mid/include/macro_def.h" \
         "$ROOT/src/rt.sched/CJthreadSpinLock.cj" \
+        "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" \
         "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" \
         "$ROOT/test/parity/sched/cjthread_spinlock_ref.cpp" \
         "$ROOT/test/parity/sched/cjthread_spinlock_probe.cj" \
@@ -139,6 +140,8 @@ build_production_and_probe()
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
         -c "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" -o "$IMP/CJThreadSpinLock.o"
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
+        -c "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" -o "$IMP/CJThreadSemaphore.o"
+    g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
         "${CPP_SELECT[@]}" "${CPP_INCLUDE[@]}" \
         -c "$ROOT/test/parity/sched/cjthread_spinlock_ref.cpp" -o "$IMP/cjthread_spinlock_ref.o"
     local link_args=()
@@ -148,7 +151,7 @@ build_production_and_probe()
     done
     run_cjc "$ROOT/test/parity/sched/cjthread_spinlock_probe.cj" \
         --import-path "$IMP" --int-overflow wrapping "$IMP/librt.sched.a" \
-        "$IMP/CJThreadSpinLock.o" "$IMP/cjthread_spinlock_ref.o" \
+        "$IMP/CJThreadSpinLock.o" "$IMP/CJThreadSemaphore.o" "$IMP/cjthread_spinlock_ref.o" \
         --link-option=-lstdc++ --link-option=-lpthread --link-option=-lgcc_s \
         "${link_args[@]}" -o "$CJ_PROBE"
     [[ -x "$CJ_PROBE" ]] || fail "Cangjie consumer executable absent"
