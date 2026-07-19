@@ -182,6 +182,7 @@ void PrintLayouts()
         alignof(CJThreadAttr), offsetof(CJThreadAttr, attr));
 }
 
+#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
 void SetOracleFields(Thread& thread, LuaCJThread& lua)
 {
     thread.state.store(THREAD_SLEEP, std::memory_order_relaxed);
@@ -201,7 +202,6 @@ void SetOracleFields(Thread& thread, LuaCJThread& lua)
     lua.state = 0x11223344;
 }
 
-#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
 int ApiInit(Semaphore* sem, int pshared, unsigned value)
 {
     Observe(nativeCalls, nativeAddressMismatches, INIT, sem);
