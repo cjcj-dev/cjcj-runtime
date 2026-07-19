@@ -50,6 +50,7 @@ require_inputs()
         "$CPP_RUNTIME_ROOT/src/Base/Macros.h" \
         "$ROOT/src/rt.base/AtomicSpinLock.cj" \
         "$ROOT/rt0/os/Linux/Atomic.cpp" \
+        "$ROOT/rt0/os/Linux/SpinLock.cpp" \
         "$ROOT/test/parity/base/atomicspinlock_ref.cpp" \
         "$ROOT/test/parity/base/atomicspinlock_probe.cj" \
         "$ROOT/test/parity/base/atomicspinlock_noheap_roots.cj" \
@@ -96,6 +97,8 @@ build_base_and_native()
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
         -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$IMP/Atomic.o"
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
+        -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$IMP/SpinLock.o"
+    g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
         -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$IMP/Panic.o"
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
         -I "$CPP_RUNTIME_ROOT/src" -c "$ROOT/test/parity/base/atomicspinlock_ref.cpp" \
@@ -107,7 +110,7 @@ build_cangjie_probe()
     check_compiler
     "$SELFHOST_CJC" "$ROOT/test/parity/base/atomicspinlock_probe.cj" \
         --import-path "$IMP" --int-overflow wrapping \
-        "$IMP/librt.base.a" "$IMP/Atomic.o" "$IMP/Panic.o" "$IMP/atomicspinlock_ref.o" \
+        "$IMP/librt.base.a" "$IMP/Atomic.o" "$IMP/SpinLock.o" "$IMP/Panic.o" "$IMP/atomicspinlock_ref.o" \
         --link-option=-lstdc++ --link-option=-lpthread --link-option=-lgcc_s -o "$CJ_PROBE"
     [[ -x "$CJ_PROBE" ]] || fail "Cangjie probe executable absent"
     local resolved_runtime
