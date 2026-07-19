@@ -75,7 +75,11 @@ def check_spinlock_contract(pre_definitions, final_definitions, object_definitio
     }
     for symbol, target in expected_calls.items():
         bodies = native_bodies[symbol]
-        if len(bodies) != 1 or bodies[0].count(target) != 1:
+        relocation = re.compile(rf"R_X86_64_(?:PLT32|PC32)\s+{re.escape(target)}(?:-0x[0-9a-fA-F]+)?$")
+        relocation_count = 0 if len(bodies) != 1 else sum(
+            1 for line in bodies[0].splitlines() if relocation.search(line)
+        )
+        if len(bodies) != 1 or relocation_count != 1:
             raise ENGINE.ClosureError(f"native bridge multiplicity mismatch: {symbol} -> {target}")
 
 
