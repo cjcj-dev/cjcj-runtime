@@ -13,7 +13,6 @@ foreign {
     func cj_atomic_i32_store(p: CPointer<Int32>, v: Int32): Unit
     func cj_atomic_i32_fetch_sub(p: CPointer<Int32>, v: Int32): Int32
     func abort(): Unit
-    func RtFatal(message: CString): Unit
 }
 
 // Base/Log.h:270-275. NUL-terminated static expansion of
