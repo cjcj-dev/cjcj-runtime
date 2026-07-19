@@ -72,7 +72,13 @@ def parse_ir(path):
                 body = []
     if current is not None:
         raise ClosureError(f"unterminated IR definition: {current}")
-    return text, definitions, counts
+    cjinit_attributes = set(re.findall(r'attributes #(\d+) = \{[^}]*"cjinit"[^}]*\}', text))
+    emitted_initializers = set()
+    for symbol, body in definitions.items():
+        attribute = re.search(r'\s#(\d+)(?:\s|\{|gc)', body.splitlines()[0])
+        if attribute and attribute.group(1) in cjinit_attributes:
+            emitted_initializers.add(symbol)
+    return text, definitions, counts, emitted_initializers
 
 
 def ir_calls(symbol, body):
@@ -93,10 +99,6 @@ def ir_calls(symbol, body):
             continue
         calls.append(target)
     return calls
-
-
-def initializers(definitions):
-    return {symbol for symbol in definitions if symbol.startswith("_CG")}
 
 
 def load_manifest(path):
@@ -144,8 +146,8 @@ def check_manifest(stage, external, expected):
         )
 
 
-def traverse_ir(stage, definitions, manifest, mode):
-    seeds = set(ROOTS).union(initializers(definitions))
+def traverse_ir(stage, definitions, emitted_initializers, manifest, mode):
+    seeds = set(ROOTS).union(emitted_initializers)
     reached = set(seeds)
     queue = deque(sorted(seeds))
     external = set()
@@ -308,14 +310,15 @@ def object_calls(key, body, relocations, definitions, symbols):
     return calls
 
 
-def traverse_objects(definitions, symbols, relocations, manifest, mode):
+def traverse_objects(definitions, symbols, relocations, emitted_initializers, manifest, mode):
     seeds = []
     for root in ROOTS:
         candidates = symbols.get(root, ())
         if len(candidates) != 1:
             raise ClosureError(f"object root count for {root}: {len(candidates)}")
         seeds.append(candidates[0])
-    seeds.extend(key for key in definitions if key[1].startswith("_CG"))
+    initializer_names = {re.sub(r'\.\d+$', '', symbol) for symbol in emitted_initializers}
+    seeds.extend(key for key in definitions if key[1] in initializer_names)
     reached = set(seeds)
     queue = deque(seeds)
     external = set()
@@ -402,16 +405,19 @@ def main():
     args = parser.parse_args()
 
     try:
-        _, pre_definitions, pre_counts = parse_ir(args.pre_ll)
-        _, final_definitions, final_counts = parse_ir(args.final_ll)
+        _, pre_definitions, pre_counts, pre_initializers = parse_ir(args.pre_ll)
+        _, final_definitions, final_counts, final_initializers = parse_ir(args.final_ll)
         object_definitions, object_symbols, object_relocations = parse_objects(args.object)
         manifest = load_manifest(args.manifest)
         require_root_counts(pre_counts, final_counts)
         check_atomic_contract(pre_definitions, final_definitions, object_definitions)
-        pre = traverse_ir("pre", pre_definitions, manifest["pre"], args.mode)
-        final = traverse_ir("final", final_definitions, manifest["final"], args.mode)
+        pre = traverse_ir("pre", pre_definitions, pre_initializers, manifest["pre"], args.mode)
+        final = traverse_ir(
+            "final", final_definitions, final_initializers, manifest["final"], args.mode
+        )
         obj = traverse_objects(
-            object_definitions, object_symbols, object_relocations, manifest["object"], args.mode
+            object_definitions, object_symbols, object_relocations,
+            pre_initializers.union(final_initializers), manifest["object"], args.mode
         )
         if args.mode != "normal":
             raise ClosureError(f"fault injection unexpectedly accepted: {args.mode}")
