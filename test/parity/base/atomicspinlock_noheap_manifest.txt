@@ -1,0 +1,8 @@
+# stage symbol classification
+root _CN21atomicspinlock.noheap9ConstructHv AtomicSpinLock.h:16-17,29
+root _CN21atomicspinlock.noheap4LockHPRN7rt.base14AtomicSpinLockE AtomicSpinLock.h:19-22
+root _CN21atomicspinlock.noheap6UnlockHPRN7rt.base14AtomicSpinLockE AtomicSpinLock.h:24
+root _CN21atomicspinlock.noheap7TryLockHPRN7rt.base14AtomicSpinLockE AtomicSpinLock.h:26
+pre MANIFEST_PENDING exact-pre-external
+final MANIFEST_PENDING exact-final-external
+object MANIFEST_PENDING exact-object-external
