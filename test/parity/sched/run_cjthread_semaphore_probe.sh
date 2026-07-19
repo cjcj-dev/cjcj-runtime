@@ -269,13 +269,56 @@ closure_args=(
 
 run_closure_proof()
 {
-    python3 "$ROOT/test/parity/sched/cjthread_semaphore_closure.py" "${closure_args[@]}"
+    local closure_output matcher_contract
+    closure_output=$(python3 "$ROOT/test/parity/sched/cjthread_semaphore_closure.py" "${closure_args[@]}")
+    printf '%s\n' "$closure_output"
+    matcher_contract='CJTHREAD_SEMAPHORE_BARRIER_MATCHER required_rejected=22 permitted_accepted=31 intrinsic_family_rejected=1 status=PASS'
+    grep -Fxq "$matcher_contract" <<< "$closure_output" ||
+        fail "barrier matcher contract counts missing"
 }
 
 run_negative_self_tests()
 {
-    local mode negative_rc
-    for mode in missing extra forbidden; do
+    local mode negative_rc expected_stage expected_symbol expected_error reason
+    for mode in missing extra forbidden barrier_pre barrier_final barrier_object; do
+        case "$mode" in
+            missing)
+                expected_stage=pre
+                expected_symbol=reached_scanned
+                expected_error='pre reached/scanned mismatch'
+                reason=missing_definition
+                ;;
+            extra)
+                expected_stage=pre
+                expected_symbol=reached_scanned
+                expected_error='pre reached/scanned mismatch'
+                reason=extra_definition
+                ;;
+            forbidden)
+                expected_stage=pre
+                expected_symbol=MCC_NewObject
+                expected_error='pre forbidden external: MCC_NewObject'
+                reason=forbidden_allocation
+                ;;
+            barrier_pre)
+                expected_stage=pre
+                expected_symbol=MCC_WriteRefField
+                expected_error='pre forbidden barrier external: MCC_WriteRefField'
+                reason=forbidden_barrier
+                ;;
+            barrier_final)
+                expected_stage=final
+                expected_symbol=CJ_MCC_AtomicSwapReference
+                expected_error='final forbidden barrier external: CJ_MCC_AtomicSwapReference'
+                reason=forbidden_barrier
+                ;;
+            barrier_object)
+                expected_stage=object
+                expected_symbol=CJ_MCC_WriteGenericPayload
+                expected_error='object forbidden barrier external: CJ_MCC_WriteGenericPayload'
+                reason=forbidden_barrier
+                ;;
+        esac
         set +e
         python3 "$ROOT/test/parity/sched/cjthread_semaphore_closure.py" "${closure_args[@]}" \
             --mode "$mode" > "$IMP/negative.$mode.log" 2>&1
@@ -284,7 +327,9 @@ run_negative_self_tests()
         [[ $negative_rc -ne 0 ]] || fail "negative mode $mode returned zero"
         grep -Fq "CJTHREAD_SEMAPHORE_CLOSURE FAIL mode=$mode" "$IMP/negative.$mode.log" ||
             fail "negative mode $mode did not execute the real analyzer"
-        echo "CJTHREAD_SEMAPHORE_NEGATIVE mode=$mode rc=$negative_rc status=PASS"
+        grep -Fq "$expected_error" "$IMP/negative.$mode.log" ||
+            fail "negative mode $mode missed stage/symbol reason: $expected_error"
+        echo "CJTHREAD_SEMAPHORE_NEGATIVE mode=$mode rc=$negative_rc stage=$expected_stage symbol=$expected_symbol reason=$reason status=PASS"
     done
 }
 
@@ -307,7 +352,7 @@ echo "CJTHREAD_SEMAPHORE_CPP_HEADER sha256=$header_sha source_predicates=1 sourc
 echo "CJTHREAD_SEMAPHORE_BRANCHES source=2 local_compiled=1 local_debts=2 machine_checked=true status=PASS"
 echo "CJTHREAD_SEMAPHORE_PLATFORM linux_x86_64=COMPILED_EXECUTED aarch64_linux=UNCOMPILED_BLOCKED Android_ARM32_ARM64=UNCOMPILED_BLOCKED macOS_iOS=UNCOMPILED_BLOCKED Win64=UNCOMPILED_BLOCKED Hongmeng_OHOS=UNCOMPILED_BLOCKED other_targets=UNCOMPILED_BLOCKED blockers=CJTHREAD-SEMAPHORE-INLINE-LAYOUT,CJTHREAD-SEMAPHORE-DARWIN-LAYOUT status=DEBT_RECORDED"
 echo "CJTHREAD_SEMAPHORE_EVIDENCE tree=$tree_sha cpp_oracle_sha256=$cpp_sha cj_probe_sha256=$cj_sha transcript_sha256=$transcript_sha status=PASS"
-echo "CJTHREAD_SEMAPHORE_STAGES cpp_header=1 cj_consumer=1 byte_layout=1 returns=6 blocking=1 eintr_return=1 eintr_retry=1 counter_threads=8 handoff=1 destroy_once=1 bridge=1 pre_closure=1 final_closure=1 object_closure=1 negatives=3 status=PASS"
+echo "CJTHREAD_SEMAPHORE_STAGES cpp_header=1 cj_consumer=1 byte_layout=1 returns=6 blocking=1 eintr_return=1 eintr_retry=1 counter_threads=8 handoff=1 destroy_once=1 bridge=1 pre_closure=1 final_closure=1 object_closure=1 matcher_required=22 matcher_permitted=31 allocation_negatives=1 barrier_negatives=3 negatives=6 status=PASS"
 sed -n '1,10p' "$CJ_TRANSCRIPT"
 disk_after=$(df -Pk / | awk 'NR==2 {print $4}')
 used_kb=$((disk_before - disk_after))
