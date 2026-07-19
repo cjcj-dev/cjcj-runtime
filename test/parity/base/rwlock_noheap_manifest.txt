@@ -18,3 +18,7 @@ object cj_atomic_i32_fetch_sub native-atomic
 object sched_yield libc-scheduler
 object abort libc-termination
 object RtFatal native-termination
+object strlen libc-string-length
+object write libc-output
+object backtrace libc-backtrace
+object backtrace_symbols_fd libc-backtrace-output
