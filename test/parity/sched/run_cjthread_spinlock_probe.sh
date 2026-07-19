@@ -219,7 +219,7 @@ check_layout_calls_and_abi()
             fail "test C entry count mismatch operation=$operation"
     done
     for symbol in pthread_spin_init pthread_spin_lock pthread_spin_unlock pthread_spin_destroy; do
-        readelf -Ws "$CJ_PROBE" | grep -Eq "UND.*${symbol}@GLIBC_" ||
+        objdump -T "$CJ_PROBE" | grep -Eq "\\*UND\\*.*GLIBC_.*${symbol}$" ||
             fail "real glibc pthread edge absent symbol=$symbol"
     done
     ! rg -q 'CJRT_CJthreadSpinLock|cj_cjthread_pthread_spin_' "$ROOT/contract" ||
