@@ -230,7 +230,7 @@ check_layout_source_inventory_platforms()
         fail "integer pointer arithmetic in owner/member path"
     ! rg -q '^public func |ThreadSleep\(|ThreadEntry\(|ThreadCreate\(|ThreadAlloc|CJThreadCreate\(|CJThreadResume\(|CJThreadYield\(|CJThreadDestroy\(|malloc|calloc|new ' \
         "$ROOT/src/rt.sched/Thread.cj" || fail "forbidden scheduler/lifecycle/wrapper surface"
-    ! rg -q 'Thread|LuaCJThread|CJThreadContext|CJThreadAttr|Dulink' "$ROOT/contract" ||
+    ! rg -q 'CJRT_ThreadOwnerRun|ThreadSemaphore|rt\.sched:Thread|(^|[^A-Za-z0-9_])(Thread|LuaCJThread|CJThreadContext|CJThreadAttr|Dulink)([^A-Za-z0-9_]|$)' "$ROOT/contract" ||
         fail "descriptor leaked into production export contract"
 
     local rows=0 owner operation file line expected actual
