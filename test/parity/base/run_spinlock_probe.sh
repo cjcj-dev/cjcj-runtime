@@ -212,9 +212,9 @@ check_bridge_and_layout()
         native_defs=$(nm -g --defined-only "$IMP/SpinLock.o" |
             awk -v symbol="cj_pthread_spin_$operation" '$3 == symbol {++n} END {print n+0}')
         native_relocs=$(objdump -r "$IMP/SpinLock.o" |
-            awk -v symbol="$pthread_target" '$3 == symbol {++n} END {print n+0}')
+            awk -v symbol="$pthread_target" '$3 ~ ("^" symbol "(-0x[0-9A-Fa-f]+)?$") {++n} END {print n+0}')
         base_relocs=$(objdump -r "$IMP/base_temps/rt.base.o" |
-            awk -v symbol="cj_pthread_spin_$operation" '$3 == symbol {++n} END {print n+0}')
+            awk -v symbol="cj_pthread_spin_$operation" '$3 ~ ("^" symbol "(-0x[0-9A-Fa-f]+)?$") {++n} END {print n+0}')
         executable_defs=$(nm -g --defined-only "$CJ_PROBE" |
             awk -v symbol="cj_pthread_spin_$operation" '$3 == symbol {++n} END {print n+0}')
         [[ $native_defs -eq 1 && $native_relocs -eq 1 && $base_relocs -eq 1 && $executable_defs -eq 1 ]] ||
