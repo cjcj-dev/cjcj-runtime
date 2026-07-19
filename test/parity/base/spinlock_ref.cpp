@@ -300,8 +300,11 @@ int main()
     ApiDestroy(lock);
     SnapshotBytes(states[6], storage, sizeof(storage));
 
-    std::printf("SPINLOCK_PTHREAD sizeof=%zu align=%zu is_int=%s\n", sizeof(pthread_spinlock_t),
-        alignof(pthread_spinlock_t), std::is_same<pthread_spinlock_t, int>::value ? "true" : "false");
+    std::printf("SPINLOCK_PTHREAD sizeof=%zu align=%zu is_int=%s remove_cv_is_int=%s volatile=%s\n",
+        sizeof(pthread_spinlock_t), alignof(pthread_spinlock_t),
+        std::is_same<pthread_spinlock_t, int>::value ? "true" : "false",
+        std::is_same<typename std::remove_cv<pthread_spinlock_t>::type, int>::value ? "true" : "false",
+        std::is_volatile<pthread_spinlock_t>::value ? "true" : "false");
     std::printf("SPINLOCK_LAYOUT sizeof=%zu align=%zu spinlock=%zu\n", sizeof(SpinLock),
         alignof(SpinLock), offsetof(SpinLock, spinlock));
     std::printf("SCOPED_SPINLOCK_LAYOUT sizeof=%zu align=%zu spinLock=%zu\n",
