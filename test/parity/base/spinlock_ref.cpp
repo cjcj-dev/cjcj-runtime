@@ -54,6 +54,14 @@ void PrintBytes(const char* label, const void* object, size_t size)
     }
 }
 
+void SnapshotBytes(unsigned char* destination, const void* storage, size_t size)
+{
+    const auto* bytes = static_cast<const volatile unsigned char*>(storage);
+    for (size_t i = 0; i < size; ++i) {
+        destination[i] = bytes[i];
+    }
+}
+
 #ifdef SPINLOCK_ORACLE
 using MapleRuntime::ScopedEnterSpinLock;
 using MapleRuntime::SpinLock;
@@ -148,7 +156,7 @@ void* HandoffThread(void* raw)
     return nullptr;
 }
 
-bool RunBehavior(void* lock, SpinLockResult* result)
+__attribute__((unused)) bool RunBehavior(void* lock, SpinLockResult* result)
 {
     std::memset(result, 0, sizeof(*result));
 
@@ -278,19 +286,19 @@ int main()
     ResetCounts();
     ApiInit(storage);
     auto* lock = reinterpret_cast<SpinLock*>(storage);
-    std::memcpy(states[0], storage, sizeof(storage));
+    SnapshotBytes(states[0], storage, sizeof(storage));
     ApiLock(lock);
-    std::memcpy(states[1], storage, sizeof(storage));
+    SnapshotBytes(states[1], storage, sizeof(storage));
     const bool failed = ApiTryLock(lock);
-    std::memcpy(states[2], storage, sizeof(storage));
+    SnapshotBytes(states[2], storage, sizeof(storage));
     ApiUnlock(lock);
-    std::memcpy(states[3], storage, sizeof(storage));
+    SnapshotBytes(states[3], storage, sizeof(storage));
     const bool succeeded = ApiTryLock(lock);
-    std::memcpy(states[4], storage, sizeof(storage));
+    SnapshotBytes(states[4], storage, sizeof(storage));
     ApiUnlock(lock);
-    std::memcpy(states[5], storage, sizeof(storage));
+    SnapshotBytes(states[5], storage, sizeof(storage));
     ApiDestroy(lock);
-    std::memcpy(states[6], storage, sizeof(storage));
+    SnapshotBytes(states[6], storage, sizeof(storage));
 
     std::printf("SPINLOCK_PTHREAD sizeof=%zu align=%zu is_int=%s\n", sizeof(pthread_spinlock_t),
         alignof(pthread_spinlock_t), std::is_same<pthread_spinlock_t, int>::value ? "true" : "false");
