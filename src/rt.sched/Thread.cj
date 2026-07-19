@@ -53,6 +53,14 @@ public const THREAD_RUNNING: ThreadState = 2
 public const THREAD_PRE_SLEEP: ThreadState = 3
 public const THREAD_SLEEP: ThreadState = 4
 
+// CJThread schedule/include/schedule.h:415-420. The target enum has no #if
+// branches. LuaCJThread stores this vocabulary in its signed int state field.
+public type LuaCJThreadState = Int32
+public const LUA_CJTHREAD_INIT: LuaCJThreadState = 0
+public const LUA_CJTHREAD_SUSPENDING: LuaCJThreadState = 1
+public const LUA_CJTHREAD_RUNNING: LuaCJThreadState = 2
+public const LUA_CJTHREAD_DONE: LuaCJThreadState = 3
+
 // CJThread schedule/include/inner/gas/x86/x86_64/cjthread_context.h:17-42.
 // The selected Linux x86_64 record ends after fpuCw; the compiler supplies the
 // two tail-padding bytes required by its 8-byte aggregate alignment.
@@ -138,7 +146,7 @@ public struct LuaCJThread {
     public var arg: CPointer<Unit>
     public var result: CPointer<Unit>
     public var sem: Semaphore
-    public var state: Int32
+    public var state: LuaCJThreadState
     public var attrUser: CJThreadAttr
 
     public init() {
@@ -147,7 +155,7 @@ public struct LuaCJThread {
         arg = CPointer<Unit>()
         result = CPointer<Unit>()
         sem = Semaphore()
-        state = 0
+        state = LUA_CJTHREAD_INIT
         attrUser = CJThreadAttr()
     }
 }
