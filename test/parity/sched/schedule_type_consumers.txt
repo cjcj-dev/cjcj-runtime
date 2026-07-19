@@ -1,0 +1,89 @@
+# classification	platform_context	path	line	token_occurrences	exact_text
+type_definition	all_targets	runtime/schedule/include/schedule.h	425	1	enum ScheduleType {
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	426	1	    SCHEDULE_DEFAULT = 0,               /* default scheduler */
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	427	1	    SCHEDULE_UI_THREAD,                 /* scheduler for UI thread */
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	428	1	    SCHEDULE_FOREIGN_THREAD,            /* scheduler for foreign thread */
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	429	1	    SCHEDULE_EXCLUSIVE                  /* scheduler for exclusive scope */
+parameter_documentation	all_targets	runtime/schedule/include/schedule.h	834	1	 * @param scheduleType    [IN] Create a specified scheduler.
+parameter	all_targets	runtime/schedule/include/schedule.h	839	2	ScheduleHandle ScheduleNew(ScheduleType scheduleType, const struct ScheduleAttr *userAttr);
+owner_field	all_targets	runtime/schedule/include/inner/schedule_impl.h	253	2	    enum ScheduleType scheduleType;                 /* schedule yype */
+comparison	all_targets	runtime/schedule/src/schedule.cpp	231	2	    if (schedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	255	2	    if (schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+parameter	all_targets	runtime/schedule/src/schedule.cpp	428	2	struct Schedule *ScheduleAlloc(ScheduleType scheduleType)
+store	all_targets	runtime/schedule/src/schedule.cpp	438	2	    schedule->scheduleType = scheduleType;
+comparison	all_targets	runtime/schedule/src/schedule.cpp	440	2	    if (scheduleType == SCHEDULE_DEFAULT && g_scheduleManager.defaultSchedule == nullptr) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	442	2	    } else if (scheduleType == SCHEDULE_DEFAULT && g_scheduleManager.defaultSchedule != nullptr) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	480	2	        if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+parameter	all_targets	runtime/schedule/src/schedule.cpp	556	2	ScheduleHandle ScheduleNew(ScheduleType scheduleType, const struct ScheduleAttr *userAttr)
+comparison	all_targets	runtime/schedule/src/schedule.cpp	565	4	    if (scheduleType != SCHEDULE_FOREIGN_THREAD && scheduleType != SCHEDULE_EXCLUSIVE &&
+forwarding_call	all_targets	runtime/schedule/src/schedule.cpp	578	1	    schedule = ScheduleAlloc(scheduleType);
+comparison	all_targets	runtime/schedule/src/schedule.cpp	584	2	    if (scheduleType == SCHEDULE_DEFAULT && !g_scheduleManager.initFlag) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	590	2	    } else if (scheduleType != SCHEDULE_DEFAULT && !g_scheduleManager.initFlag) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	594	2	    } else if (scheduleType == SCHEDULE_DEFAULT && g_scheduleManager.initFlag) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	611	2	    if (schedule->scheduleType != SCHEDULE_EXCLUSIVE) {
+local_copy	ohos	runtime/schedule/src/schedule.cpp	708	2	    ScheduleType type = cjthread->schedule->scheduleType;
+switch_label	ohos	runtime/schedule/src/schedule.cpp	710	1	        case SCHEDULE_DEFAULT:
+switch_label	ohos	runtime/schedule/src/schedule.cpp	712	1	        case SCHEDULE_UI_THREAD:
+switch_label	ohos	runtime/schedule/src/schedule.cpp	714	1	        case SCHEDULE_FOREIGN_THREAD:
+comparison	all_targets	runtime/schedule/src/schedule.cpp	738	2	    if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	751	2	    if (g_tryExit || (schedule->scheduleType != SCHEDULE_DEFAULT &&
+comparison	all_targets	runtime/schedule/src/schedule.cpp	788	2	    if (schedule == nullptr || schedule->scheduleType == SCHEDULE_DEFAULT || schedule->state != SCHEDULE_INIT) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1000	2	    if (schedule->scheduleType != SCHEDULE_EXCLUSIVE && schedule->thread0 != nullptr) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1062	2	        if (schedule->scheduleType != SCHEDULE_EXCLUSIVE &&
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1150	2	    if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1200	2	    if (schedule == nullptr || (schedule->scheduleType == SCHEDULE_DEFAULT && cjthread == nullptr)) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1206	2	    if (schedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1213	2	    if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+local_copy	all_targets	runtime/schedule/src/schedule.cpp	1236	3	    ScheduleType scheduleType = schedule->scheduleType;
+comparison	all_targets	runtime/schedule/src/schedule.cpp	1242	2	    if (scheduleType == SCHEDULE_DEFAULT && g_scheduleManager.initFlag) {
+diagnostic_use	all_targets	runtime/schedule/src/schedule.cpp	1496	1	                    cjthread->schedule->scheduleType, scheduleState);
+comparison	all_targets	runtime/schedule/src/schedule.cpp	2193	2	    if (schedule->scheduleType != SCHEDULE_FOREIGN_THREAD) {
+comment	all_targets	runtime/schedule/src/cjthread.cpp	415	1	    // for SCHEDULE_EXCLUSIVE cjthread to use osthread
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	416	4	    if (schedule->scheduleType == SCHEDULE_FOREIGN_THREAD || schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	512	2	    if (schedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	ohos	runtime/schedule/src/cjthread.cpp	562	2	    if (schedule == nullptr || schedule->scheduleType != SCHEDULE_UI_THREAD) {
+comparison	ohos	runtime/schedule/src/cjthread.cpp	585	2	    if (schedule == nullptr || schedule->scheduleType != SCHEDULE_UI_THREAD) {
+comparison	ohos	runtime/schedule/src/cjthread.cpp	603	2	    if (schedule == nullptr || schedule->scheduleType != SCHEDULE_UI_THREAD) {
+comparison	ohos	runtime/schedule/src/cjthread.cpp	620	2	    if (schedule == nullptr || schedule->scheduleType != SCHEDULE_UI_THREAD) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	676	2	    if (newCJThread->schedule->scheduleType == SCHEDULE_FOREIGN_THREAD ||
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	677	2	        newCJThread->schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	698	2	    if (cjthread0->schedule->scheduleType == SCHEDULE_FOREIGN_THREAD ||
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	699	2	        cjthread0->schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	855	2	    if (targetSchedule == nullptr || (targetSchedule->scheduleType != SCHEDULE_DEFAULT &&
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	875	2	    if (targetSchedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	880	2	        if (targetSchedule->scheduleType != SCHEDULE_DEFAULT) {
+return	all_targets	runtime/schedule/src/cjthread.cpp	942	2	    return cjthread->schedule->scheduleType == SCHEDULE_EXCLUSIVE ? 1 : 0;
+forwarding_call	all_targets	runtime/schedule/src/cjthread.cpp	1006	1	    ScheduleHandle scheduler = runtime->CreateSubSchedulerAndInit(SCHEDULE_EXCLUSIVE);
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1053	2	    if (targetSchedule->scheduleType == SCHEDULE_UI_THREAD &&
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1056	2	    } else if (targetSchedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1067	2	        if (targetSchedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1078	2	    if (targetSchedule->scheduleType == SCHEDULE_UI_THREAD &&
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1156	2	    if (parkCJThread->schedule->scheduleType == SCHEDULE_UI_THREAD) {
+comment	ohos	runtime/schedule/src/cjthread.cpp	1274	1	    // cjthread is on UI thread if schedule type is SCHEDULE_UI_THREAD.
+comparison	ohos	runtime/schedule/src/cjthread.cpp	1275	2	    if (cjthread->schedule->scheduleType == SCHEDULE_UI_THREAD && cjthread->threadStackTopList.size() > 1) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1283	2	    if (cjthread->schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1288	2	    if (cjthread->schedule->scheduleType == SCHEDULE_FOREIGN_THREAD) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1362	2	            if (nextCJThread->schedule->scheduleType == SCHEDULE_UI_THREAD) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1427	2	    if (cjthread->schedule->scheduleType == SCHEDULE_FOREIGN_THREAD ||
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1428	2	        cjthread->schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1478	4	    if (schedule->scheduleType == SCHEDULE_FOREIGN_THREAD || schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1485	2	    if (schedule->scheduleType == SCHEDULE_UI_THREAD &&
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1527	2	        if (schedule->scheduleType == SCHEDULE_UI_THREAD &&
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1802	2	    if (schedule != nullptr && schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	arm32	runtime/schedule/src/cjthread.cpp	1810	2	    if (schedule->scheduleType == SCHEDULE_FOREIGN_THREAD) {
+comparison	all_targets	runtime/schedule/src/processor.cpp	545	2	        if (schedule->scheduleType != SCHEDULE_DEFAULT &&
+comparison	all_targets	runtime/schedule/src/processor.cpp	635	2	        if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/processor.cpp	751	2	        if (schedule->scheduleType == SCHEDULE_DEFAULT &&
+comparison	ohos	runtime/schedule/src/processor.cpp	781	2	            if (nextCJThread->schedule->scheduleType == SCHEDULE_UI_THREAD) {
+comparison	ohos	runtime/schedule/src/processor.cpp	814	2	            if (nextCJThread->schedule->scheduleType == SCHEDULE_UI_THREAD) {
+comparison	all_targets	runtime/schedule/src/processor.cpp	887	2	    if (schedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schmon.cpp	117	2	            if (state == PROCESSOR_SYSCALL && ScheduleGet()->scheduleType == SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schmon.cpp	156	2	        if (schedule->scheduleType == SCHEDULE_FOREIGN_THREAD ||
+comparison	all_targets	runtime/schedule/src/schmon.cpp	157	2	            schedule->scheduleType == SCHEDULE_EXCLUSIVE) {
+comparison	all_targets	runtime/schedule/src/schmon.cpp	163	2	        if (schedule->scheduleType == SCHEDULE_UI_THREAD &&
+comparison	all_targets	runtime/schedule/src/schmon.cpp	280	2	        if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	win64	runtime/schedule/src/schmon.cpp	284	2	        if (schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	non_win64	runtime/schedule/src/schmon.cpp	296	2	        if (schedule->netpoll.npfd != nullptr && schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	non_win64	runtime/schedule/src/schmon.cpp	301	2	        } else if (schedule->netpoll.npfd == nullptr && schedule->scheduleType == SCHEDULE_DEFAULT) {
+comparison	non_win64	runtime/schedule/src/schmon.cpp	303	2	        } else if (schedule->netpoll.npfd != nullptr && schedule->scheduleType != SCHEDULE_DEFAULT) {
+comparison	all_targets	runtime/schedule/src/schmon.cpp	310	2	        if (schedule->scheduleType == SCHEDULE_DEFAULT) {

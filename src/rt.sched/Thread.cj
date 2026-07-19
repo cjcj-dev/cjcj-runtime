@@ -61,6 +61,14 @@ public const LUA_CJTHREAD_SUSPENDING: LuaCJThreadState = 1
 public const LUA_CJTHREAD_RUNNING: LuaCJThreadState = 2
 public const LUA_CJTHREAD_DONE: LuaCJThreadState = 3
 
+// CJThread schedule/include/schedule.h:423-430. The Linux x86_64 C++ oracle
+// proves the public vocabulary has a 4-byte unsigned representation and values 0-3.
+public type ScheduleType = UInt32
+public const SCHEDULE_DEFAULT: ScheduleType = 0u32
+public const SCHEDULE_UI_THREAD: ScheduleType = 1u32
+public const SCHEDULE_FOREIGN_THREAD: ScheduleType = 2u32
+public const SCHEDULE_EXCLUSIVE: ScheduleType = 3u32
+
 // CJThread schedule/include/inner/gas/x86/x86_64/cjthread_context.h:17-42.
 // The selected Linux x86_64 record ends after fpuCw; the compiler supplies the
 // two tail-padding bytes required by its 8-byte aggregate alignment.

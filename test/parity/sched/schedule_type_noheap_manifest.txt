@@ -1,0 +1,23 @@
+# stage symbol classification
+root _CN19scheduletype.noheap20CJRT_ScheduleTypeRunHv schedule.h:423-430
+pre ScheduleTypeObserve cpp-transcript-observer
+pre _CGPatiiHv std-package-initializer
+pre _CNat6sizeOfIG_Hv intrinsic-sizeof
+pre _CNat7alignOfIG_Hv intrinsic-alignof
+final ScheduleTypeObserve cpp-transcript-observer
+final CJ_MCC_HandleSafepoint runtime-safepoint
+final CJ_MCC_StackCheck runtime-stack-check
+final CJ_MRT_PreInitializePackage runtime-package-initializer
+final _CGPatiiHv std-package-initializer
+final _CNat6sizeOfIG_Hv intrinsic-sizeof
+final _CNat7alignOfIG_Hv intrinsic-alignof
+object CJ_MCC_C2NStub runtime-native-transition
+object CJ_MCC_HandleSafepoint runtime-safepoint
+object CJ_MCC_StackGrowStub runtime-stack-growth
+object CJ_MRT_PreInitializePackage runtime-package-initializer
+object _CGPatiiHv std-package-initializer
+object _CNat6sizeOfIG_Hv intrinsic-sizeof
+object _CNat7alignOfIG_Hv intrinsic-alignof
+object __printf_chk libc-transcript
+object __stack_chk_fail libc-stack-protector
+object puts libc-transcript-line
