@@ -26,11 +26,79 @@ PROJECT_PREFIXES = (
 )
 FORBIDDEN = re.compile(
     r"(?:CJ_)?MCC_New|RawArrayAllocate|Create[A-Za-z0-9_]*Exception|"
-    r"llvm\.cj\.(?:malloc|gcwrite|throw)|ThrowException|StringBuilder|"
+    r"llvm\.cj\.(?:malloc|throw)|ThrowException|StringBuilder|"
     r"std[.:]collection|ArrayList|HashMap|HashSet|LinkedList|mallocCString|"
     r"(?:^|[^A-Za-z0-9_])(?:malloc|calloc|realloc|free)(?:$|[^A-Za-z0-9_])",
     re.IGNORECASE,
 )
+BARRIER_SYMBOLS = frozenset((
+    "MCC_WriteRefField",
+    "MCC_WriteStructField",
+    "MCC_WriteStaticRef",
+    "MCC_WriteStaticStruct",
+    "MCC_AtomicWriteReference",
+    "MCC_AtomicSwapReference",
+    "MCC_AtomicCompareSwapReference",
+    "CJ_MCC_WriteRefField",
+    "CJ_MCC_WriteStructField",
+    "CJ_MCC_WriteStaticRef",
+    "CJ_MCC_WriteStaticStruct",
+    "CJ_MCC_AtomicWriteReference",
+    "CJ_MCC_AtomicSwapReference",
+    "CJ_MCC_AtomicCompareAndSwapReference",
+    "CJ_MCC_WriteGeneric",
+    "CJ_MCC_AssignGeneric",
+    "CJ_MCC_WriteGenericPayload",
+))
+REQUIRED_BARRIER_SYMBOLS = tuple(sorted(BARRIER_SYMBOLS)) + (
+    "llvm.cj.gcwrite.ref",
+    "llvm.cj.gcwrite.static.ref",
+    "llvm.cj.gcwrite.struct",
+    "llvm.cj.gcwrite.generic",
+    "llvm.cj.gcwrite.generic.payload",
+)
+PERMITTED_BARRIER_SYMBOLS = (
+    "MCC_AtomicReadReference",
+    "CJ_MCC_AtomicReadReference",
+    "CJ_MCC_ReadRefField",
+    "CJ_MCC_ReadWeakRef",
+    "CJ_MCC_ReadStructField",
+    "CJ_MCC_ReadStaticRef",
+    "CJ_MCC_ReadStaticStruct",
+    "CJ_MCC_ReadGeneric",
+    "llvm.cj.gcread.ref",
+    "llvm.cj.gcread.static.ref",
+    "llvm.cj.gcread.struct",
+    "llvm.cj.gcread.generic",
+    "llvm.cj.gcread.generic.payload",
+    "cj_cjthread_semaphore_init",
+    "cj_cjthread_semaphore_wait",
+    "cj_cjthread_semaphore_wait_no_intr",
+    "cj_cjthread_semaphore_post",
+    "cj_cjthread_semaphore_destroy",
+    "sem_init",
+    "sem_wait",
+    "sem_post",
+    "sem_destroy",
+    "__errno_location",
+    "errno",
+    "read",
+    "write",
+    "pread",
+    "pwrite",
+    "fread",
+    "fwrite",
+    "puts",
+)
+BARRIER_SYMBOL_TOKEN = re.compile(
+    r"(?<![A-Za-z0-9_.$])((?:CJ_)?MCC_[A-Za-z0-9_]+|llvm\.cj\.[A-Za-z0-9_.]+)"
+    r"(?![A-Za-z0-9_.$])"
+)
+BARRIER_INJECTIONS = {
+    "barrier_pre": ("pre", "MCC_WriteRefField"),
+    "barrier_final": ("final", "CJ_MCC_AtomicSwapReference"),
+    "barrier_object": ("object", "CJ_MCC_WriteGenericPayload"),
+}
 SAFEPOINT = re.compile(r"CJ_MCC_(?:HandleSafepoint|StackCheck|StackGrowStub)")
 SYMBOL_REF = re.compile(r'@(?:"([^"]+)"|([A-Za-z0-9_.$:-]+))')
 IR_DEFINITION = re.compile(r'^define\b.*?@(?:"([^"]+)"|([^\s(]+))\(')
@@ -41,6 +109,34 @@ CALL_INSTRUCTION = re.compile(r'(?:^|\s)(?:(?:tail|musttail|notail)\s+)?(?:call|
 
 class ClosureError(RuntimeError):
     pass
+
+
+def is_forbidden_barrier(symbol):
+    return symbol in BARRIER_SYMBOLS or symbol == "llvm.cj.gcwrite" or re.fullmatch(
+        r"llvm\.cj\.gcwrite(?:\.[A-Za-z0-9_]+)+", symbol
+    ) is not None
+
+
+def find_forbidden_barrier(text):
+    return next(
+        (symbol for symbol in BARRIER_SYMBOL_TOKEN.findall(text) if is_forbidden_barrier(symbol)),
+        None,
+    )
+
+
+def check_barrier_matcher_contract():
+    rejected = [symbol for symbol in REQUIRED_BARRIER_SYMBOLS if is_forbidden_barrier(symbol)]
+    accepted = [symbol for symbol in PERMITTED_BARRIER_SYMBOLS if not is_forbidden_barrier(symbol)]
+    family_probe = "llvm.cj.gcwrite.contract.future"
+    if len(rejected) != len(REQUIRED_BARRIER_SYMBOLS):
+        missing = sorted(set(REQUIRED_BARRIER_SYMBOLS) - set(rejected))
+        raise ClosureError(f"barrier matcher required-symbol miss: {missing}")
+    if len(accepted) != len(PERMITTED_BARRIER_SYMBOLS):
+        false_positive = sorted(set(PERMITTED_BARRIER_SYMBOLS) - set(accepted))
+        raise ClosureError(f"barrier matcher permitted-symbol rejection: {false_positive}")
+    if not is_forbidden_barrier(family_probe):
+        raise ClosureError(f"barrier matcher intrinsic-family miss: {family_probe}")
+    return len(rejected), len(accepted)
 
 
 def symbol_refs(text):
@@ -125,14 +221,23 @@ def load_manifest(path):
 
 
 def check_forbidden(stage, bodies, external, mode):
+    external = set(external)
     if mode == "forbidden":
-        external = set(external)
         external.add("MCC_NewObject")
+    injection = BARRIER_INJECTIONS.get(mode)
+    if injection is not None and injection[0] == stage:
+        external.add(injection[1])
     for symbol, body in bodies.items():
+        barrier = find_forbidden_barrier(body)
+        if barrier is not None:
+            raise ClosureError(f"{stage} forbidden barrier body {symbol}: {barrier}")
         match = FORBIDDEN.search(body)
         if match:
             raise ClosureError(f"{stage} forbidden body {symbol}: {match.group(0).strip()}")
     for symbol in external:
+        barrier = find_forbidden_barrier(symbol)
+        if barrier is not None:
+            raise ClosureError(f"{stage} forbidden barrier external: {barrier}")
         if FORBIDDEN.search(symbol):
             raise ClosureError(f"{stage} forbidden external: {symbol}")
 
@@ -401,10 +506,15 @@ def main():
     parser.add_argument("--final-ll", required=True)
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--object", action="append", required=True)
-    parser.add_argument("--mode", choices=("normal", "missing", "extra", "forbidden"), default="normal")
+    parser.add_argument(
+        "--mode",
+        choices=("normal", "missing", "extra", "forbidden", *BARRIER_INJECTIONS),
+        default="normal",
+    )
     args = parser.parse_args()
 
     try:
+        matcher_rejected, matcher_accepted = check_barrier_matcher_contract()
         _, pre_definitions, pre_counts, pre_initializers = parse_ir(args.pre_ll)
         _, final_definitions, final_counts, final_initializers = parse_ir(args.final_ll)
         object_definitions, object_symbols, object_relocations = parse_objects(args.object)
@@ -441,6 +551,10 @@ def main():
         print(
             "ATOMICSPINLOCK_NOHEAP forbidden_alloc=0 forbidden_barrier=0 "
             "forbidden_exception=0 forbidden_throw=0 status=PASS"
+        )
+        print(
+            f"ATOMICSPINLOCK_BARRIER_MATCHER required_rejected={matcher_rejected} "
+            f"permitted_accepted={matcher_accepted} intrinsic_family_rejected=1 status=PASS"
         )
     except (ClosureError, OSError, subprocess.CalledProcessError) as error:
         print(f"ATOMICSPINLOCK_CLOSURE FAIL mode={args.mode} error={error}", file=sys.stderr)
