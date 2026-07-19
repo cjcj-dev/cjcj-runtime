@@ -204,60 +204,37 @@ void SetOracleFields(Thread& thread, LuaCJThread& lua)
     lua.state = 0x11223344;
 }
 
+#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
 int ApiInit(Semaphore* sem, int pshared, unsigned value)
 {
-#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
     Observe(nativeCalls, nativeAddressMismatches, INIT, sem);
     return SemaphoreInit(sem, pshared, value);
-#else
-    extern int32_t CJRT_ThreadSemaphoreInit(Semaphore*, int32_t, uint32_t);
-    return CJRT_ThreadSemaphoreInit(sem, pshared, value);
-#endif
 }
 
 int ApiWait(Semaphore* sem)
 {
-#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
     Observe(nativeCalls, nativeAddressMismatches, WAIT, sem);
     return SemaphoreWait(sem);
-#else
-    extern int32_t CJRT_ThreadSemaphoreWait(Semaphore*);
-    return CJRT_ThreadSemaphoreWait(sem);
-#endif
 }
 
 int ApiWaitNoIntr(Semaphore* sem)
 {
-#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
     Observe(nativeCalls, nativeAddressMismatches, WAIT_NO_INTR, sem);
     return SemaphoreWaitNoIntr(sem);
-#else
-    extern int32_t CJRT_ThreadSemaphoreWaitNoIntr(Semaphore*);
-    return CJRT_ThreadSemaphoreWaitNoIntr(sem);
-#endif
 }
 
 int ApiPost(Semaphore* sem)
 {
-#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
     Observe(nativeCalls, nativeAddressMismatches, POST, sem);
     return SemaphorePost(sem);
-#else
-    extern int32_t CJRT_ThreadSemaphorePost(Semaphore*);
-    return CJRT_ThreadSemaphorePost(sem);
-#endif
 }
 
 int ApiDestroy(Semaphore* sem)
 {
-#ifdef THREAD_SEMAPHORE_LAYOUT_ORACLE
     Observe(nativeCalls, nativeAddressMismatches, DESTROY, sem);
     return SemaphoreDestroy(sem);
-#else
-    extern int32_t CJRT_ThreadSemaphoreDestroy(Semaphore*);
-    return CJRT_ThreadSemaphoreDestroy(sem);
-#endif
 }
+#endif
 } // namespace
 
 extern "C" int __real_sem_init(sem_t*, int, unsigned);
