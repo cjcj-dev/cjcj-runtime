@@ -218,6 +218,24 @@ __attribute__((unused)) bool RunBehavior(void* lock, SpinLockResult* result)
     return true;
 }
 
+void PrintBehavior(const SpinLockResult& result)
+{
+    std::printf("SPINLOCK_BLOCK pre_release=%llu acquired_before_release=%llu "
+        "post_release=%llu acquired_after_release=%llu status=PASS\n",
+        static_cast<unsigned long long>(result.blockReady),
+        static_cast<unsigned long long>(result.acquiredBeforeRelease),
+        static_cast<unsigned long long>(result.acquiredAfterRelease),
+        static_cast<unsigned long long>(result.acquiredAfterRelease));
+    std::printf("SPINLOCK_COUNTER threads=%zu iterations=%zu expected=%zu actual=%llu "
+        "final=%llu status=PASS\n", THREAD_COUNT, ITERATIONS, THREAD_COUNT * ITERATIONS,
+        static_cast<unsigned long long>(result.counter),
+        static_cast<unsigned long long>(result.counterFinalState));
+    std::printf("SPINLOCK_HANDOFF payload=%llu observed=%llu final=%llu status=PASS\n",
+        static_cast<unsigned long long>(HANDOFF_PAYLOAD),
+        static_cast<unsigned long long>(result.handoffObserved),
+        static_cast<unsigned long long>(result.handoffFinalState));
+}
+
 #ifdef SPINLOCK_ORACLE
 void GuardEarlyReturn(SpinLock& lock)
 {
@@ -277,10 +295,11 @@ extern "C" uint64_t SpinLockUnlockCalls() { return unlockCalls.load(std::memory_
 extern "C" uint64_t SpinLockTryCalls() { return tryCalls.load(std::memory_order_relaxed); }
 
 #ifdef SPINLOCK_ORACLE
-int main()
+int main(int argc, char** argv)
 {
     using MapleRuntime::ScopedEnterSpinLock;
     using MapleRuntime::SpinLock;
+    const bool partial = argc == 2 && std::strcmp(argv[1], "--partial") == 0;
     alignas(SpinLock) unsigned char storage[sizeof(SpinLock)]{};
     unsigned char states[7][sizeof(SpinLock)]{};
     ResetCounts();
@@ -297,8 +316,10 @@ int main()
     SnapshotBytes(states[4], storage, sizeof(storage));
     ApiUnlock(lock);
     SnapshotBytes(states[5], storage, sizeof(storage));
-    ApiDestroy(lock);
-    SnapshotBytes(states[6], storage, sizeof(storage));
+    if (!partial) {
+        ApiDestroy(lock);
+        SnapshotBytes(states[6], storage, sizeof(storage));
+    }
 
     std::printf("SPINLOCK_PTHREAD sizeof=%zu align=%zu is_int=%s remove_cv_is_int=%s volatile=%s\n",
         sizeof(pthread_spinlock_t), alignof(pthread_spinlock_t),
@@ -307,13 +328,16 @@ int main()
         std::is_volatile<pthread_spinlock_t>::value ? "true" : "false");
     std::printf("SPINLOCK_LAYOUT sizeof=%zu align=%zu spinlock=%zu\n", sizeof(SpinLock),
         alignof(SpinLock), offsetof(SpinLock, spinlock));
-    std::printf("SCOPED_SPINLOCK_LAYOUT sizeof=%zu align=%zu spinLock=%zu\n",
-        sizeof(ScopedEnterSpinLock), alignof(ScopedEnterSpinLock),
-        __builtin_offsetof(ScopedEnterSpinLock, spinLock));
+    if (!partial) {
+        std::printf("SCOPED_SPINLOCK_LAYOUT sizeof=%zu align=%zu spinLock=%zu\n",
+            sizeof(ScopedEnterSpinLock), alignof(ScopedEnterSpinLock),
+            __builtin_offsetof(ScopedEnterSpinLock, spinLock));
+    }
     std::printf("SPINLOCK_BYTES ");
     const char* labels[] = {"init", "held_lock", "failed_try", "unlock", "successful_try",
         "final_unlock", "destroy"};
-    for (size_t i = 0; i < 7; ++i) {
+    const size_t stateCount = partial ? 6 : 7;
+    for (size_t i = 0; i < stateCount; ++i) {
         if (i != 0) {
             std::printf(" ");
         }
@@ -327,6 +351,18 @@ int main()
         static_cast<unsigned long long>(SpinLockLockCalls()),
         static_cast<unsigned long long>(SpinLockUnlockCalls()),
         static_cast<unsigned long long>(SpinLockTryCalls()));
+
+    if (partial) {
+        SpinLockResult result{};
+        const bool behavior = RunBehavior(lock, &result);
+        PrintBehavior(result);
+        ApiDestroy(lock);
+        return behavior && !failed && succeeded && result.blockReady == 1 &&
+            result.acquiredBeforeRelease == 0 && result.acquiredAfterRelease == 1 &&
+            result.counter == THREAD_COUNT * ITERATIONS && result.counterFinalState == 1 &&
+            result.handoffReady == 1 && result.handoffObserved == HANDOFF_PAYLOAD &&
+            result.handoffFinalState == 1 ? 0 : 1;
+    }
 
     SpinLock guardLock;
     const auto beforeGuardLock = lockCalls.load(std::memory_order_relaxed);
