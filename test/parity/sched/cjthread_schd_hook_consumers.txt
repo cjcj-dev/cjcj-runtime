@@ -1,0 +1,28 @@
+# classification	platform_context	path	line	token_occurrences	exact_text
+gc_registration	all_targets	Concurrency/CJThreadModel/CJThreadModel.cpp	73	2	    (void)CJThreadSchdHookRegister(MRT_StopGCWork, SCHD_STOP);
+gc_registration	all_targets	Concurrency/CJThreadModel/CJThreadModel.cpp	74	2	    (void)CJThreadSchdHookRegister(MRT_CreateMutator, SCHD_CREATE_MUTATOR);
+gc_registration	all_targets	Concurrency/CJThreadModel/CJThreadModel.cpp	75	2	    (void)CJThreadSchdHookRegister(MRT_TransitMutatorToExit, SCHD_DESTROY_MUTATOR);
+gc_registration	all_targets	Concurrency/CJThreadModel/CJThreadModel.cpp	76	2	    (void)CJThreadSchdHookRegister(MRT_GetSafepointProtectedPage, SCHD_PREEMPT_REQ);
+rename_macro	cangjie_build_mode	CJThread/src/base/mid/include/schedule_rename.h	193	1	#define CJThreadSchdHookRegister               CJ_CJThreadSchdHookRegister
+owner_array	all_targets	CJThread/src/runtime/schedule/include/inner/schedule_impl.h	211	3	    SchdCJThreadHookFunc schdCJThreadHook[SCHD_HOOK_BUTT];
+callback_documentation	all_targets	CJThread/src/runtime/schedule/include/schedule.h	296	1	* For details about the registration, see #CJThreadSchdHookRegister.
+callback_typedef	all_targets	CJThread/src/runtime/schedule/include/schedule.h	298	1	typedef uintptr_t (*SchdCJThreadHookFunc)(void);
+type_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	335	1	enum CJThreadSchdHook {
+enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	336	1	    SCHD_STOP = 0,
+enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	337	1	    SCHD_CREATE_MUTATOR = 1,
+enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	338	1	    SCHD_DESTROY_MUTATOR = 2,
+enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	339	1	    SCHD_PREEMPT_REQ = 3,
+enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	340	1	    SCHD_NEW_MUTATOR = 4,
+enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	341	1	    SCHD_HOOK_BUTT = 5
+api_documentation	all_targets	CJThread/src/runtime/schedule/include/schedule.h	907	1	 * CJThreadSchdHook enumeration. The hooks registered with the scheduling framework are
+api_declaration	all_targets	CJThread/src/runtime/schedule/include/schedule.h	914	3	int CJThreadSchdHookRegister(SchdCJThreadHookFunc func, CJThreadSchdHook type);
+local_callback	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	634	1	    SchdCJThreadHookFunc hook_func;
+array_read	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	637	2	    hook_func = g_scheduleManager.schdCJThreadHook[SCHD_CREATE_MUTATOR];
+array_read	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	645	2	    hook_func = g_scheduleManager.schdCJThreadHook[SCHD_DESTROY_MUTATOR];
+registration_definition	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1111	3	int CJThreadSchdHookRegister(SchdCJThreadHookFunc func, CJThreadSchdHook type)
+upper_bound_validation	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1115	1	    if (type >= SCHD_HOOK_BUTT) {
+generic_array_store	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1126	1	    g_scheduleManager.schdCJThreadHook[type] = func;
+local_callback	all_targets	CJThread/src/runtime/schedule/src/schedule.cpp	1143	1	    SchdCJThreadHookFunc hookFunc;
+array_read	all_targets	CJThread/src/runtime/schedule/src/schedule.cpp	1154	2	        hookFunc = g_scheduleManager.schdCJThreadHook[SCHD_STOP];
+local_callback	all_targets	CJThread/src/runtime/schedule/src/schmon.cpp	59	1	    SchdCJThreadHookFunc func;
+array_read	all_targets	CJThread/src/runtime/schedule/src/schmon.cpp	78	2	    func = g_scheduleManager.schdCJThreadHook[SCHD_PREEMPT_REQ];
