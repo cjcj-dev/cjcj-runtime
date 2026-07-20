@@ -86,7 +86,7 @@ def check_source(text):
     if definitions != expected_definitions:
         errors.append(f"constant inventory/order mismatch: {definitions}")
     start = text.find("public type CJThreadSchdHook")
-    end = text.find("// CJThread schedule/include/schedule.h:403-410", start)
+    end = text.find("// CJThread schedule/include/schedule.h:344-353", start)
     if start < 0 or end < 0:
         errors.append("schedule-hook vocabulary slice absent")
     else:
