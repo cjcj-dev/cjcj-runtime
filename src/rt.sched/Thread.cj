@@ -60,6 +60,16 @@ public const CJTHREAD_CREATE_SOURCE_DEFAULT: CJThreadCreateSource = 0u32
 public const CJTHREAD_CREATE_SOURCE_SIGNAL: CJThreadCreateSource = 1u32
 public const CJTHREAD_CREATE_SOURCE_FINALIZER: CJThreadCreateSource = 2u32
 
+// CJThread schedule/include/schedule.h:332-342. The target enum has no #if
+// branches. The Linux x86_64 oracle proves a 4-byte unsigned representation.
+public type CJThreadSchdHook = UInt32
+public const SCHD_STOP: CJThreadSchdHook = 0u32
+public const SCHD_CREATE_MUTATOR: CJThreadSchdHook = 1u32
+public const SCHD_DESTROY_MUTATOR: CJThreadSchdHook = 2u32
+public const SCHD_PREEMPT_REQ: CJThreadSchdHook = 3u32
+public const SCHD_NEW_MUTATOR: CJThreadSchdHook = 4u32
+public const SCHD_HOOK_BUTT: CJThreadSchdHook = 5u32
+
 // CJThread schedule/include/schedule.h:415-420. The target enum has no #if
 // branches. LuaCJThread stores this vocabulary in its signed int state field.
 public type LuaCJThreadState = Int32
