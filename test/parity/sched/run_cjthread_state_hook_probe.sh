@@ -151,7 +151,7 @@ check_source_consumers_platforms()
         fail "registration/store acquired conditional context"
     sed -n '210,223p' "$SCHEDULE_IMPL" | grep -Fxq '#ifdef __OHOS__' ||
         fail "OHOS owner trailing-field context drift"
-    echo "CJTHREAD_STATE_HOOK_CONSUMERS lines=15 tokens=21 definitions=6 callback_typedefs=1 owner_arrays=1 array_reads=0 callback_dispatches=0 generic_array_stores=1 upper_bound_validations=1 api_declarations=1 gc_registrations=0 rename_macros=1 switch_consumers=0 enumerator_consumers=0 status=PASS"
+    echo "CJTHREAD_STATE_HOOK_CONSUMERS lines=15 tokens=21 definitions=6 callback_typedefs=1 owner_arrays=1 array_reads=0 callback_dispatches=0 generic_array_stores=1 upper_bound_validations=1 api_declarations=1 gc_registrations=0 rename_macros=1 switch_consumers=0 position_enumerator_consumers=0 sentinel_bound_uses=2 status=PASS"
     echo "CJTHREAD_STATE_HOOK_PLATFORMS target_cpp_branches=0 all_target_lines=14 cangjie_build_mode_lines=1 owner_registration_validation_store_context=ALL_TARGETS linux_x86_64=COMPILED_EXECUTED macos=UNEXECUTED_DEBT ios=UNEXECUTED_DEBT aarch64_linux=UNEXECUTED_DEBT android_arm32=UNEXECUTED_DEBT android_arm64=UNEXECUTED_DEBT win64=UNEXECUTED_DEBT ohos=UNEXECUTED_DEBT sanitizer_modes=UNEXECUTED_DEBT cangjie_rename_mode=UNEXECUTED_DEBT other_targets_build_modes=UNEXECUTED_DEBT ohos_owner_size=UNCLAIMED status=PASS"
 }
 

@@ -44,12 +44,11 @@ EXPECTED_CLASSES = Counter({
     "type_definition": 1,
     "upper_bound_validation": 1,
 })
-ENUMERATORS = (
+POSITION_ENUMERATORS = (
     "CJTHREAD_BEFORE_PARK",
     "CJTHREAD_AFTER_PARK",
     "CJTHREAD_BEFORE_RESCHED",
     "CJTHREAD_AFTER_RESCHED",
-    "CJTHREAD_STATE_HOOK_BUTT",
 )
 
 
@@ -189,10 +188,15 @@ def check_inventory(runtime_root, inventory, inventory_mode):
     platforms = Counter(row[1] for row in rows)
     if platforms != Counter({"all_targets": 14, "cangjie_build_mode": 1}):
         errors.append(f"platform classification drift: {dict(platforms)}")
-    for enumerator in ENUMERATORS:
+    for enumerator in POSITION_ENUMERATORS:
         enum_rows = [row for row in rows if enumerator in TOKEN.findall(row[5])]
         if len(enum_rows) != 1 or enum_rows[0][0] != "enumerator_definition":
             errors.append(f"enumerator acquired consumer: {enumerator}")
+    sentinel_rows = [row for row in rows if "CJTHREAD_STATE_HOOK_BUTT" in TOKEN.findall(row[5])]
+    sentinel_classes = Counter(row[0] for row in sentinel_rows)
+    if sentinel_classes != Counter({"enumerator_definition": 1, "owner_array": 1,
+            "upper_bound_validation": 1}):
+        errors.append(f"sentinel use drift: {dict(sentinel_classes)}")
     for absent_class in ("array_read", "callback_dispatch", "gc_registration", "switch_consumer"):
         if classes.get(absent_class, 0) != 0:
             errors.append(f"unexpected consumer class: {absent_class}")
@@ -229,7 +233,8 @@ def main():
         "order=BEFORE_PARK,AFTER_PARK,BEFORE_RESCHED,AFTER_RESCHED,STATE_HOOK_BUTT "
         "typed_u32=5 helpers=0 runtime_initializers=0 inventory_lines=15 "
         "inventory_tokens=21 classifications=11 array_reads=0 callback_dispatches=0 "
-        "gc_registrations=0 switch_consumers=0 enumerator_consumers=0 adjacency=PASS status=PASS")
+        "gc_registrations=0 switch_consumers=0 position_enumerator_consumers=0 "
+        "sentinel_bound_uses=2 adjacency=PASS status=PASS")
     return 0
 
 
