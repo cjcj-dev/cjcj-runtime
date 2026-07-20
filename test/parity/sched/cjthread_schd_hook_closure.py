@@ -39,6 +39,9 @@ ENGINE.BARRIER_INJECTIONS = {
     "allocation_final": ("final", "CJ_MCC_NewObject"),
     "allocation_object": ("object", "MCC_NewArray"),
 }
+OBJECT_RELOCATION = re.compile(
+    r"R_X86_64_(PLT32|PC32|GOTPCREL|REX_GOTPCRELX)\s+(.+?)\s*$"
+)
 
 
 def traverse_ir_complete(stage, definitions, emitted_initializers, manifest, mode):
@@ -93,7 +96,7 @@ def object_calls_with_address_taken_callbacks(key, body, relocations, definition
     resolved_indirect = 0
     lines = body.splitlines()
     for line_index, line in enumerate(lines):
-        relocation = ENGINE.RELOCATION.search(line)
+        relocation = OBJECT_RELOCATION.search(line)
         if relocation:
             kind, raw_target = relocation.groups()
             target = ENGINE.clean_relocation_target(raw_target)
@@ -126,7 +129,7 @@ def object_calls_with_address_taken_callbacks(key, body, relocations, definition
         if "+0x" in target:
             base = target.split("+0x", 1)[0]
             if base != symbol:
-                next_relocation = (ENGINE.RELOCATION.search(lines[line_index + 1])
+                next_relocation = (OBJECT_RELOCATION.search(lines[line_index + 1])
                     if line_index + 1 < len(lines) else None)
                 if next_relocation is None or next_relocation.group(1) != "PLT32":
                     raise ENGINE.ClosureError(f"unknown resolved object call in {symbol}: {target}")
