@@ -53,6 +53,13 @@ public const THREAD_RUNNING: ThreadState = 2
 public const THREAD_PRE_SLEEP: ThreadState = 3
 public const THREAD_SLEEP: ThreadState = 4
 
+// CJThread schedule/include/schedule.h:403-410. The target enum has no #if
+// branches. The Linux x86_64 oracle proves a 4-byte unsigned representation.
+public type CJThreadCreateSource = UInt32
+public const CJTHREAD_CREATE_SOURCE_DEFAULT: CJThreadCreateSource = 0u32
+public const CJTHREAD_CREATE_SOURCE_SIGNAL: CJThreadCreateSource = 1u32
+public const CJTHREAD_CREATE_SOURCE_FINALIZER: CJThreadCreateSource = 2u32
+
 // CJThread schedule/include/schedule.h:415-420. The target enum has no #if
 // branches. LuaCJThread stores this vocabulary in its signed int state field.
 public type LuaCJThreadState = Int32

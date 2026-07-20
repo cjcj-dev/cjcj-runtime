@@ -1,0 +1,22 @@
+# classification	platform_context	path	line	token_occurrences	exact_text
+type_definition	all_targets	runtime/schedule/include/schedule.h	406	1	enum CJThreadCreateSource {
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	407	1	    CJTHREAD_CREATE_SOURCE_DEFAULT = 0,     /* create cjthread from general use scenarios */
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	408	1	    CJTHREAD_CREATE_SOURCE_SIGNAL = 1,      /* create cjthread from signal */
+enumerator_definition	all_targets	runtime/schedule/include/schedule.h	409	1	    CJTHREAD_CREATE_SOURCE_FINALIZER = 2,      /* create cjthread from finalizer */
+parameter_with_default	all_targets	runtime/schedule/include/schedule.h	626	3	                           CJThreadCreateSource createSource = CJTHREAD_CREATE_SOURCE_DEFAULT);
+parameter_with_default	all_targets	runtime/schedule/include/schedule.h	648	3	                                     CJThreadCreateSource createSource = CJTHREAD_CREATE_SOURCE_DEFAULT);
+parameter_with_default	all_targets	runtime/schedule/include/inner/cjthread.h	221	3	                               CJThreadCreateSource createSource = CJTHREAD_CREATE_SOURCE_DEFAULT);
+parameter	all_targets	runtime/schedule/include/inner/cjthread.h	234	2	                               const void *argStart, unsigned int argSize, CJThreadCreateSource createSource);
+parameter	all_targets	runtime/schedule/include/inner/schedule_impl.h	478	2	int ScheduleAllCJThreadListAdd(struct CJThread *cjthread, CJThreadCreateSource createSource);
+parameter	all_targets	runtime/schedule/src/cjthread.cpp	441	2	                               CJThreadCreateSource createSource)
+forwarding_call	all_targets	runtime/schedule/src/cjthread.cpp	480	1	            if (ScheduleAllCJThreadListAdd(newCJThread, createSource) != 0) {
+parameter	all_targets	runtime/schedule/src/cjthread.cpp	842	2	                               const void *argStart, unsigned int argSize, CJThreadCreateSource createSource)
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	870	2	         createSource == CJTHREAD_CREATE_SOURCE_SIGNAL) ? GLOBAL_BUF : LOCAL_BUF;
+forwarding_call	all_targets	runtime/schedule/src/cjthread.cpp	878	1	    newCJThread = CJThreadAlloc(targetSchedule, &argAttr, &stackAttr, buf, createSource);
+parameter	all_targets	runtime/schedule/src/cjthread.cpp	1025	2	                           const void *argStart, unsigned int argSize, CJThreadCreateSource createSource)
+forwarding_call	all_targets	runtime/schedule/src/cjthread.cpp	1038	1	    struct CJThread* newCJThread = CJThreadBuild(schedule, attrUser, func, argStart, argSize, createSource);
+comparison	all_targets	runtime/schedule/src/cjthread.cpp	1046	2	                       createSource == CJTHREAD_CREATE_SOURCE_SIGNAL) ? GLOBAL_BUF : LOCAL_BUF;
+parameter	all_targets	runtime/schedule/src/cjthread.cpp	1091	2	                                     CJThreadCreateSource createSource)
+forwarding_call	all_targets	runtime/schedule/src/cjthread.cpp	1097	1	    return CJThreadNew(schedule, attr, func, argStart, argSize, createSource);
+parameter	all_targets	runtime/schedule/src/schedule.cpp	1488	2	int ScheduleAllCJThreadListAdd(struct CJThread *cjthread, CJThreadCreateSource createSource)
+finalizer_early_return_use	all_targets	runtime/schedule/src/schedule.cpp	1503	2	    if (UNLIKELY(createSource == CJTHREAD_CREATE_SOURCE_FINALIZER)) {
