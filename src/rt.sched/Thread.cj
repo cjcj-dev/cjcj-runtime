@@ -91,6 +91,15 @@ public const SCHD_PREEMPT_REQ: CJThreadSchdHook = 3u32
 public const SCHD_NEW_MUTATOR: CJThreadSchdHook = 4u32
 public const SCHD_HOOK_BUTT: CJThreadSchdHook = 5u32
 
+// CJThread schedule/include/schedule.h:344-353. The target enum has no #if
+// branches. The Linux x86_64 oracle proves a 4-byte unsigned representation.
+public type CJThreadStateHook = UInt32
+public const CJTHREAD_BEFORE_PARK: CJThreadStateHook = 0u32
+public const CJTHREAD_AFTER_PARK: CJThreadStateHook = 1u32
+public const CJTHREAD_BEFORE_RESCHED: CJThreadStateHook = 2u32
+public const CJTHREAD_AFTER_RESCHED: CJThreadStateHook = 3u32
+public const CJTHREAD_STATE_HOOK_BUTT: CJThreadStateHook = 4u32
+
 // CJThread schedule/include/schedule.h:403-410. The target enum has no #if
 // branches. The Linux x86_64 oracle proves a 4-byte unsigned representation.
 public type CJThreadCreateSource = UInt32
