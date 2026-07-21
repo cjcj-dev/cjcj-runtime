@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-source "$ROOT/test/compiler_identity.sh"
+SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
 IMPORT_PATH=${SELFHOST_IMPORT_PATH:-/root/cj_build/cjcj/target/release}
 OUT=${TMPDIR:-/tmp}/rt_sync_futex_probe_$$
 trap 'rm -f "$OUT" "$OUT.o"' EXIT

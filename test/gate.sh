@@ -2,10 +2,14 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-source "$ROOT/test/compiler_identity.sh"
 OUT=${OUT:-"$ROOT/out/gate"}
 REPO=${REPO:-/root/cj_build/cjcj}
+CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
+CJC=${CJC:-"$REPO/target/release/bin/cjcj::cjc"}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
+RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
+export CANGJIE_HOME
+export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"

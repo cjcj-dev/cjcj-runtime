@@ -3,10 +3,18 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-source "$ROOT/test/compiler_identity.sh"
-SELFHOST_RT="$RUNTIME_TOOLCHAIN_RT_LIB"
+SELFHOST_CJC=/root/cj_build/cjcj/target/release/bin/cjcj::cjc
+COMPILER_SOURCE=27b9b88c2a7bc68acfcc870e7b394404a8f6c356
+COMPILER_SHA=d99659d1cc797eb179e349bdcff1c635086680fba6b9be5dac61e39eb570b44c
+COMPILER_SIZE=98479472
+TOOLCHAIN=/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029
+export CANGJIE_HOME="$TOOLCHAIN"
+LLVM_BIN="$CANGJIE_HOME/third_party/llvm/bin"
+CJC_BIN_DIR=$(cd "$(dirname "$SELFHOST_CJC")" && pwd)
+SELFHOST_RT="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
 CPP_RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 export PATH=/root/.cjv/bin:$PATH
+export LD_LIBRARY_PATH="$SELFHOST_RT:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative:${LD_LIBRARY_PATH:-}"
 export cjHeapSize=24GB
 
 fail()

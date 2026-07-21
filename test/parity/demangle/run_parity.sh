@@ -2,11 +2,15 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-source "$ROOT/test/compiler_identity.sh"
 SELFHOST=${SELFHOST:-/root/cj_build/cjcj}
+CJC=${CJC:-"$SELFHOST/target/release/bin/cjcj::cjc"}
+TC=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
 HYBRID=${HYBRID:-"$ROOT/out/gate/hybrid/libcangjie-runtime.so"}
 BUILD=${BUILD:-"$ROOT/out/demangle-parity"}
 PREFIX=${PREFIX:-_CN}
+
+export CANGJIE_HOME="$TC"
+export LD_LIBRARY_PATH="$TC/third_party/llvm/lib:$TC/runtime/lib/linux_x86_64_cjnative:$TC/tools/lib:${LD_LIBRARY_PATH:-}"
 
 test -x "$CJC"
 test -f "$HYBRID"
