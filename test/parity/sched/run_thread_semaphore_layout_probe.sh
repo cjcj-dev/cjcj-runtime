@@ -66,8 +66,8 @@ require_inputs()
         "$THREAD_HEADER" "$CJTHREAD_HEADER" "$CONTEXT_HEADER" "$ARM32_CONTEXT" \
         "$ARM64_CONTEXT" "$LIST_HEADER" "$SCHEDULE_HEADER" "$BASE_HEADER" \
         "$CJTHREAD_ROOT/base/mid/include/macro_def.h" \
-        "$ROOT/src/rt/sched/Thread.cj" "$ROOT/src/rt/sched/Semaphore.cj" \
-        "$ROOT/src/rt/sched/CJthreadSpinLock.cj" \
+        "$ROOT/src/rt.sched/Thread.cj" "$ROOT/src/rt.sched/Semaphore.cj" \
+        "$ROOT/src/rt.sched/CJthreadSpinLock.cj" \
         "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" \
         "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" \
         "$ROOT/test/parity/sched/thread_semaphore_layout_ref.cpp" \
@@ -178,7 +178,7 @@ check_transcript_shape()
 
 build_production_and_probe()
 {
-    run_cjc --package "$ROOT/src/rt/sched" --output-type=staticlib -O2 \
+    run_cjc --package "$ROOT/src/rt.sched" --output-type=staticlib -O2 \
         --int-overflow wrapping --save-temps "$IMP/sched_temps" \
         --output-dir "$IMP" -o librt.sched.a
     run_cjc --package "$IMP/threadsemaphore.noheap" --output-type=staticlib -O2 \
@@ -226,10 +226,10 @@ check_layout_source_inventory_platforms()
     ! rg -q 'addrspacecast.*addrspace\(1\).* to [^,]*\*' "$IMP/root.final.ll" ||
         fail "illegal AS1-to-AS0 cast in embedded-field root"
     ! rg -q 'toUIntNative|CPointer<UInt8>\([^)]*\)\s*[+-]' \
-        "$ROOT/src/rt/sched/Thread.cj" "$ROOT/test/parity/sched/thread_semaphore_noheap_roots.cj" ||
+        "$ROOT/src/rt.sched/Thread.cj" "$ROOT/test/parity/sched/thread_semaphore_noheap_roots.cj" ||
         fail "integer pointer arithmetic in owner/member path"
     ! rg -q '^public func |ThreadSleep\(|ThreadEntry\(|ThreadCreate\(|ThreadAlloc|CJThreadCreate\(|CJThreadResume\(|CJThreadYield\(|CJThreadDestroy\(|malloc|calloc|new ' \
-        "$ROOT/src/rt/sched/Thread.cj" || fail "forbidden scheduler/lifecycle/wrapper surface"
+        "$ROOT/src/rt.sched/Thread.cj" || fail "forbidden scheduler/lifecycle/wrapper surface"
     ! rg -q 'CJRT_ThreadOwnerRun|ThreadSemaphore|rt\.sched:Thread|(^|[^A-Za-z0-9_])(Thread|LuaCJThread|CJThreadContext|CJThreadAttr|Dulink)([^A-Za-z0-9_]|$)' "$ROOT/contract" ||
         fail "descriptor leaked into production export contract"
 
@@ -259,10 +259,10 @@ check_layout_source_inventory_platforms()
     grep -Fq '#ifdef MRT_MACOS' "$BASE_HEADER" || fail "Darwin Semaphore branch disappeared"
     for debt in CJTHREAD-CONTEXT-PLATFORM-LAYOUT THREAD-DESCRIPTOR-LAYOUT \
         CJTHREAD-SEMAPHORE-DARWIN-LAYOUT CJTHREAD-SEMAPHORE-INLINE-LAYOUT LUA-CJTHREAD-ABI; do
-        grep -Fq "$debt" "$ROOT/src/rt/sched/Thread.cj" || fail "missing platform debt $debt"
+        grep -Fq "$debt" "$ROOT/src/rt.sched/Thread.cj" || fail "missing platform debt $debt"
     done
     [[ $(grep -Fxc '@When[os == "Linux" && arch == "x86_64"]' \
-        "$ROOT/src/rt/sched/Thread.cj") -eq 3 ]] || fail "Linux descriptor selection count mismatch"
+        "$ROOT/src/rt.sched/Thread.cj") -eq 3 ]] || fail "Linux descriptor selection count mismatch"
     echo "THREAD_SEMAPHORE_PLATFORMS linux_x86_64=PROVED macos=DEBT ios=DEBT aarch64_linux=DEBT android_arm32=DEBT android_arm64=DEBT win64=DEBT ohos=DEBT other=DEBT status=PASS"
 }
 

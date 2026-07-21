@@ -43,7 +43,7 @@ require_host_tools_and_inputs()
         command -v "$tool" >/dev/null || fail "missing tool $tool"
     done
     for input in \
-        "$ROOT/src/rt/base/Types.cj" \
+        "$ROOT/src/rt.base/Types.cj" \
         "$ROOT/test/parity/base/types_probe.cj" \
         "$ROOT/test/parity/base/types_ref.cpp" \
         "$CPP_RUNTIME_ROOT/src/Base/Types.h" \
@@ -61,7 +61,7 @@ require_host_tools_and_inputs()
 assert_source_branches()
 {
     local source
-    source=$(<"$ROOT/src/rt/base/Types.cj")
+    source=$(<"$ROOT/src/rt.base/Types.cj")
     [[ "$source" == *$'@When[os == "macOS" || os == "iOS"]\npublic type Uptr = UInt64'* ]] ||
         fail "missing Apple Uptr branch"
     [[ "$source" == *$'@When[os != "macOS" && os != "iOS"]\npublic type Uptr = UIntNative'* ]] ||
@@ -81,7 +81,7 @@ TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_types_probe.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
 
 check_compiler
-"$SELFHOST_CJC" --package "$ROOT/src/rt/base" --output-type=staticlib \
+"$SELFHOST_CJC" --package "$ROOT/src/rt.base" --output-type=staticlib \
     --int-overflow wrapping --output-dir "$TMP" -o librt.base.a
 
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"

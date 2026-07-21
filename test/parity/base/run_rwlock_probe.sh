@@ -86,7 +86,7 @@ build_base()
     check_compiler
     (
         cd "$IMP"
-        "$SELFHOST_CJC" --package "$ROOT/src/rt/base" --output-type=staticlib \
+        "$SELFHOST_CJC" --package "$ROOT/src/rt.base" --output-type=staticlib \
             -O2 --int-overflow wrapping --save-temps "$IMP/base_temps" \
             --output-dir "$IMP" -o librt.base.a
     )

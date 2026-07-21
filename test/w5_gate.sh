@@ -48,7 +48,7 @@ file "$OUT/g11/o0/probe.o" "$OUT/g11/o2/probe.o" | grep -Fc 'ELF 64-bit LSB relo
 printf 'G11-PROBE O0_exit=0 O0_bytes=%s O2_exit=0 O2_bytes=%s\n' \
     "$g11_o0_bytes" "$g11_o2_bytes"
 
-"$CJC" -p "$ROOT/src/rt/abi" --experimental --output-type obj \
+"$CJC" -p "$ROOT/src/rt.abi" --experimental --output-type obj \
     --compile-target dylib --int-overflow wrapping -O2 \
     --save-temps "$OUT/abi" -o "$OUT/abi/rt.abi.raw.o" -Woff unused
 "$LLC" "$OUT/abi/rt.abi.opt.bc" --cangjie-pipeline -disable-debug-info-print \
@@ -103,7 +103,7 @@ printf 'RT.ABI OBJECT PASS c=%s mangled=%s base_forward=1 env_forward=%s log_for
 
 (
     cd "$OUT/demangle-cwd"
-    cjHeapSize=${BUILD_HEAP_SIZE:-2GB} "$CJC" -p "$ROOT/src/rt/demangle" \
+    cjHeapSize=${BUILD_HEAP_SIZE:-2GB} "$CJC" -p "$ROOT/src/rt.demangle" \
         --output-type staticlib -O2 --int-overflow wrapping \
         -o "$OUT/librt.demangle.a"
 )

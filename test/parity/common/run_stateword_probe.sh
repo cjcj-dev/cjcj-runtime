@@ -45,7 +45,7 @@ LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HO
 
 # Build the production leaf alone so layout/IR/noheap evidence cannot come from a test mirror.
 mkdir -p "$TMP/rt.common.production" "$TMP/production_temps"
-cp "$ROOT/src/rt/common/StateWord.cj" "$TMP/rt.common.production/StateWord.cj"
+cp "$ROOT/src/rt.common/StateWord.cj" "$TMP/rt.common.production/StateWord.cj"
 cp "$ROOT/test/parity/common/stateword_foreign_probe.cj" \
     "$TMP/rt.common.production/StateWordForeignProbe.cj"
 build_package "$TMP/rt.common.production" librt.common.production.a \
@@ -125,7 +125,7 @@ fi
 
 # Build the probe-owned package and shared native driver against the derived live layout.
 mkdir -p "$TMP/rt.common.probe"
-cp "$ROOT/src/rt/common/StateWord.cj" "$TMP/rt.common.probe/StateWord.cj"
+cp "$ROOT/src/rt.common/StateWord.cj" "$TMP/rt.common.probe/StateWord.cj"
 cp "$ROOT/test/parity/common/stateword_foreign_probe.cj" \
     "$TMP/rt.common.probe/StateWordForeignProbe.cj"
 cp "$ROOT/test/parity/common/stateword_probe.cj" "$TMP/rt.common.probe/StateWordProbe.cj"

@@ -8,7 +8,7 @@ OUT=${TMPDIR:-/tmp}/rt_sync_futex_probe_$$
 trap 'rm -f "$OUT" "$OUT.o"' EXIT
 
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$OUT.o"
-"$SELFHOST_CJC" "$ROOT/src/rt/sync/SysCall.cj" "$ROOT/test/parity/sync/futex_probe.cj" \
+"$SELFHOST_CJC" "$ROOT/src/rt.sync/SysCall.cj" "$ROOT/test/parity/sync/futex_probe.cj" \
     --import-path "$IMPORT_PATH" --int-overflow wrapping \
     --link-option "$OUT.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$OUT"
 "$OUT"

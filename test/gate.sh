@@ -38,7 +38,7 @@ test -f "$EMPTY_OBJECT"
 mkdir -p "$OUT/demangle-cwd" "$OUT/demangle-object" "$OUT/abi-cwd" "$OUT/abi-object"
 (
     cd "$OUT/demangle-cwd"
-    cjHeapSize=${BUILD_HEAP_SIZE:-2GB} "$CJC" -p "$ROOT/src/rt/demangle" \
+    cjHeapSize=${BUILD_HEAP_SIZE:-2GB} "$CJC" -p "$ROOT/src/rt.demangle" \
         --output-type staticlib -O2 --int-overflow wrapping \
         -o "$OUT/librt.demangle.a"
 )
@@ -55,7 +55,7 @@ fi
 printf 'RESTRICTED DIALECT PASS managed_edges=0\n'
 (
     cd "$OUT/abi-cwd"
-    "$CJC" -p "$ROOT/src/rt/abi" --output-type staticlib -O2 \
+    "$CJC" -p "$ROOT/src/rt.abi" --output-type staticlib -O2 \
         --int-overflow wrapping -o "$OUT/librt.abi.a"
 )
 (

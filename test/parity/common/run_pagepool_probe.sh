@@ -21,7 +21,7 @@ test -x "$SELFHOST_CJC"
 test -f "$CPP_RUNTIME_LIB/libcangjie-runtime.so"
 df -h / | tail -n 1 | sed 's/^/PAGEPOOL_DISK_BEFORE /'
 
-PAGEPOOL_SOURCE="$ROOT/src/rt/common/PagePool.cj"
+PAGEPOOL_SOURCE="$ROOT/src/rt.common/PagePool.cj"
 APPLE_RETURN_BLOCK="$TMP/apple_return_page_part2.cj"
 awk '
 $0 == "@When[os == \"macOS\" || os == \"iOS\"]" { candidate = 1; annotation = $0; next }
@@ -70,10 +70,10 @@ for pkg in rt.base rt.sync; do
         --int-overflow wrapping -Woff unused --import-path "$TMP" --output-dir "$TMP" \
         -o "lib$pkg.a")
 done
-(cd "$TMP" && "$SELFHOST_CJC" --package "$ROOT/src/rt/heap/allocator" \
+(cd "$TMP" && "$SELFHOST_CJC" --package "$ROOT/src/rt.heap.allocator" \
     --output-type=staticlib --int-overflow wrapping -Woff unused --import-path "$TMP" \
     --output-dir "$TMP" --save-temps "$TMP/heap_temps" -o librt.heap.allocator.a)
-(cd "$TMP" && "$SELFHOST_CJC" --package "$ROOT/src/rt/common" \
+(cd "$TMP" && "$SELFHOST_CJC" --package "$ROOT/src/rt.common" \
     --output-type=staticlib --int-overflow wrapping -Woff unused --import-path "$TMP" \
     --output-dir "$TMP" --save-temps "$TMP/common_temps" -o librt.common.a)
 
@@ -223,7 +223,7 @@ g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$TMP/PagePoolMutex.o"
 
 COMMON_SRC="$TMP/rt.common.probe"
-cp -a "$ROOT/src/rt/common" "$COMMON_SRC"
+cp -a "$ROOT/src/rt.common" "$COMMON_SRC"
 cp "$ROOT/test/parity/common/pagepool_layout_probe.cj" "$COMMON_SRC/PagePoolLayoutProbe.cj"
 cp "$ROOT/test/parity/common/pagepool_driver.cj" "$COMMON_SRC/PagePoolDriver.cj"
 (cd "$TMP" && "$SELFHOST_CJC" --package "$COMMON_SRC" --import-path "$TMP" \
@@ -269,7 +269,7 @@ echo "PAGEPOOL_IR inline_sud=1 inline_allocator=1 inline_tree=1 inline_pool=1 il
 # allocator calls to definitions instead of stopping at imported declarations.
 HEAP_NOHEAP_SRC="$TMP/rt.heap.allocator.noheap"
 HEAP_NOHEAP_TEMPS="$TMP/heap_noheap_temps"
-cp -a "$ROOT/src/rt/heap/allocator" "$HEAP_NOHEAP_SRC"
+cp -a "$ROOT/src/rt.heap.allocator" "$HEAP_NOHEAP_SRC"
 cp "$ROOT/test/parity/heap/cartesian_tree_noheap_probe.cj" \
     "$HEAP_NOHEAP_SRC/CartesianTreeNoHeapProbe.cj"
 mkdir -p "$HEAP_NOHEAP_TEMPS"
@@ -279,7 +279,7 @@ mkdir -p "$HEAP_NOHEAP_TEMPS"
 
 COMMON_NOHEAP_SRC="$TMP/rt.common.noheap"
 COMMON_NOHEAP_TEMPS="$TMP/common_noheap_temps"
-cp -a "$ROOT/src/rt/common" "$COMMON_NOHEAP_SRC"
+cp -a "$ROOT/src/rt.common" "$COMMON_NOHEAP_SRC"
 cp "$ROOT/test/parity/common/pagepool_noheap_probe.cj" \
     "$COMMON_NOHEAP_SRC/PagePoolNoHeapProbe.cj"
 mkdir -p "$COMMON_NOHEAP_TEMPS"
@@ -450,7 +450,7 @@ if [[ $NOHEAP_FINAL_BC -eq 0 || $NOHEAP_OBJECTS -eq 0 || $REACHABLE_DEFS -eq 0 |
 fi
 
 NOHEAP_EXEC_SRC="$TMP/rt.common.noheap.exec"
-cp -a "$ROOT/src/rt/common" "$NOHEAP_EXEC_SRC"
+cp -a "$ROOT/src/rt.common" "$NOHEAP_EXEC_SRC"
 cp "$ROOT/test/parity/common/pagepool_noheap_probe.cj" "$NOHEAP_EXEC_SRC/PagePoolNoHeapProbe.cj"
 cp "$ROOT/test/parity/common/pagepool_noheap_driver.cj" "$NOHEAP_EXEC_SRC/PagePoolNoHeapDriver.cj"
 (cd "$TMP" && "$SELFHOST_CJC" --package "$NOHEAP_EXEC_SRC" --import-path "$TMP" \

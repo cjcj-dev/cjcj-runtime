@@ -57,8 +57,8 @@ require_inputs()
     for input in \
         "$BASE_HEADER" \
         "$CJTHREAD_ROOT/base/mid/include/macro_def.h" \
-        "$ROOT/src/rt/sched/Semaphore.cj" \
-        "$ROOT/src/rt/sched/CJthreadSpinLock.cj" \
+        "$ROOT/src/rt.sched/Semaphore.cj" \
+        "$ROOT/src/rt.sched/CJthreadSpinLock.cj" \
         "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" \
         "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" \
         "$ROOT/test/parity/sched/cjthread_semaphore_ref.cpp" \
@@ -138,7 +138,7 @@ check_cpp_oracle()
 
 build_production_and_probe()
 {
-    run_cjc --package "$ROOT/src/rt/sched" --output-type=staticlib -O2 \
+    run_cjc --package "$ROOT/src/rt.sched" --output-type=staticlib -O2 \
         --int-overflow wrapping --save-temps "$IMP/sched_temps" \
         --output-dir "$IMP" -o librt.sched.a
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
@@ -179,11 +179,11 @@ check_layout_calls_and_abi()
     grep -Fxq '%"record.rt.sched:Semaphore" = type { [4 x i64] }' "$IMP/sched.final.ll" ||
         fail "Cangjie inline record is not exactly four UInt64 values"
     [[ $(grep -Fc '@When[os == "Linux" && arch == "x86_64"]' \
-        "$ROOT/src/rt/sched/Semaphore.cj") -eq 11 ]] || fail "local compiled branch count mismatch"
+        "$ROOT/src/rt.sched/Semaphore.cj") -eq 11 ]] || fail "local compiled branch count mismatch"
     [[ $(grep -Fc 'CJTHREAD-SEMAPHORE-DARWIN-LAYOUT:' \
-        "$ROOT/src/rt/sched/Semaphore.cj") -eq 1 ]] || fail "Darwin debt count mismatch"
+        "$ROOT/src/rt.sched/Semaphore.cj") -eq 1 ]] || fail "Darwin debt count mismatch"
     [[ $(grep -Fc 'CJTHREAD-SEMAPHORE-INLINE-LAYOUT:' \
-        "$ROOT/src/rt/sched/Semaphore.cj") -eq 1 ]] || fail "non-Mac platform debt count mismatch"
+        "$ROOT/src/rt.sched/Semaphore.cj") -eq 1 ]] || fail "non-Mac platform debt count mismatch"
     [[ $(grep -Fxc 'struct Semaphore {' "$BASE_HEADER") -eq 2 ]] ||
         fail "C++ representation branch count mismatch"
     local source_definitions=0 operation
@@ -191,18 +191,18 @@ check_layout_calls_and_abi()
         [[ $(grep -Ec "^static inline int ${operation}\\(" "$BASE_HEADER") -eq 2 ]] ||
             fail "C++ operation branch count mismatch operation=$operation"
         source_definitions=$((source_definitions + 2))
-        [[ $(grep -Ec "^public func ${operation}\\(" "$ROOT/src/rt/sched/Semaphore.cj") -eq 1 ]] ||
+        [[ $(grep -Ec "^public func ${operation}\\(" "$ROOT/src/rt.sched/Semaphore.cj") -eq 1 ]] ||
             fail "Cangjie production operation count mismatch operation=$operation"
     done
     [[ $source_definitions -eq 10 ]] || fail "source function definition total mismatch"
     ! rg -q 'TryWait|Timed|Reset|RAII|Scoped|Guard|malloc|calloc|realloc|new |throw|catch|ArrayList|HashMap|HashSet' \
-        "$ROOT/src/rt/sched/Semaphore.cj" "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" ||
+        "$ROOT/src/rt.sched/Semaphore.cj" "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" ||
         fail "invented operation, ownership, allocation, or failure policy present"
 
     local operation_name native_defs sched_relocs executable_defs hidden_defs
     for operation_name in init wait wait_no_intr post destroy; do
         [[ $(grep -Fc "func cj_cjthread_semaphore_${operation_name}(" \
-            "$ROOT/src/rt/sched/Semaphore.cj") -eq 1 ]] ||
+            "$ROOT/src/rt.sched/Semaphore.cj") -eq 1 ]] ||
             fail "Cangjie foreign signature count mismatch operation=$operation_name"
         [[ $(grep -Fc "int32_t cj_cjthread_semaphore_${operation_name}(" \
             "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp") -eq 1 ]] ||

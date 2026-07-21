@@ -56,7 +56,7 @@ require_inputs()
     [[ -x "$LLVM_BIN/llvm-link" && -x "$LLVM_BIN/llvm-dis" ]] ||
         fail "missing pinned nightly LLVM tools"
     for input in "$SCHEDULE_HEADER" "$CJTHREAD_HEADER" "$SCHEDULE_SOURCE" \
-        "$ROOT/src/rt/sched/Thread.cj" \
+        "$ROOT/src/rt.sched/Thread.cj" \
         "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" \
         "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" \
         "$ROOT/test/parity/sched/cjthread_state_ref.cpp" \
@@ -128,7 +128,7 @@ check_transcript()
 check_source_and_consumers()
 {
     python3 "$ROOT/test/parity/sched/cjthread_state_source_check.py" \
-        --source "$ROOT/src/rt/sched/Thread.cj"
+        --source "$ROOT/src/rt.sched/Thread.cj"
     [[ $(sed -n '415,420p' "$SCHEDULE_HEADER" | rg -c '_WIN32|__APPLE__|__OHOS__|__linux__|#if|#elif' || true) -eq 0 ]] ||
         fail "target enum acquired a platform branch"
     [[ $(rg -n 'LUA_CJTHREAD_(INIT|SUSPENDING|RUNNING|DONE)' "$SCHEDULE_SOURCE" | wc -l) -eq 12 ]] ||
@@ -150,7 +150,7 @@ check_source_and_consumers()
 
 build_cangjie_probe()
 {
-    run_cjc --package "$ROOT/src/rt/sched" --output-type=staticlib -O2 \
+    run_cjc --package "$ROOT/src/rt.sched" --output-type=staticlib -O2 \
         --int-overflow wrapping --save-temps "$IMP/sched_temps" \
         --output-dir "$IMP" -o librt.sched.a
     run_cjc --package "$IMP/cjthreadstate.noheap" --output-type=staticlib -O2 \
@@ -204,7 +204,7 @@ run_negative_injections()
     for mode in value_init value_suspending value_running value_done swapped omitted alias64 initializer; do
         set +e
         python3 "$ROOT/test/parity/sched/cjthread_state_source_check.py" \
-            --source "$ROOT/src/rt/sched/Thread.cj" --mode "$mode" \
+            --source "$ROOT/src/rt.sched/Thread.cj" --mode "$mode" \
             > "$IMP/source-negative.$mode.log" 2>&1
         rc=$?
         set -e

@@ -56,7 +56,7 @@ require_inputs()
     for input in \
         "$BASE_HEADER" \
         "$CJTHREAD_ROOT/base/mid/include/macro_def.h" \
-        "$ROOT/src/rt/sched/CJthreadSpinLock.cj" \
+        "$ROOT/src/rt.sched/CJthreadSpinLock.cj" \
         "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" \
         "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" \
         "$ROOT/test/parity/sched/cjthread_spinlock_ref.cpp" \
@@ -134,7 +134,7 @@ check_cpp_oracle()
 
 build_production_and_probe()
 {
-    run_cjc --package "$ROOT/src/rt/sched" --output-type=staticlib -O2 \
+    run_cjc --package "$ROOT/src/rt.sched" --output-type=staticlib -O2 \
         --int-overflow wrapping --save-temps "$IMP/sched_temps" \
         --output-dir "$IMP" -o librt.sched.a
     g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
@@ -175,9 +175,9 @@ check_layout_calls_and_abi()
     grep -Fxq '%"record.rt.sched:CJthreadSpinLock" = type { i32 }' "$IMP/sched.final.ll" ||
         fail "Cangjie inline record is not exactly one Int32"
     [[ $(grep -Fc '@When[os == "Linux" && arch == "x86_64"]' \
-        "$ROOT/src/rt/sched/CJthreadSpinLock.cj") -eq 9 ]] || fail "local compiled branch count mismatch"
+        "$ROOT/src/rt.sched/CJthreadSpinLock.cj") -eq 9 ]] || fail "local compiled branch count mismatch"
     [[ $(grep -Fc 'CJTHREAD-SPINLOCK-PLATFORM-LAYOUT:' \
-        "$ROOT/src/rt/sched/CJthreadSpinLock.cj") -eq 3 ]] || fail "local platform debt count mismatch"
+        "$ROOT/src/rt.sched/CJthreadSpinLock.cj") -eq 3 ]] || fail "local platform debt count mismatch"
     [[ $(grep -Fxc 'struct CJthreadSpinLock {' "$BASE_HEADER") -eq 3 ]] ||
         fail "C++ representation branch count mismatch"
     for operation in Init Lock Unlock Destroy; do
@@ -185,7 +185,7 @@ check_layout_calls_and_abi()
             fail "C++ operation branch count mismatch operation=$operation"
     done
     ! rg -q 'TryLock|~CJthreadSpinLock|Scoped|RAII|malloc|calloc|realloc|new ' \
-        "$ROOT/src/rt/sched/CJthreadSpinLock.cj" "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" ||
+        "$ROOT/src/rt.sched/CJthreadSpinLock.cj" "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" ||
         fail "invented operation, ownership, or allocation surface present"
 
     local lower target native_defs native_relocs sched_relocs executable_defs hidden_defs
@@ -193,7 +193,7 @@ check_layout_calls_and_abi()
         lower="cj_cjthread_pthread_spin_$operation"
         target="pthread_spin_$operation"
         [[ $(grep -Fc "func $lower(lock: CPointer<Int32>): Int32" \
-            "$ROOT/src/rt/sched/CJthreadSpinLock.cj") -eq 1 ]] ||
+            "$ROOT/src/rt.sched/CJthreadSpinLock.cj") -eq 1 ]] ||
             fail "Cangjie foreign signature mismatch operation=$operation"
         [[ $(grep -Fc "int32_t $lower(int32_t* lock)" \
             "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp") -eq 1 ]] ||
