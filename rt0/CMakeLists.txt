@@ -90,10 +90,13 @@ else()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND RT0_PLATFORM_SOURCES
-        os/Linux/Futex.cpp
-        os/Linux/PagePoolMutex.cpp
-        os/Linux/Panic.cpp)
+    set(RT0_LINUX_BRIDGE_MANIFEST
+        "${CMAKE_CURRENT_SOURCE_DIR}/linux_bridge_sources.txt")
+    file(STRINGS "${RT0_LINUX_BRIDGE_MANIFEST}" RT0_LINUX_BRIDGE_SOURCES)
+    if(NOT RT0_LINUX_BRIDGE_SOURCES)
+        message(FATAL_ERROR "empty Linux bridge manifest: ${RT0_LINUX_BRIDGE_MANIFEST}")
+    endif()
+    list(APPEND RT0_PLATFORM_SOURCES ${RT0_LINUX_BRIDGE_SOURCES})
 endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
