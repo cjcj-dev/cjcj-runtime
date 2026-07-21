@@ -8,3 +8,14 @@ COMPILER_SIZE=49566664
 COMPILER_BUILD_TOOLCHAIN=nightly-1.2.0-alpha.20260712020030
 COMPILER_BUILD_LLVM_SHA256=8f685b53f65df0284b75e8723246085aa20e3f6b8b06e4c02b44110755b8c444
 COMPILER_ACCEPTANCE_SCOPE=linux_x86_64-runtime-packages-and-parity
+
+check_runtime_compiler_identity()
+{
+    local actual_sha actual_size
+    [[ -x "$SELFHOST_CJC" ]] || return 1
+    actual_sha=$(sha256sum "$SELFHOST_CJC")
+    actual_sha=${actual_sha%% *}
+    actual_size=$(stat -c %s "$SELFHOST_CJC")
+    [[ "$actual_sha" == "$COMPILER_SHA" && "$actual_size" == "$COMPILER_SIZE" ]] || return 1
+    git -C /root/cj_build/cjcj cat-file -e "$COMPILER_SOURCE^{commit}" 2>/dev/null
+}

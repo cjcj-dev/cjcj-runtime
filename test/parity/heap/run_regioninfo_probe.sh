@@ -4,7 +4,11 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-SELFHOST_CJC=/root/cj_build/cjcj/target/release/bin/cjcj::cjc
+source "$ROOT/test/compiler_identity.sh"
+check_runtime_compiler_identity || {
+    echo "REGIONINFO COMPILER IDENTITY FAIL" >&2
+    exit 1
+}
 CJC_BIN_DIR=$(cd "$(dirname "$SELFHOST_CJC")" && pwd)
 RT_LIB="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
 export CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
