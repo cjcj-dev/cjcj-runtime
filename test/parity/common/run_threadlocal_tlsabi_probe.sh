@@ -46,10 +46,10 @@ LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HO
     "$TMP/threadlocal_oracle" > "$TMP/cpp.transcript"
 
 # Build the package closure and a probe-owned copy of rt.common with final/pre-opt objects.
-build_package rt.base "$ROOT/src/rt.base" librt.base.a
-build_package rt.sync "$ROOT/src/rt.sync" librt.sync.a
-build_package rt.heap.allocator "$ROOT/src/rt.heap.allocator" librt.heap.allocator.a
-cp -a "$ROOT/src/rt.common" "$TMP/rt.common.probe"
+build_package rt.base "$ROOT/src/rt/base" librt.base.a
+build_package rt.sync "$ROOT/src/rt/sync" librt.sync.a
+build_package rt.heap.allocator "$ROOT/src/rt/heap/allocator" librt.heap.allocator.a
+cp -a "$ROOT/src/rt/common" "$TMP/rt.common.probe"
 cp "$ROOT/test/parity/common/threadlocal_tlsabi_probe.cj" \
     "$TMP/rt.common.probe/ThreadLocalTLSABIProbe.cj"
 mkdir -p "$TMP/common_temps"

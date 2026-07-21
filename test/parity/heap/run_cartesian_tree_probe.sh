@@ -50,7 +50,7 @@ g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
 
 PARITY_SRC="$TMP/rt.heap.allocator.parity"
 PARITY_TEMPS="$TMP/parity-temps"
-cp -a "$ROOT/src/rt.heap.allocator" "$PARITY_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$PARITY_SRC"
 cp "$ROOT/test/parity/heap/cartesian_tree_probe.cj" \
     "$PARITY_SRC/CartesianTreeProbe.cj"
 mkdir -p "$PARITY_TEMPS"
@@ -81,7 +81,7 @@ fi
 # field of the production @C CartesianTree. Its complete final IR is scanned.
 NATIVE_SRC="$TMP/rt.heap.allocator.native"
 NATIVE_TEMPS="$TMP/native-temps"
-cp -a "$ROOT/src/rt.heap.allocator" "$NATIVE_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$NATIVE_SRC"
 cp "$ROOT/test/parity/heap/cartesian_tree_native_slot_probe.cj" \
     "$NATIVE_SRC/CartesianTreeNativeSlotProbe.cj"
 mkdir -p "$NATIVE_TEMPS"
@@ -120,7 +120,7 @@ echo "CARTESIAN_NATIVE_SLOT_ARTIFACTS objects=$NATIVE_OBJECTS final_bc=$NATIVE_F
 # Compile the dedicated annotated root in its owning package.
 NOHEAP_SRC="$TMP/rt.heap.allocator.noheap"
 NOHEAP_TEMPS="$TMP/noheap-temps"
-cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$NOHEAP_SRC"
 cp "$ROOT/test/parity/heap/cartesian_tree_noheap_probe.cj" \
     "$NOHEAP_SRC/CartesianTreeNoHeapProbe.cj"
 mkdir -p "$NOHEAP_TEMPS"
@@ -248,7 +248,7 @@ fi
 
 # Execute the exact annotated root with Init/Fini outside its checked closure.
 NOHEAP_EXEC_SRC="$TMP/rt.heap.allocator.noheap.exec"
-cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_EXEC_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$NOHEAP_EXEC_SRC"
 cp "$ROOT/test/parity/heap/cartesian_tree_noheap_probe.cj" \
     "$NOHEAP_EXEC_SRC/CartesianTreeNoHeapProbe.cj"
 cp "$ROOT/test/parity/heap/cartesian_tree_noheap_driver.cj" \

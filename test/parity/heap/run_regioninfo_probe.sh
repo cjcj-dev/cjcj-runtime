@@ -67,7 +67,7 @@ g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$IMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$IMP/Atomic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$IMP/SpinLock.o"
 
-cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$NOHEAP_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_noheap_probe.cj" "$NOHEAP_SRC/RegionInfoNoHeapProbe.cj"
 mkdir -p "$NOHEAP_TEMPS"
 (cd "$IMP" && "$SELFHOST_CJC" --package "$NOHEAP_SRC" --output-type=staticlib --import-path "$IMP" \
@@ -199,7 +199,7 @@ fi
 # extension methods remain receiver-faithful. The selfhost CJO importer does not
 # re-export extensions of core CPointer to a standalone package.
 STUB_SRC="$IMP/rt.heap.allocator.stubcheck"
-cp -a "$ROOT/src/rt.heap.allocator" "$STUB_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$STUB_SRC"
 cat > "$STUB_SRC/RegionInfoStubProbe.cj" <<'EOF'
 package rt.heap.allocator
 
@@ -270,7 +270,7 @@ EOF
 "$STUB_OUT"
 
 ABORT_SRC="$IMP/rt.heap.allocator.abortcheck"
-cp -a "$ROOT/src/rt.heap.allocator" "$ABORT_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$ABORT_SRC"
 cat > "$ABORT_SRC/RegionInfoAbortProbe.cj" <<'EOF'
 package rt.heap.allocator
 
@@ -301,14 +301,14 @@ if ! grep -Fxq 'RegionInfo::MarkObject not yet ported (Collector-deferred)' <<< 
 fi
 echo "REGIONINFO_DEFERRED_ABORT PASS rc=$ABORT_RC message=RegionInfo::MarkObject not yet ported (Collector-deferred)"
 
-cp -a "$ROOT/src/rt.heap.allocator" "$PROBE_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$PROBE_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_probe.cj" "$PROBE_SRC/RegionInfoProbe.cj"
 (cd "$IMP" && "$SELFHOST_CJC" --package "$PROBE_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
     "$IMP/librt.sync.a" "$IMP/librt.base.a" \
     "$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" "$IMP/SpinLock.o" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$OUT")
 
-cp -a "$ROOT/src/rt.heap.allocator" "$INIT_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$INIT_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_noheap_probe.cj" "$INIT_SRC/RegionInfoNoHeapProbe.cj"
 cat > "$INIT_SRC/RegionInfoInitDriver.cj" <<'EOF'
 package rt.heap.allocator

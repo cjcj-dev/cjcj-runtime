@@ -46,7 +46,7 @@ for pkg in rt.base rt.sync; do
         --int-overflow wrapping -Woff unused --import-path "$TMP" --output-dir "$TMP" \
         -o "lib$pkg.a"
 done
-"$SELFHOST_CJC" --package "$ROOT/src/rt.heap.allocator" --output-type=staticlib \
+"$SELFHOST_CJC" --package "$ROOT/src/rt/heap/allocator" --output-type=staticlib \
     --int-overflow wrapping -Woff unused --import-path "$TMP" --output-dir "$TMP" \
     --save-temps "$TMP/heap_temps" -o librt.heap.allocator.a
 
@@ -55,7 +55,7 @@ g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
 
 PARITY_SRC="$TMP/rt.heap.allocator.parity"
-cp -a "$ROOT/src/rt.heap.allocator" "$PARITY_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$PARITY_SRC"
 cp "$ROOT/test/parity/heap/localdeque_probe.cj" "$PARITY_SRC/LocalDequeProbe.cj"
 "$SELFHOST_CJC" --package "$PARITY_SRC" \
     --import-path "$TMP" --int-overflow wrapping -Woff unused \
@@ -201,7 +201,7 @@ echo "LOCALDEQUE_STACK_COPIES push_memcpy=$push_memcpy top_memcpy=$top_memcpy fr
 # Compile the dedicated root with closure checking, then scan the final IR and every
 # object emitted for that compilation. Either source of MCC_New evidence is fatal.
 NOHEAP_SRC="$TMP/rt.heap.allocator.noheap"
-cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_SRC"
+cp -a "$ROOT/src/rt/heap/allocator" "$NOHEAP_SRC"
 cp "$ROOT/test/parity/heap/localdeque_noheap_probe.cj" \
     "$NOHEAP_SRC/LocalDequeNoHeapProbe.cj"
 mkdir -p "$TMP/noheap_temps"

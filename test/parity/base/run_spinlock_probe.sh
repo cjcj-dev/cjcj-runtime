@@ -54,7 +54,7 @@ require_inputs()
     for input in \
         "$CPP_RUNTIME_ROOT/src/Base/SpinLock.h" \
         "$CPP_RUNTIME_ROOT/src/Base/Macros.h" \
-        "$ROOT/src/rt.base/SpinLock.cj" \
+        "$ROOT/src/rt/base/SpinLock.cj" \
         "$ROOT/rt0/os/Linux/SpinLock.cpp" \
         "$ROOT/rt0/os/Linux/Atomic.cpp" \
         "$ROOT/rt0/os/Linux/Panic.cpp" \
@@ -141,7 +141,7 @@ check_lifetime_boundary()
 
 build_base_and_native()
 {
-    run_cjc --package "$ROOT/src/rt.base" --output-type=staticlib \
+    run_cjc --package "$ROOT/src/rt/base" --output-type=staticlib \
         -O2 -Woff unused --int-overflow wrapping --save-temps "$IMP/base_temps" \
         --output-dir "$IMP" -o librt.base.a
     [[ -s "$IMP/librt.base.a" && -s "$IMP/base_temps/rt.base.o" ]] ||
@@ -205,7 +205,7 @@ check_bridge_and_layout()
     "$LLVM_BIN/llvm-dis" "$IMP/base_temps/rt.base.opt.bc" -o "$IMP/base.final.ll"
     grep -Fxq '%"record.rt.base:SpinLock" = type { i32 }' "$IMP/base.final.ll" ||
         fail "Cangjie inline SpinLock is not one Int32"
-    ! rg -q 'cj_pthread_spin_destroy' "$ROOT/src/rt.base/SpinLock.cj" "$ROOT/rt0/os/Linux/SpinLock.cpp" ||
+    ! rg -q 'cj_pthread_spin_destroy' "$ROOT/src/rt/base/SpinLock.cj" "$ROOT/rt0/os/Linux/SpinLock.cpp" ||
         fail "invented explicit destroy surface present"
     for operation in init lock unlock trylock; do
         pthread_target="pthread_spin_$operation"

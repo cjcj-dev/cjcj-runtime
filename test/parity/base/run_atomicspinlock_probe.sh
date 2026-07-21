@@ -48,7 +48,7 @@ require_inputs()
     for input in \
         "$CPP_RUNTIME_ROOT/src/Base/AtomicSpinLock.h" \
         "$CPP_RUNTIME_ROOT/src/Base/Macros.h" \
-        "$ROOT/src/rt.base/AtomicSpinLock.cj" \
+        "$ROOT/src/rt/base/AtomicSpinLock.cj" \
         "$ROOT/rt0/os/Linux/Atomic.cpp" \
         "$ROOT/rt0/os/Linux/SpinLock.cpp" \
         "$ROOT/test/parity/base/atomicspinlock_ref.cpp" \
@@ -89,7 +89,7 @@ build_cpp_oracle()
 build_base_and_native()
 {
     check_compiler
-    "$SELFHOST_CJC" --package "$ROOT/src/rt.base" --output-type=staticlib \
+    "$SELFHOST_CJC" --package "$ROOT/src/rt/base" --output-type=staticlib \
         -O2 -Woff unused --int-overflow wrapping --save-temps "$IMP/base_temps" \
         --output-dir "$IMP" -o librt.base.a
     [[ -s "$IMP/librt.base.a" && -s "$IMP/base_temps/rt.base.o" ]] ||
@@ -157,9 +157,9 @@ check_bridge_and_layout()
     [[ $(grep -Fc 'return __atomic_test_and_set(p, __ATOMIC_ACQUIRE);' \
         "$ROOT/rt0/os/Linux/Atomic.cpp") -eq 1 ]] || fail "test-and-set native order mismatch"
     [[ $(grep -Fxc '    func cj_atomic_flag_test_and_set(p: CPointer<UInt8>): Bool' \
-        "$ROOT/src/rt.base/AtomicSpinLock.cj") -eq 1 ]] || fail "test-and-set foreign signature mismatch"
+        "$ROOT/src/rt/base/AtomicSpinLock.cj") -eq 1 ]] || fail "test-and-set foreign signature mismatch"
     [[ $(grep -Fxc '    func cj_atomic_flag_clear(p: CPointer<UInt8>): Unit' \
-        "$ROOT/src/rt.base/AtomicSpinLock.cj") -eq 1 ]] || fail "clear foreign signature mismatch"
+        "$ROOT/src/rt/base/AtomicSpinLock.cj") -eq 1 ]] || fail "clear foreign signature mismatch"
     test_defs=$(nm -g --defined-only "$IMP/Atomic.o" | awk '$3 == "cj_atomic_flag_test_and_set" {++n} END {print n+0}')
     clear_defs=$(nm -g --defined-only "$IMP/Atomic.o" | awk '$3 == "cj_atomic_flag_clear" {++n} END {print n+0}')
     test_relocs=$(objdump -r "$IMP/base_temps/rt.base.o" |

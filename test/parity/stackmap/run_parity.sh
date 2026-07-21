@@ -52,9 +52,9 @@ g++ -std=c++17 -O2 -Wall -Wextra "${common_includes[@]}" \
 
 (
     cd "$BUILD"
-    "$CJC" -p "$ROOT/src/rt.stackmap" --output-type=staticlib --int-overflow wrapping \
+    "$CJC" -p "$ROOT/src/rt/stackmap" --output-type=staticlib --int-overflow wrapping \
         -o "$BUILD/library" -Woff unused
-    "$CJC" "$ROOT/src/rt.stackmap/stackmap.cj" "$ROOT/test/parity/stackmap/cangjie_dump.cj" \
+    "$CJC" "$ROOT/src/rt/stackmap/stackmap.cj" "$ROOT/test/parity/stackmap/cangjie_dump.cj" \
         -o "$BUILD/cangjie_stackmap_dump" --set-runtime-rpath --int-overflow wrapping -Woff unused \
         --link-option "$BUILD/cangjie_driver.o" --link-option=-lstdc++ --link-option=-lgcc_s
 )
