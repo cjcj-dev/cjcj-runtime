@@ -3,7 +3,10 @@
 set -euo pipefail
 
 ROOT=$(cd "${BASH_SOURCE[0]%/*}/../../.." && pwd -P)
-source "$ROOT/test/compiler_identity.sh"
+SELFHOST_CJC=/root/cj_build/cjcj/target/release/bin/cjcj::cjc
+COMPILER_SOURCE=27b9b88c2a7bc68acfcc870e7b394404a8f6c356
+COMPILER_SHA=d99659d1cc797eb179e349bdcff1c635086680fba6b9be5dac61e39eb570b44c
+COMPILER_SIZE=98479472
 CPP_RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 export PATH=/root/.cjv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export CANGJIE_HOME=/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029
