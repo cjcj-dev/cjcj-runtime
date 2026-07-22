@@ -49,7 +49,7 @@ echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP
 
 (
     cd "$TMP"
-    "$SELFHOST_CJC" --package "$ROOT/test/parity/exception/eh_primitives_noheap_root.cj" \
+    "$SELFHOST_CJC" --package "$ROOT/test/parity/exception/eh.noheap" \
         --output-type=staticlib -O2 --int-overflow wrapping --import-path "$TMP" \
         --save-temps "$TMP/root" --output-dir "$TMP" -o libeh.noheap.a
 )
