@@ -38,7 +38,11 @@ public func ReadULEB128(data: CPointer<CPointer<UInt8>>): UInt64 {
     do {
         byte = unsafe { p.read() }
         p = unsafe { p + 1 }
-        value |= UInt64(byte & VALUE_MASK) << shift
+        // The C++ left operand is promoted from uint8_t to signed int before
+        // shifting, then sign-extended into uint64_t by |=. Preserve that
+        // published behavior for fifth-byte values whose bit 31 becomes set.
+        let promoted = Int32(UInt32(byte & VALUE_MASK) << UInt32(shift))
+        value |= UInt64(Int64(promoted))
         shift += SHIFT_LENGTH
     } while ((byte & BYTE_MAX_BIT) != 0u8)
     unsafe { data.write(p) }
