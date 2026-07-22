@@ -24,11 +24,20 @@ done
     -Woff unused --import-path "$TMP" --output-dir "$TMP" -o librt.heap.allocator.a
 "$SELFHOST_CJC" --package "$ROOT/src/rt.common" --output-type=staticlib -O2 --int-overflow wrapping \
     -Woff unused --import-path "$TMP" --save-temps "$TMP/common" --output-dir "$TMP" -o librt.common.a
-g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.o"
-g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$TMP/PagePoolMutex.o"
-g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
+mkdir -p "$TMP/native"
+for source in Futex Panic Atomic SpinLock PagePoolMutex; do
+    g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/$source.cpp" -o "$TMP/native/$source.o"
+done
+native_includes=(-I"$RUNTIME_ROOT/include" -I"$RUNTIME_ROOT/output/temp/include" \
+    -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include")
+while IFS= read -r include_dir; do native_includes+=(-I"$include_dir"); done < <(find "$RUNTIME_ROOT/src" -type d | sort)
+g++ -std=c++17 -O2 -pthread -DMRT_USE_CJTHREAD_RENAME "${native_includes[@]}" -fPIC \
+    -c "$ROOT/rt0/AllocBufferNative.cpp" -o "$TMP/native/AllocBufferNative.o"
+g++ -std=c++17 -O2 -pthread -DMRT_USE_CJTHREAD_RENAME "${native_includes[@]}" -fPIC \
+    -c "$ROOT/rt0/ScopedSaferegion.cpp" -o "$TMP/native/ScopedSaferegion.o"
 "$SELFHOST_CJC" "$ROOT/test/parity/common/memcommon_probe.cj" --import-path "$TMP" --int-overflow wrapping \
-    "$TMP/librt.common.a" "$TMP/Atomic.o" "$TMP/PagePoolMutex.o" "$TMP/Panic.o" \
+    "$TMP/librt.common.a" "$TMP/librt.heap.allocator.a" "$TMP/librt.sync.a" "$TMP/librt.base.a" \
+    "$TMP/native/"*.o \
     --link-option=-lstdc++ --link-option=-lgcc_s --link-option=-lpthread -o "$TMP/mem_cj"
 
 cpp_includes=(-I "$RUNTIME_ROOT/src" -I "$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include")
