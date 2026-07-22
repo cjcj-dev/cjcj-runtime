@@ -3,13 +3,8 @@
 set -euo pipefail
 
 ROOT=$(cd "${BASH_SOURCE[0]%/*}/../../.." && pwd -P)
-SELFHOST_CJC=/root/cj_build/cjcj/target/release/bin/cjcj::cjc
+source "$ROOT/test/compiler_identity.sh"
 CPP_RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
-export CANGJIE_HOME=/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029
-LLVM_BIN="$CANGJIE_HOME/third_party/llvm/bin"
-CJC_BIN_DIR=$(cd "${SELFHOST_CJC%/*}" && pwd -P)
-SELFHOST_RT="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
-export LD_LIBRARY_PATH="$SELFHOST_RT:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
 export cjHeapSize=24GB
 
 fail() { echo "run_runtimeparam_probe: FAIL $*" >&2; exit 1; }
