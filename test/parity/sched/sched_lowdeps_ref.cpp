@@ -8,6 +8,9 @@
 #include "cjthread.h"
 #include "timer_impl.h"
 
+size_t g_pageSize = 0;
+void LogWrite(ThreadLogLevel, unsigned int, const char*, unsigned short, const char*, ...) {}
+
 static int NodeId(const Dulink* value, const Dulink* head, const Dulink* a,
                   const Dulink* b, const Dulink* c, const Dulink* other)
 {
