@@ -7,6 +7,9 @@
 #include "processor.h"
 #include "schmon.h"
 
+size_t g_pageSize = 0;
+void LogWrite(ThreadLogLevel, unsigned int, const char*, unsigned short, const char*, ...) {}
+
 extern "C" int32_t ProcessorFoundationObserve(
     int32_t globalSchNum, int32_t queueCapacity, int32_t stealRatio,
     int32_t globalAddRatio, int32_t parrayNum, int32_t stealRounds,
