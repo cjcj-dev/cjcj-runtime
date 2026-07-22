@@ -59,16 +59,21 @@ echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP
 )
 root_pre=$(find "$TMP/root" -maxdepth 1 -name '*.bc' ! -name '*.opt.bc' -print -quit)
 root_final=$(find "$TMP/root" -maxdepth 1 -name '*.opt.bc' -print -quit)
-exception_final=$(find "$TMP/exception" -maxdepth 1 -name '*.opt.bc' -print -quit)
 root_object=$(find "$TMP/root" -maxdepth 1 -name '*.o' -print -quit)
-exception_object=$(find "$TMP/exception" -maxdepth 1 -name '*.o' -print -quit)
-for artifact in "$root_pre" "$root_final" "$exception_final" "$root_object" "$exception_object"; do [[ -s "$artifact" ]] || fail "missing closure artifact"; done
-"$LLVM_BIN/llvm-link" "$root_final" "$exception_final" -o "$TMP/linked.final.bc"
+mapfile -t exception_finals < <(find "$TMP/exception" -maxdepth 1 -name '*.opt.bc' -print | sort)
+mapfile -t exception_objects < <(find "$TMP/exception" -maxdepth 1 -name '*.o' -print | sort)
+for artifact in "$root_pre" "$root_final" "$root_object" "${exception_finals[@]}" "${exception_objects[@]}"; do
+    [[ -s "$artifact" ]] || fail "missing closure artifact"
+done
+[[ ${#exception_finals[@]} -eq ${#exception_objects[@]} && ${#exception_finals[@]} -ge 2 ]] ||
+    fail "incomplete exception package closure artifacts"
+"$LLVM_BIN/llvm-link" "$root_final" "${exception_finals[@]}" -o "$TMP/linked.final.bc"
 "$LLVM_BIN/llvm-dis" "$root_pre" -o "$TMP/root.pre.ll"
 "$LLVM_BIN/llvm-dis" "$TMP/linked.final.bc" -o "$TMP/linked.final.ll"
 closure=(python3 "$ROOT/test/parity/exception/eh_primitives_closure.py" \
     --pre "$TMP/root.pre.ll" --final "$TMP/linked.final.ll" \
-    --object "$root_object" --object "$exception_object")
+    --object "$root_object")
+for object in "${exception_objects[@]}"; do closure+=(--object "$object"); done
 "${closure[@]}"
 set +e
 "${closure[@]}" --inject-forbidden > "$TMP/negative.log" 2>&1
