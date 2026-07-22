@@ -20,6 +20,7 @@ foreign {
     @When[os == "Windows"]
     func VirtualFree(address: CPointer<Unit>, size: UIntNative, freeType: UInt32): Int32
     func memset(destination: CPointer<Unit>, value: Int32, count: UIntNative): CPointer<Unit>
+    func write(fd: Int32, data: CPointer<UInt8>, size: UIntNative): IntNative
     func abort(): Unit
 
     func cj_atomic_uintptr_fetch_add_seq_cst(p: CPointer<UIntNative>, value: UIntNative): UIntNative
@@ -122,6 +123,33 @@ private var forwardDataManager: ForwardDataManager = ForwardDataManager()
 private var FORWARD_DATA_NAME: VArray<UInt8, $13> = [
     102u8, 111u8, 114u8, 119u8, 97u8, 114u8, 100u8, 95u8, 100u8, 97u8, 116u8, 97u8, 0u8
 ]
+private var FORWARD_DATA_ERRORS: VArray<UInt8, $247> = [
+    86u8, 105u8, 114u8, 116u8, 117u8, 97u8, 108u8, 65u8, 108u8, 108u8, 111u8, 99u8, 32u8, 99u8, 111u8, 109u8,
+    109u8, 105u8, 116u8, 32u8, 102u8, 97u8, 105u8, 108u8, 101u8, 100u8, 32u8, 105u8, 110u8, 32u8, 65u8, 108u8,
+    108u8, 111u8, 99u8, 97u8, 116u8, 101u8, 10u8,
+    86u8, 105u8, 114u8, 116u8, 117u8, 97u8, 108u8, 70u8, 114u8, 101u8, 101u8, 32u8, 102u8, 97u8, 105u8, 108u8,
+    101u8, 100u8, 32u8, 105u8, 110u8, 32u8, 82u8, 101u8, 116u8, 117u8, 114u8, 110u8, 80u8, 97u8, 103u8, 101u8,
+    10u8,
+    102u8, 111u8, 114u8, 119u8, 97u8, 114u8, 100u8, 105u8, 110u8, 103u8, 32u8, 102u8, 97u8, 116u8, 97u8, 32u8,
+    109u8, 109u8, 97u8, 112u8, 32u8, 105u8, 120u8, 101u8, 100u8, 32u8, 102u8, 97u8, 105u8, 108u8, 101u8, 100u8,
+    10u8,
+    109u8, 109u8, 97u8, 112u8, 32u8, 102u8, 105u8, 120u8, 101u8, 100u8, 32u8, 97u8, 116u8, 32u8, 119u8, 114u8,
+    111u8, 110u8, 103u8, 32u8, 97u8, 100u8, 100u8, 114u8, 10u8,
+    109u8, 117u8, 110u8, 109u8, 97u8, 112u8, 32u8, 101u8, 114u8, 114u8, 111u8, 114u8, 32u8, 102u8, 111u8, 114u8,
+    32u8, 70u8, 111u8, 114u8, 119u8, 97u8, 114u8, 100u8, 68u8, 97u8, 116u8, 97u8, 77u8, 97u8, 110u8, 97u8,
+    103u8, 101u8, 114u8, 10u8,
+    86u8, 105u8, 114u8, 116u8, 117u8, 97u8, 108u8, 70u8, 114u8, 101u8, 101u8, 32u8, 101u8, 114u8, 114u8, 111u8,
+    114u8, 32u8, 102u8, 111u8, 114u8, 32u8, 70u8, 111u8, 114u8, 119u8, 97u8, 114u8, 100u8, 68u8, 97u8, 116u8,
+    97u8, 77u8, 97u8, 110u8, 97u8, 103u8, 101u8, 114u8, 10u8,
+    102u8, 97u8, 105u8, 108u8, 101u8, 100u8, 32u8, 116u8, 111u8, 32u8, 105u8, 110u8, 105u8, 116u8, 105u8, 97u8,
+    108u8, 105u8, 122u8, 101u8, 32u8, 70u8, 111u8, 114u8, 119u8, 97u8, 114u8, 100u8, 68u8, 97u8, 116u8, 97u8,
+    77u8, 97u8, 110u8, 97u8, 103u8, 101u8, 114u8, 10u8
+]
+
+@NoHeapAlloc
+private func ForwardDataError(offset: Int64, size: UIntNative): Unit {
+    unsafe { let _ = write(2, CPointer<UInt8>(inout FORWARD_DATA_ERRORS) + offset, size) }
+}
 
 @NoHeapAlloc
 public func GetForwardDataManager(): CPointer<ForwardDataManager> {
@@ -203,7 +231,7 @@ public func ForwardDataSpaceAllocate(space: CPointer<ForwardDataSpace>, zone: UI
             VirtualAlloc(CPointer<Unit>(unsafe { CPointer<UInt8>() + Int64(last) }), pageSize,
                 MemMap.MEM_COMMIT, MemMap.PAGE_READWRITE)
         }
-        if (result.isNull()) { unsafe { abort() } }
+        if (result.isNull()) { ForwardDataError(0, 39) }
         unsafe { cj_atomic_uintptr_store_seq_cst(commit, last.wrappingAdd(pageSize)) }
     }
     Unlock(lock)
@@ -231,7 +259,11 @@ public func ForwardDataSpaceRelease(space: CPointer<ForwardDataSpace>): Unit {
     unsafe { let _ = memset(address, 0, size) }
     let ret = unsafe { mmap(address, size, MemMap.PROT_READ | MemMap.PROT_WRITE,
         Int32(MemMap.MAP_PRIVATE | MemMap.MAP_ANONYMOUS | MemMap.MAP_FIXED), -1, 0) }
-    if (ret.toUIntNative() == UIntNative.Max || ret != address) { unsafe { abort() } }
+    if (ret.toUIntNative() == UIntNative.Max) {
+        ForwardDataError(72, 33)
+    } else if (ret.toUIntNative() != address.toUIntNative()) {
+        ForwardDataError(105, 25)
+    }
     ForwardDataSpaceReset(space)
 }
 
@@ -241,7 +273,7 @@ public func ForwardDataSpaceRelease(space: CPointer<ForwardDataSpace>): Unit {
     let start = unsafe { CPointer<UIntNative>(CPointer<UInt8>(space) + 32).read(0) }
     let size = unsafe { CPointer<UIntNative>(CPointer<UInt8>(space) + 40).read(0) }
     let address = unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(start)) }
-    if (unsafe { VirtualFree(address, size, 0x4000u32) } == 0) { unsafe { abort() } }
+    if (unsafe { VirtualFree(address, size, 0x4000u32) } == 0) { ForwardDataError(39, 33) }
     ForwardDataSpaceReset(space)
 }
 
@@ -300,7 +332,10 @@ public func ForwardDataInitialize(manager: CPointer<ForwardDataManager>): Unit {
 private func ForwardDataMap(size: UIntNative): UIntNative {
     let address = unsafe { mmap(CPointer<Unit>(), size, MemMap.PROT_READ | MemMap.PROT_WRITE,
         Int32(MemMap.MAP_PRIVATE | MemMap.MAP_ANONYMOUS), -1, 0) }
-    if (address.toUIntNative() == UIntNative.Max) { unsafe { abort() } }
+    if (address.toUIntNative() == UIntNative.Max) {
+        ForwardDataError(207, 40)
+        unsafe { abort() }
+    }
     unsafe {
         let _ = madvise(address, size, MADV_NOHUGEPAGE)
         MRT_PRCTL(address, size, CString(CPointer<UInt8>(inout FORWARD_DATA_NAME)))
@@ -312,14 +347,20 @@ private func ForwardDataMap(size: UIntNative): UIntNative {
 private func ForwardDataMap(size: UIntNative): UIntNative {
     let address = unsafe { mmap(CPointer<Unit>(), size, MemMap.PROT_READ | MemMap.PROT_WRITE,
         Int32(MemMap.MAP_PRIVATE | MemMap.MAP_ANONYMOUS), -1, 0) }
-    if (address.toUIntNative() == UIntNative.Max) { unsafe { abort() } }
+    if (address.toUIntNative() == UIntNative.Max) {
+        ForwardDataError(207, 40)
+        unsafe { abort() }
+    }
     return address.toUIntNative()
 }
 
 @When[os == "Windows"]
 private func ForwardDataMap(size: UIntNative): UIntNative {
     let address = unsafe { VirtualAlloc(CPointer<Unit>(), size, MemMap.MEM_RESERVE, MemMap.PAGE_READWRITE) }
-    if (address.isNull()) { unsafe { abort() } }
+    if (address.isNull()) {
+        ForwardDataError(207, 40)
+        unsafe { abort() }
+    }
     return address.toUIntNative()
 }
 
@@ -394,11 +435,11 @@ public func ForwardDataDestroy(manager: CPointer<ForwardDataManager>): Unit {
 
 @When[os != "Windows"]
 private func ForwardDataDestroyImpl(address: CPointer<Unit>, size: UIntNative): Unit {
-    if (unsafe { munmap(address, size) } != 0) { unsafe { abort() } }
+    if (unsafe { munmap(address, size) } != 0) { ForwardDataError(130, 36) }
 }
 
 @When[os == "Windows"]
 private func ForwardDataDestroyImpl(address: CPointer<Unit>, size: UIntNative): Unit {
     let _ = size
-    if (unsafe { VirtualFree(address, 0, MEM_RELEASE) } == 0) { unsafe { abort() } }
+    if (unsafe { VirtualFree(address, 0, MEM_RELEASE) } == 0) { ForwardDataError(166, 41) }
 }
