@@ -70,6 +70,8 @@ main(): Int64 {
     let r1 = FreshRegion(1, 20)
     list.PrependRegion(r0, RECENT_FULL_REGION)
     list.PrependRegion(r1, RECENT_FULL_REGION)
+    @When[debug]
+    let _ = list.DumpRegionList(CPointer<UInt8>(inout listName))
     println("PREPEND regions=${list.GetRegionCount()} units=${GetUnitCount(list)} " +
         "head=${FreshIdx(list.GetHeadRegion())} tail=${FreshIdx(list.GetTailRegion())}")
 

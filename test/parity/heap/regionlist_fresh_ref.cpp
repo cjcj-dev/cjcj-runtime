@@ -43,6 +43,9 @@ int main()
     RegionInfo* r1 = MakeRegion(1, 20);
     list.PrependRegion(r0, RegionInfo::RegionType::RECENT_FULL_REGION);
     list.PrependRegion(r1, RegionInfo::RegionType::RECENT_FULL_REGION);
+#ifdef MRT_DEBUG
+    list.DumpRegionList("list");
+#endif
     std::printf("PREPEND regions=%zu units=%zu head=%lld tail=%lld\n", list.GetRegionCount(),
         list.GetUnitCount(), Idx(list.GetHeadRegion()), Idx(list.GetTailRegion()));
 
