@@ -2,9 +2,8 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
+source "$ROOT/test/compiler_identity.sh"
 OUT=${OUT:-"$ROOT/out/managed-instance-contract"}
-SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
 HYBRID=${HYBRID:-"$ROOT/out/gate/hybrid/libcangjie-runtime.so"}
 MODE=${MODE:-s4}
@@ -12,11 +11,7 @@ CYCLES=${CYCLES:-1}
 TIMEOUT=${TIMEOUT:-30s}
 EXPECT_FAIL_STAGE=${EXPECT_FAIL_STAGE:-}
 ORACLE="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative/libcangjie-runtime.so"
-RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
-
 export PATH=/root/.cjv/bin:$PATH
-export CANGJIE_HOME
-export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 export cjHeapSize=${cjHeapSize:-24GB}
 
 rm -rf "$OUT"
