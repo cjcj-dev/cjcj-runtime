@@ -1,5 +1,7 @@
 package rt.heap.allocator
 
+import rt.base.AllocUtilRndUp
+
 main(): Int64 {
     let units: UIntNative = 24
     let metadata = AllocUtilRndUp(units * sizeOf<RegionInfo>(), RegionInfo.UNIT_SIZE)
