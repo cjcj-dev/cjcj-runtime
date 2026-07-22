@@ -75,13 +75,21 @@ foreign {
     func cj_atomic_field_fetch_xor(p: CPointer<Unit>, value: CPointer<Unit>, size: UIntNative, order: Int32): UInt64
 }
 
-public func FieldGet<T>(field: CPointer<T>): T where T <: CType {
-    return unsafe { field.read() }
-}
-
-public func FieldSet<T>(field: CPointer<T>, value: T): Unit where T <: CType {
-    unsafe { field.write(0, value) }
-}
+// Barrier.inline.h:16-51 is the complete production instantiation set.  Using
+// concrete leaves also avoids the mandated compiler's heap-classified
+// llvm.cj.alloca.generic lowering for CPointer<T>.read/write.
+public func FieldGetI8(field: CPointer<Int8>): Int8 { return unsafe { field.read() } }
+public func FieldSetI8(field: CPointer<Int8>, value: Int8): Unit { unsafe { field.write(0, value) } }
+public func FieldGetI16(field: CPointer<Int16>): Int16 { return unsafe { field.read() } }
+public func FieldSetI16(field: CPointer<Int16>, value: Int16): Unit { unsafe { field.write(0, value) } }
+public func FieldGetI32(field: CPointer<Int32>): Int32 { return unsafe { field.read() } }
+public func FieldSetI32(field: CPointer<Int32>, value: Int32): Unit { unsafe { field.write(0, value) } }
+public func FieldGetI64(field: CPointer<Int64>): Int64 { return unsafe { field.read() } }
+public func FieldSetI64(field: CPointer<Int64>, value: Int64): Unit { unsafe { field.write(0, value) } }
+public func FieldGetF32(field: CPointer<Float32>): Float32 { return unsafe { field.read() } }
+public func FieldSetF32(field: CPointer<Float32>, value: Float32): Unit { unsafe { field.write(0, value) } }
+public func FieldGetF64(field: CPointer<Float64>): Float64 { return unsafe { field.read() } }
+public func FieldSetF64(field: CPointer<Float64>, value: Float64): Unit { unsafe { field.write(0, value) } }
 
 // The mandated compiler cannot take `inout` of a generic T even under a CType
 // constraint.  Field's instantiated atomic storage is therefore carried as its

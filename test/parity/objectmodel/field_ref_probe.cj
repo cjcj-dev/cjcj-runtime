@@ -4,7 +4,7 @@ main(): Int64 {
     var plain = -17i32
     println("LAYOUT field_i32=${sizeOf<Int32>()}/${alignOf<Int32>()} " +
         "ref=${sizeOf<RefField>()}/${alignOf<RefField>()}")
-    println("PLAIN get=${FieldGet(unsafe { CPointer<Int32>(inout plain) })}")
+    println("PLAIN get=${FieldGetI32(unsafe { CPointer<Int32>(inout plain) })}")
 
     var atomic = 0u32
     let atomicPtr = unsafe { CPointer<UInt32>(inout atomic) }
