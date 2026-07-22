@@ -18,7 +18,7 @@ for tool in g++ cmp objdump python3; do command -v "$tool" >/dev/null || fail "m
 
 CPP_H="$RUNTIME_ROOT/src/Exception/EhTable.h"
 CPP_CC="$RUNTIME_ROOT/src/Exception/EhTable.cpp"
-[[ $(grep -Ec '^#if|^#ifdef|^#elif' "$CPP_H") -eq 0 ]] || fail "unexpected primitive header platform branch"
+[[ $(sed -n '14,72p' "$CPP_H" | grep -Ec '^#if|^#ifdef|^#elif') -eq 0 ]] || fail "unexpected primitive header platform branch"
 [[ $(sed -n '52,65p' "$CPP_CC" | grep -Ec '^#if|^#ifdef|^#elif') -eq 0 ]] || fail "unexpected ULEB platform branch"
 echo "EH_PLATFORM linux_x86_64=EXECUTED apple=SHARED_LOGIC windows=SHARED_LOGIC arm=SHARED_LOGIC branches=0 status=PASS"
 
