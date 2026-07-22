@@ -15,6 +15,10 @@ trap 'rm -rf "$OUT"' EXIT
 printf 'INSTANCE_CONTRACT_DISK_BEFORE '
 df -Pk "$ROOT" | tail -n 1
 
+python3 "$ROOT/test/contract/instance/stop_source_check.py" \
+    "$ROOT/src.native/rt.instance/instance_bridge.cpp" \
+    "$RUNTIME_ROOT/src/CjScheduler.cpp"
+
 symbols=(CJCJ_MRT_InstanceNew CJCJ_MRT_InstanceRunTask CJCJ_MRT_InstanceStop)
 for symbol in "${symbols[@]}"; do
     cycles=1

@@ -11,7 +11,6 @@
 #include <unordered_map>
 
 #include <pthread.h>
-#include <unistd.h>
 #if defined(__linux__) || defined(hongmeng)
 #include <sys/prctl.h>
 #endif
@@ -27,14 +26,10 @@
 #include "Concurrency/Concurrency.h"
 #include "Mutator/ThreadLocal.h"
 #include "cjcj_rt_instance.h"
-#include "inner/schedule_impl.h"
-#include "inner/schmon.h"
 
-// schedule.cpp:818,940,1011 define these C-linkage facilities used by the
-// existing non-default scheduler stop paths but omit them from schedule.h.
-extern "C" void ScheduleNonDefaultThreadExit(struct Schedule* schedule, bool wait);
-extern "C" bool ScheduleAnyCJThreadRunning(struct Schedule* schedule);
-extern "C" bool ScheduleProcessorSkipFFI(struct Processor* processor);
+// CjScheduler.cpp:831-840 owns the complete official stop primitive. Keep the
+// instance boundary on that symbol instead of extracting scheduler internals.
+extern "C" int8_t MRT_StopSubScheduler(void* schedule);
 
 namespace MapleRuntime {
 namespace {
@@ -96,42 +91,6 @@ void* MRT_StartSubScheduler(void* args)
     // the caller's default scheduler instead (schedule.cpp:86-90).
     SetSchedulerState(5); // 5: state is SCHEDULE_EXITED.
     return nullptr;
-}
-
-// Single-instance extraction of ScheduleAllNonDefaultExit's loop bodies at
-// schedule.cpp:1049-1074, under its enclosing lock at :1041/:1076. The wait
-// before teardown is separately taken from ScheduleStop at :1207-1210.
-int MRT_StopSubScheduler(CangjieRuntime* runtime, ScheduleHandle scheduleHandle)
-{
-    if (!runtime->CheckSubSchedulerValid(scheduleHandle)) {
-        return 1;
-    }
-
-    auto* schedule = reinterpret_cast<Schedule*>(scheduleHandle);
-    schedule->state = SCHEDULE_WAITING;
-    while (ScheduleAnyCJThreadRunning(schedule)) {
-        usleep(10); // schedule.cpp:36 SCHEDULE_CJTHREAD_EXIT_WAIT_TIME; :1207-1210 wait loop.
-    }
-
-    pthread_mutex_lock(&g_scheduleManager.allScheduleListLock);
-    atomic_store(&schedule->state, SCHEDULE_EXITING);
-    ScheduleNonDefaultThreadExit(schedule, false);
-    SchmonPreemptRunning(&schedule->schdProcessor.processorGroup[0]);
-    if (schedule->scheduleType != SCHEDULE_EXCLUSIVE &&
-        pthread_self() != schedule->thread0->osThread &&
-        !ScheduleProcessorSkipFFI(&schedule->schdProcessor.processorGroup[0])) {
-        pthread_join(schedule->thread0->osThread, nullptr);
-        atomic_store(&schedule->schdProcessor.processorGroup[0].state, PROCESSOR_EXITING);
-    }
-
-    if (!runtime->FiniSubScheduler(scheduleHandle)) {
-        LOG(RTLOG_ERROR, "Fail to stop sub-scheduler");
-        pthread_mutex_unlock(&g_scheduleManager.allScheduleListLock);
-        return 1;
-    }
-    ScheduleNonDefaultFree(scheduleHandle);
-    pthread_mutex_unlock(&g_scheduleManager.allScheduleListLock);
-    return 0;
 }
 
 } // namespace
@@ -203,6 +162,5 @@ extern "C" MRT_EXPORT int CJCJ_MRT_InstanceStop(CjcjRtInstanceHandle instance)
     if (Runtime::CurrentRef() == nullptr || instance == nullptr) {
         return 1;
     }
-    auto runtime = reinterpret_cast<CangjieRuntime*>(&Runtime::Current());
-    return MRT_StopSubScheduler(runtime, instance);
+    return MRT_StopSubScheduler(instance);
 }
