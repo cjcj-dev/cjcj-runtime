@@ -33,12 +33,22 @@ done
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$TMP/PagePoolMutex.o"
+g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$TMP/SpinLock.o"
+NATIVE_INCLUDES=(-I"$ORACLE_ROOT/include")
+while IFS= read -r directory; do NATIVE_INCLUDES+=(-I"$directory"); done < <(find "$ORACLE_ROOT/src" -type d)
+NATIVE_FLAGS=(-std=c++17 -O2 -pthread -DMRT_USE_CJTHREAD_RENAME
+    -I"$ORACLE_ROOT/output/temp/include"
+    -I"$ORACLE_ROOT/third_party/third_party_bounds_checking_function/include"
+    "${NATIVE_INCLUDES[@]}")
+g++ "${NATIVE_FLAGS[@]}" -fPIC -c "$ROOT/rt0/AllocBufferNative.cpp" -o "$TMP/AllocBufferNative.o"
+g++ "${NATIVE_FLAGS[@]}" -fPIC -c "$ROOT/rt0/ScopedSaferegion.cpp" -o "$TMP/ScopedSaferegion.o"
 
 (cd "$TMP" && "$SELFHOST_CJC" "$ROOT/test/parity/common/stacktype_probe.cj" \
     --import-path "$TMP" --int-overflow wrapping \
     "$TMP/librt.common.a" "$TMP/librt.heap.allocator.a" "$TMP/librt.sync.a" \
     "$TMP/librt.base.a" "$TMP/Panic.o" "$TMP/Atomic.o" \
-    "$TMP/PagePoolMutex.o" --link-option=-lstdc++ --link-option=-lgcc_s \
+    "$TMP/PagePoolMutex.o" "$TMP/SpinLock.o" "$TMP/AllocBufferNative.o" \
+    "$TMP/ScopedSaferegion.o" --link-option=-lstdc++ --link-option=-lgcc_s --link-option=-lpthread \
     -o "$TMP/stacktype_probe")
 
 "$TMP/stacktype_ref" > "$TMP/cpp.records"
