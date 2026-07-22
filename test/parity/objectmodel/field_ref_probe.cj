@@ -26,12 +26,12 @@ main(): Int64 {
 
     var plainRef = RefFieldFromTaggedAddress(RefFieldPointerFromAddress(UIntNative(0x123456789ab0u64)), 1u16, 1u16)
     let plainRefPtr = unsafe { CPointer<RefField>(inout plainRef) }
-    println("REF raw=${RefFieldGetFieldValue(plainRefPtr).toString(radix: 16)} " +
-        "address=${RefFieldGetAddress(plainRefPtr).toString(radix: 16)} tagged=${RefFieldIsTagged(plainRefPtr)} " +
+    println("REF raw=${RefFieldGetFieldValue(plainRefPtr)} " +
+        "address=${RefFieldGetAddress(plainRefPtr)} tagged=${RefFieldIsTagged(plainRefPtr)} " +
         "tag=${RefFieldGetTagId(plainRefPtr)}")
     RefFieldSetTargetObject(plainRefPtr, RefFieldPointerFromAddress(UIntNative(0x223344556670u64)))
-    println("REF_SET raw=${RefFieldGetFieldValue(plainRefPtr).toString(radix: 16)} " +
-        "target=${RefFieldGetTargetObject(plainRefPtr).toUIntNative().toString(radix: 16)}")
+    println("REF_SET raw=${RefFieldGetFieldValue(plainRefPtr)} " +
+        "target=${RefFieldGetTargetObject(plainRefPtr).toUIntNative()}")
 
     var atomicRef = RefFieldFromAddress(RefFieldPointerFromAddress(UIntNative(0x1000u64)))
     let atomicRefPtr = unsafe { CPointer<RefField>(inout atomicRef) }
@@ -40,8 +40,8 @@ main(): Int64 {
         success: MEMORY_ORDER_SEQ_CST, failure: MEMORY_ORDER_ACQUIRE)
     let refCasFail = AtomicRefFieldCompareExchange(atomicRefPtr, UIntNative(0x2000u64), UIntNative(0x4000u64),
         success: MEMORY_ORDER_SEQ_CST, failure: MEMORY_ORDER_ACQUIRE)
-    println("ATOMIC_REF old=${old.toString(radix: 16)} " +
-        "final=${AtomicRefFieldGetFieldValue(atomicRefPtr).toString(radix: 16)} " +
+    println("ATOMIC_REF old=${old} " +
+        "final=${AtomicRefFieldGetFieldValue(atomicRefPtr)} " +
         "cas_ok=${refCasOk} cas_fail=${refCasFail}")
     return 0
 }

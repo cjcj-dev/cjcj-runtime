@@ -36,11 +36,11 @@ int main()
 
     auto* object = reinterpret_cast<BaseObject*>(uintptr_t{0x123456789ab0});
     RefField<> plainRef(object, 1, 1);
-    std::cout << std::hex << "REF raw=" << plainRef.GetFieldValue() << " address=" << plainRef.GetAddress()
-              << std::dec << " tagged=" << plainRef.IsTagged() << " tag=" << plainRef.GetTagID() << '\n';
+    std::cout << "REF raw=" << plainRef.GetFieldValue() << " address=" << plainRef.GetAddress()
+              << " tagged=" << plainRef.IsTagged() << " tag=" << plainRef.GetTagID() << '\n';
     plainRef.SetTargetObject(reinterpret_cast<BaseObject*>(uintptr_t{0x223344556670}));
-    std::cout << std::hex << "REF_SET raw=" << plainRef.GetFieldValue()
-              << " target=" << reinterpret_cast<uintptr_t>(plainRef.GetTargetObject()) << std::dec << '\n';
+    std::cout << "REF_SET raw=" << plainRef.GetFieldValue()
+              << " target=" << reinterpret_cast<uintptr_t>(plainRef.GetTargetObject()) << '\n';
 
     RefField<true> atomicRef(reinterpret_cast<BaseObject*>(uintptr_t{0x1000}));
     auto old = atomicRef.Exchange(uintptr_t{0x2000}, std::memory_order_acq_rel);
@@ -48,6 +48,6 @@ int main()
         std::memory_order_seq_cst, std::memory_order_acquire);
     bool refCasFail = atomicRef.CompareExchange(uintptr_t{0x2000}, uintptr_t{0x4000},
         std::memory_order_seq_cst, std::memory_order_acquire);
-    std::cout << std::hex << "ATOMIC_REF old=" << old << " final=" << atomicRef.GetFieldValue()
-              << std::dec << " cas_ok=" << refCasOk << " cas_fail=" << refCasFail << '\n';
+    std::cout << "ATOMIC_REF old=" << old << " final=" << atomicRef.GetFieldValue()
+              << " cas_ok=" << refCasOk << " cas_fail=" << refCasFail << '\n';
 }
