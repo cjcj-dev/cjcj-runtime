@@ -65,6 +65,9 @@ done
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$IMP/Futex.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$IMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$IMP/Atomic.o"
+g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$IMP/SpinLock.o"
+g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$IMP/PagePoolMutex.o"
+NATIVE_OBJECTS=("$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" "$IMP/SpinLock.o" "$IMP/PagePoolMutex.o")
 
 cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_noheap_probe.cj" "$NOHEAP_SRC/RegionInfoNoHeapProbe.cj"
@@ -264,7 +267,7 @@ EOF
 
 (cd "$IMP" && "$SELFHOST_CJC" --package "$STUB_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
     "$IMP/librt.sync.a" "$IMP/librt.base.a" \
-    "$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" \
+    "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$STUB_OUT")
 "$STUB_OUT"
 
@@ -283,7 +286,7 @@ EOF
 
 (cd "$IMP" && "$SELFHOST_CJC" --package "$ABORT_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
     "$IMP/librt.sync.a" "$IMP/librt.base.a" \
-    "$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" \
+    "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$ABORT_OUT")
 set +e
 ABORT_OUTPUT=$($ABORT_OUT 2>&1)
@@ -304,7 +307,7 @@ cp -a "$ROOT/src/rt.heap.allocator" "$PROBE_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_probe.cj" "$PROBE_SRC/RegionInfoProbe.cj"
 (cd "$IMP" && "$SELFHOST_CJC" --package "$PROBE_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
     "$IMP/librt.sync.a" "$IMP/librt.base.a" \
-    "$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" \
+    "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$OUT")
 
 cp -a "$ROOT/src/rt.heap.allocator" "$INIT_SRC"
@@ -496,7 +499,7 @@ EOF
 
 (cd "$IMP" && "$SELFHOST_CJC" --package "$INIT_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
     "$IMP/librt.sync.a" "$IMP/librt.base.a" \
-    "$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" \
+    "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$NOHEAP_OUT")
 "$NOHEAP_OUT" > "$CJ_INIT_TRANSCRIPT"
 cmp "$CPP_INIT_TRANSCRIPT" "$CJ_INIT_TRANSCRIPT"
