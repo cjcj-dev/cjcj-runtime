@@ -114,6 +114,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
+    Atomic.cpp
     AllocBufferNative.cpp
     ScopedSaferegion.cpp
     os/Loader.h
