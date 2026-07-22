@@ -27,6 +27,11 @@ extern "C" void CJRT_PagePoolMutexLock(void* storage)
     }
 }
 
+extern "C" bool CJRT_PagePoolMutexTryLock(void* storage)
+{
+    return static_cast<std::mutex*>(storage)->try_lock();
+}
+
 extern "C" void CJRT_PagePoolMutexUnlock(void* storage)
 {
     if (pthread_mutex_unlock(static_cast<pthread_mutex_t*>(storage)) != 0) {

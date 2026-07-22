@@ -114,6 +114,7 @@ endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
     AllocBufferNative.cpp
+    ScopedSaferegion.cpp
     os/Loader.h
     os/Path.h
     signal/SignalHandler.h

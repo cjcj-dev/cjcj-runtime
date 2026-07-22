@@ -21,12 +21,18 @@ static_assert(alignof(pthread_mutex_t) == 8, "Darwin pthread_mutex_t alignment c
 
 extern "C" int pthread_mutex_destroy(pthread_mutex_t* mutex);
 extern "C" int pthread_mutex_lock(pthread_mutex_t* mutex);
+extern "C" int pthread_mutex_trylock(pthread_mutex_t* mutex);
 extern "C" int pthread_mutex_unlock(pthread_mutex_t* mutex);
 extern "C" [[noreturn]] void abort();
 
 extern "C" void CJRT_PagePoolMutexConstruct(void* storage)
 {
     *static_cast<pthread_mutex_t*>(storage) = PTHREAD_MUTEX_INITIALIZER_VALUE;
+}
+
+extern "C" bool CJRT_PagePoolMutexTryLock(void* storage)
+{
+    return pthread_mutex_trylock(static_cast<pthread_mutex_t*>(storage)) == 0;
 }
 
 extern "C" void CJRT_PagePoolMutexDestroy(void* storage)
