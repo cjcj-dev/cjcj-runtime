@@ -46,7 +46,7 @@ main(): Int64 {
     let unitsOffset = unsafe { CPointer<UInt8>(inout layout.unitCount).toUIntNative() } - base
     let headOffset = unsafe { CPointer<UInt8>(inout layout.listHead).toUIntNative() } - base
     let tailOffset = unsafe { CPointer<UInt8>(inout layout.listTail).toUIntNative() } - base
-    let nameOffset = unsafe { CPointer<UInt8>(inout layout.listName).toUIntNative() } - base
+    let nameOffset = sizeOf<RegionList>() - sizeOf<CString>()
     var cacheLayout = RegionCache(CString(CPointer<UInt8>()))
     let cacheBase = unsafe { CPointer<UInt8>(inout cacheLayout).toUIntNative() }
     let activeOffset = unsafe { CPointer<UInt8>(inout cacheLayout.active).toUIntNative() } - cacheBase
