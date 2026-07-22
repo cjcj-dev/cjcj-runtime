@@ -24,7 +24,7 @@ foreign {
     func VirtualAlloc(address: CPointer<Unit>, size: UIntNative, allocationType: UInt32,
         protect: UInt32): CPointer<Unit>
     @When[os == "Windows"]
-    func GetLastError(): UInt32
+    func CJRT_MemMapCommitMemory(address: CPointer<Unit>, size: UIntNative): Unit
     // VirtualFree has one package-level declaration in RegionInfo.cj because
     // both RegionInfo.cpp:618-628 and MemMap.cpp:71,96 use the same Win32 ABI.
 
@@ -207,9 +207,7 @@ public struct MemMap {
     // MemMap.cpp:69-74. Windows-only: commit reserved pages before first access.
     @When[os == "Windows"]
     public static func CommitMemory(address: CPointer<Unit>, size: UIntNative): Unit {
-        let committed = unsafe { VirtualAlloc(address, size, MEM_COMMIT, PAGE_READWRITE) }
-        CHECK_E(committed.isNull(),
-            "VirtualAlloc commit failed in GetPage, errno: ${unsafe { GetLastError() }}")
+        unsafe { CJRT_MemMapCommitMemory(address, size) }
     }
 
     // MemMap.h:63.

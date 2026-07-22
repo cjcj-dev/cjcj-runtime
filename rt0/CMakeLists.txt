@@ -87,6 +87,7 @@ file(GLOB RT0_ARCH_SOURCES CONFIGURE_DEPENDS "arch/${RT0_ARCH}/*.S")
 if(MINGW OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(RT0_PLATFORM_SOURCES
         os/Windows/Loader.cpp
+        os/Windows/MemMapCommit.cpp
         os/Windows/PagePoolMutex.cpp
         os/Windows/Path.cpp
         os/Windows/UnwindWin.cpp
