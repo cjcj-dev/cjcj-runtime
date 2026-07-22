@@ -48,7 +48,7 @@ g++ -std=c++14 -O2 "${cpp_includes[@]}" "$ROOT/test/parity/common/memcommon_ref.
 LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$LD_LIBRARY_PATH" "$TMP/mem_cpp" > "$TMP/cpp.transcript"
 cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || { diff -u "$TMP/cpp.transcript" "$TMP/cj.transcript" >&2 || true; fail "byte transcript mismatch"; }
 cat "$TMP/cj.transcript"
-echo "MEMCOMMON_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") cmp=identical status=PASS"
+echo "MEMCOMMON_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") sha256=$(sha256sum "$TMP/cj.transcript" | awk '{print $1}') cmp=identical status=PASS"
 
 "$SELFHOST_CJC" --package "$ROOT/test/parity/common/memcommon.noheap" --output-type=staticlib -O2 \
     --int-overflow wrapping --import-path "$TMP" --save-temps "$TMP/root" --output-dir "$TMP" -o libmemcommon.noheap.a

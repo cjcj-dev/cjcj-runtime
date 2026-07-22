@@ -8,7 +8,7 @@ CPP_RUNTIME_LIB="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/li
 export cjHeapSize=24GB
 fail() { echo "run_eh_primitives_probe: FAIL $*" >&2; exit 1; }
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || fail "executable target must be Linux x86_64"
-for tool in g++ cmp objdump python3; do command -v "$tool" >/dev/null || fail "missing $tool"; done
+for tool in g++ cmp objdump python3 sha256sum; do command -v "$tool" >/dev/null || fail "missing $tool"; done
 [[ -x "$SELFHOST_CJC" && -x "$LLVM_BIN/llvm-link" && -x "$LLVM_BIN/llvm-dis" ]] || fail "missing pinned compiler tools"
 
 CPP_H="$RUNTIME_ROOT/src/Exception/EhTable.h"
@@ -66,7 +66,7 @@ cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || {
     fail "byte transcript mismatch"
 }
 cat "$TMP/cj.transcript"
-echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") cmp=identical status=PASS"
+echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") sha256=$(sha256sum "$TMP/cj.transcript" | awk '{print $1}') cmp=identical status=PASS"
 
 (
     cd "$TMP"
