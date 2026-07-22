@@ -46,8 +46,10 @@ def main():
                         queue.append(target)
                 else:
                     external.add(target)
+        os_leaves = {'mmap', 'mprotect', 'munmap', 'madvise', 'prctl'}
         unknown = sorted(symbol for symbol in external
-                         if symbol not in NATIVE and not closure.allowed_external(symbol, False))
+                         if symbol not in NATIVE and symbol not in os_leaves and
+                         not closure.allowed_external(symbol, False))
         if unknown:
             raise closure.ClosureError(f'unknown external edges={unknown[:20]}')
         closure.check_stage('pre', reached, pre)
