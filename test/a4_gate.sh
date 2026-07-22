@@ -2,17 +2,12 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+source "$ROOT/test/compiler_identity.sh"
 OUT=${OUT:-"$ROOT/out/a4-gate"}
 SELFHOST=${SELFHOST:-/root/cj_build/cjcj}
-CJC=${CJC:-"$SELFHOST/target/release/bin/cjcj::cjc"}
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
 ORACLE=${ORACLE:-"$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative/libcangjie-runtime.so"}
 HYBRID=${HYBRID:-"$ROOT/out/gate/hybrid/libcangjie-runtime.so"}
-RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
-export CANGJIE_HOME
-export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
-
 rm -rf "$OUT"
 mkdir -p "$OUT/compile" "$OUT/object" "$OUT/driver"
 
