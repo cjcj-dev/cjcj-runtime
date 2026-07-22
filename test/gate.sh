@@ -18,6 +18,7 @@ SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_markworkstack_probe.sh"
 SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_regionbitmap_probe.sh"
 SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_forwarddata_probe.sh"
 SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/objectmodel/run_field_ref_probe.sh"
+SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/objectmodel/run_gctib_probe.sh"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
