@@ -4,6 +4,7 @@ pre ProcessorFoundationObserve cpp-transcript-observer
 pre _CGPatiiHv std-package-initializer
 pre _CNat6sizeOfIG_Hv intrinsic-sizeof
 pre _CNat7alignOfIG_Hv intrinsic-alignof
+pre _CNatXPG_12toUIntNativeHv intrinsic-pointer-address
 final ProcessorFoundationObserve cpp-transcript-observer
 final CJ_MCC_HandleSafepoint runtime-safepoint
 final CJ_MCC_StackCheck runtime-stack-check
