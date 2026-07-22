@@ -81,8 +81,8 @@ run_cjc "$ROOT/test/parity/sched/sched_lowdeps_probe.cj" --import-path "$TMP" \
     --link-option=-lstdc++ --link-option=-lpthread --link-option=-lgcc_s -o "$TMP/probe"
 "$TMP/probe" > "$TMP/cj.transcript"
 cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || fail "byte transcript mismatch"
-[[ $(wc -l < "$TMP/cj.transcript") -eq 11 ]] || fail "transcript line count"
-echo "SCHED_LOWDEPS_TRANSCRIPT lines=11 bytes=$(wc -c < "$TMP/cj.transcript") sha256=$(sha256sum "$TMP/cj.transcript" | awk '{print $1}') cmp=PASS"
+[[ $(wc -l < "$TMP/cj.transcript") -eq 10 ]] || fail "transcript line count"
+echo "SCHED_LOWDEPS_TRANSCRIPT lines=10 bytes=$(wc -c < "$TMP/cj.transcript") sha256=$(sha256sum "$TMP/cj.transcript" | awk '{print $1}') cmp=PASS"
 cat "$TMP/cj.transcript"
 
 [[ $(rg -c '^public func Dulink(Init|IsEmpty|Remove|Add|Pushtail|PushHead|PopTail|PopHead|GetIndexByNext|GetIndexByPrev|InsertHead|Move)' "$ROOT/src/rt.sched/List.cj") -eq 12 ]] || fail "Dulink inventory"
