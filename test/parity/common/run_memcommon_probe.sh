@@ -40,7 +40,8 @@ g++ -std=c++17 -O2 -pthread -DMRT_USE_CJTHREAD_RENAME "${native_includes[@]}" -f
     "$TMP/native/"*.o \
     --link-option=-lstdc++ --link-option=-lgcc_s --link-option=-lpthread -o "$TMP/mem_cj"
 
-cpp_includes=(-I "$RUNTIME_ROOT/src" -I "$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include")
+cpp_includes=(-I "$RUNTIME_ROOT/src" -I "$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" \
+    -I "$RUNTIME_ROOT/src/CJThread/src/runtime/schedule/include/inner/gas/x86/x86_64")
 while IFS= read -r include_dir; do cpp_includes+=(-I "$include_dir"); done < <(find "$RUNTIME_ROOT/src/CJThread" -type d -name include | sort)
 g++ -std=c++14 -O2 "${cpp_includes[@]}" "$ROOT/test/parity/common/memcommon_ref.cpp" \
     -L "$CPP_RUNTIME_LIB" -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/mem_cpp"
