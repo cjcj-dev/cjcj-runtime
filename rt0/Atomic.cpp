@@ -3,6 +3,7 @@
 // with Runtime Library Exception.
 
 #include <stdint.h>
+#include <stddef.h>
 
 // Value-storage atomics used by Cangjie runtime structs that must retain the
 // target C++ inline std::atomic layout. GCC/Clang __atomic builtins lower for
@@ -54,6 +55,77 @@ extern "C" uint64_t cj_atomic_u64_fetch_or_seq_cst(uint64_t* p, uint64_t v)
 {
     return __atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
 }
+
+// ObjectModel/Field.h and RefField.h keep the atomic storage inline.  These
+// bit-preserving entry points let the Cangjie value wrappers retain that layout
+// while forwarding the caller's std::memory_order value unchanged.
+extern "C" uint64_t cj_atomic_field_load(const void* p, size_t size, int32_t order)
+{
+    switch (size) {
+        case 1: return __atomic_load_n(static_cast<const uint8_t*>(p), order);
+        case 2: return __atomic_load_n(static_cast<const uint16_t*>(p), order);
+        case 4: return __atomic_load_n(static_cast<const uint32_t*>(p), order);
+        case 8: return __atomic_load_n(static_cast<const uint64_t*>(p), order);
+        default: __builtin_trap();
+    }
+}
+
+extern "C" void cj_atomic_field_store(void* p, const void* value, size_t size, int32_t order)
+{
+    switch (size) {
+        case 1: __atomic_store_n(static_cast<uint8_t*>(p), *static_cast<const uint8_t*>(value), order); return;
+        case 2: __atomic_store_n(static_cast<uint16_t*>(p), *static_cast<const uint16_t*>(value), order); return;
+        case 4: __atomic_store_n(static_cast<uint32_t*>(p), *static_cast<const uint32_t*>(value), order); return;
+        case 8: __atomic_store_n(static_cast<uint64_t*>(p), *static_cast<const uint64_t*>(value), order); return;
+        default: __builtin_trap();
+    }
+}
+
+extern "C" int32_t cj_atomic_field_compare_exchange(void* p, void* expected, const void* desired, size_t size,
+                                                       int32_t success, int32_t failure)
+{
+    switch (size) {
+        case 1: return __atomic_compare_exchange_n(static_cast<uint8_t*>(p), static_cast<uint8_t*>(expected),
+            *static_cast<const uint8_t*>(desired), false, success, failure);
+        case 2: return __atomic_compare_exchange_n(static_cast<uint16_t*>(p), static_cast<uint16_t*>(expected),
+            *static_cast<const uint16_t*>(desired), false, success, failure);
+        case 4: return __atomic_compare_exchange_n(static_cast<uint32_t*>(p), static_cast<uint32_t*>(expected),
+            *static_cast<const uint32_t*>(desired), false, success, failure);
+        case 8: return __atomic_compare_exchange_n(static_cast<uint64_t*>(p), static_cast<uint64_t*>(expected),
+            *static_cast<const uint64_t*>(desired), false, success, failure);
+        default: __builtin_trap();
+    }
+}
+
+extern "C" uint64_t cj_atomic_field_exchange(void* p, const void* desired, size_t size, int32_t order)
+{
+    switch (size) {
+        case 1: return __atomic_exchange_n(static_cast<uint8_t*>(p), *static_cast<const uint8_t*>(desired), order);
+        case 2: return __atomic_exchange_n(static_cast<uint16_t*>(p), *static_cast<const uint16_t*>(desired), order);
+        case 4: return __atomic_exchange_n(static_cast<uint32_t*>(p), *static_cast<const uint32_t*>(desired), order);
+        case 8: return __atomic_exchange_n(static_cast<uint64_t*>(p), *static_cast<const uint64_t*>(desired), order);
+        default: __builtin_trap();
+    }
+}
+
+#define CJ_ATOMIC_FIELD_FETCH(NAME, BUILTIN) \
+extern "C" uint64_t NAME(void* p, const void* operand, size_t size, int32_t order) \
+{ \
+    switch (size) { \
+        case 1: return BUILTIN(static_cast<uint8_t*>(p), *static_cast<const uint8_t*>(operand), order); \
+        case 2: return BUILTIN(static_cast<uint16_t*>(p), *static_cast<const uint16_t*>(operand), order); \
+        case 4: return BUILTIN(static_cast<uint32_t*>(p), *static_cast<const uint32_t*>(operand), order); \
+        case 8: return BUILTIN(static_cast<uint64_t*>(p), *static_cast<const uint64_t*>(operand), order); \
+        default: __builtin_trap(); \
+    } \
+}
+
+CJ_ATOMIC_FIELD_FETCH(cj_atomic_field_fetch_add, __atomic_fetch_add)
+CJ_ATOMIC_FIELD_FETCH(cj_atomic_field_fetch_sub, __atomic_fetch_sub)
+CJ_ATOMIC_FIELD_FETCH(cj_atomic_field_fetch_and, __atomic_fetch_and)
+CJ_ATOMIC_FIELD_FETCH(cj_atomic_field_fetch_or, __atomic_fetch_or)
+CJ_ATOMIC_FIELD_FETCH(cj_atomic_field_fetch_xor, __atomic_fetch_xor)
+#undef CJ_ATOMIC_FIELD_FETCH
 
 extern "C" int32_t cj_stateword_u16_cas(uint16_t* p, uint16_t expected, uint16_t desired)
 {
