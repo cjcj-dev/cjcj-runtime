@@ -66,12 +66,12 @@ compile_native_linux() {
 
 build_cj_probe() {
     local mode=$1
-    local flag=()
-    if [[ $mode == debug ]]; then flag=(--debug-macro); fi
+    local owner_flag=()
+    if [[ $mode == debug ]]; then owner_flag=(-g); fi
     local output="$TMP/cj.$mode"
     mkdir -p "$output"
     for package in rt.base rt.sync; do
-        "$SELFHOST_CJC" --package "$ROOT/src/$package" --output-type=staticlib "${flag[@]}" \
+        "$SELFHOST_CJC" --package "$ROOT/src/$package" --output-type=staticlib \
             --int-overflow wrapping -Woff unused --import-path "$output" --output-dir "$output" \
             -o "lib$package.a"
     done
@@ -79,7 +79,7 @@ build_cj_probe() {
     cp -a "$ROOT/src/rt.heap.allocator" "$probe"
     cp "$ROOT/test/parity/heap/regionlist_fresh_probe.cj" "$probe/FreshProbe.cj"
     compile_native_linux "$output/native"
-    "$SELFHOST_CJC" --package "$probe" "${flag[@]}" --import-path "$output" \
+    "$SELFHOST_CJC" --package "$probe" "${owner_flag[@]}" --import-path "$output" \
         --int-overflow wrapping -Woff unused "$output/librt.sync.a" "$output/librt.base.a" \
         "$output/native/Futex.o" "$output/native/Panic.o" "$output/native/Atomic.o" \
         "$output/native/SpinLock.o" "$output/native/PagePoolMutex.o" \
@@ -101,16 +101,16 @@ echo "REGIONLIST_DEBUG_TRANSCRIPT lines=$(wc -l < "$TMP/cj.debug.txt") bytes=$(w
 
 build_closure() {
     local mode=$1
-    local flag=()
+    local owner_flag=()
     local suffix=''
-    if [[ $mode == debug ]]; then flag=(--debug-macro); suffix=--debug; fi
+    if [[ $mode == debug ]]; then owner_flag=(-g); suffix=--debug; fi
     local output="$TMP/closure.$mode"
     mkdir -p "$output"
     local package_temps=()
     for package in rt.base rt.sync; do
         local temps="$output/$package.temps"
         mkdir -p "$temps"
-        "$SELFHOST_CJC" --package "$ROOT/src/$package" --output-type=staticlib "${flag[@]}" \
+        "$SELFHOST_CJC" --package "$ROOT/src/$package" --output-type=staticlib \
             --save-temps "$temps" --int-overflow wrapping -Woff unused \
             --import-path "$output" --output-dir "$output" -o "lib$package.a"
         package_temps+=("$temps")
@@ -120,7 +120,7 @@ build_closure() {
     cp "$ROOT/test/parity/heap/regionlist_fresh_noheap.cj" "$heap/FreshNoHeapRoots.cj"
     local heap_temps="$output/rt.heap.allocator.temps"
     mkdir -p "$heap_temps"
-    "$SELFHOST_CJC" --package "$heap" --output-type=staticlib "${flag[@]}" \
+    "$SELFHOST_CJC" --package "$heap" --output-type=staticlib "${owner_flag[@]}" \
         --save-temps "$heap_temps" --int-overflow wrapping -Woff unused \
         --import-path "$output" --output-dir "$output" -o librt.heap.allocator.a
     package_temps+=("$heap_temps")
@@ -192,14 +192,17 @@ done
 
 for mode in release debug; do
     flags=()
-    if [[ $mode == debug ]]; then flags=(--debug-macro); fi
+    if [[ $mode == debug ]]; then flags=(-g); fi
     out="$TMP/windows.$mode"
     mkdir -p "$out"
-    for package in rt.base rt.sync rt.heap.allocator; do
+    for package in rt.base rt.sync; do
         "$SELFHOST_CJC" --package "$ROOT/src/$package" --target "$WINDOWS_TARGET" \
-            --output-type=staticlib "${flags[@]}" --int-overflow wrapping -Woff unused \
+            --output-type=staticlib --int-overflow wrapping -Woff unused \
             --import-path "$out" --output-dir "$out" -o "lib$package.a"
     done
+    "$SELFHOST_CJC" --package "$ROOT/src/rt.heap.allocator" --target "$WINDOWS_TARGET" \
+        --output-type=staticlib "${flags[@]}" --int-overflow wrapping -Woff unused \
+        --import-path "$out" --output-dir "$out" -o librt.heap.allocator.a
 done
 llvm-nm -u "$TMP/windows.debug/librt.heap.allocator.a" | awk '{print $2}' | sort -u \
     > "$TMP/windows.undefined"
