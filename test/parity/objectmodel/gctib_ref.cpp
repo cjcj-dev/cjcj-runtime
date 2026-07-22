@@ -8,6 +8,8 @@
 
 #include "ObjectModel/MClass.h"
 #include "Common/StateWord.h"
+#include "Common/BaseObject.h"
+#include "ObjectModel/MArray.h"
 
 using namespace MapleRuntime;
 
