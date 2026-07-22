@@ -6,6 +6,34 @@
 
 package rt.sched
 
+foreign {
+    // schedule.h:1190-1196,1354. schedule_rename.h maps these public C
+    // interfaces to the exported CJ_CJThread* symbol family.
+    func CJ_CJThreadPreemptOffCntAdd(): Int32
+    func CJ_CJThreadPreemptOffCntSub(): Int32
+    func CJ_CJThreadResched(): Int32
+}
+
+// RegionSpace.cpp:211-213 brackets AllocateThreadLocalRegion with these two
+// scheduler calls. Preserve their integer error result even though the C++
+// allocation fast path deliberately ignores it.
+@NoHeapAlloc
+public func CJThreadPreemptOffCntAdd(): Int32 {
+    return unsafe { CJ_CJThreadPreemptOffCntAdd() }
+}
+
+@NoHeapAlloc
+public func CJThreadPreemptOffCntSub(): Int32 {
+    return unsafe { CJ_CJThreadPreemptOffCntSub() }
+}
+
+// RegionSpace.cpp:34 uses the noinline native scheduler entry. Keeping the
+// call across the public C ABI also preserves that native noinline boundary.
+@NoHeapAlloc
+public func CJThreadResched(): Int32 {
+    return unsafe { CJ_CJThreadResched() }
+}
+
 // CJThread schedule/include/schedule.h:262-292. C and C++ expose these handles
 // and callbacks as opaque native data/function pointers. Cangjie closures are
 // not ABI-compatible with those function pointers.
