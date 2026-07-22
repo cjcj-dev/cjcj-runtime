@@ -61,6 +61,7 @@ g++ -std=c++17 -O2 -fPIC -DMRT_USE_CJTHREAD_RENAME \
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$TMP/Futex.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$TMP/Atomic.o"
+g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$TMP/SpinLock.o"
 
 PROBE_SRC="$TMP/allocutil.slotlist.probe"
 mkdir -p "$PROBE_SRC"
@@ -68,7 +69,8 @@ cp "$ROOT/test/parity/heap/allocutil_slotlist_probe.cj" "$PROBE_SRC/Probe.cj"
 (cd "$TMP" && "$SELFHOST_CJC" --package "$PROBE_SRC" --import-path "$TMP" \
     --int-overflow wrapping -Woff unused "$TMP/librt.heap.allocator.a" \
     "$TMP/librt.sync.a" "$TMP/librt.base.a" "$TMP/bridge.o" "$TMP/Futex.o" \
-    "$TMP/Panic.o" "$TMP/Atomic.o" -L"$SELFHOST_RUNTIME" -lsecurec \
+    "$TMP/Panic.o" "$TMP/Atomic.o" "$TMP/SpinLock.o" \
+    -L"$SELFHOST_RUNTIME" -lsecurec \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/cj_probe")
 "$TMP/cj_probe" > "$CJ_OUT"
 
