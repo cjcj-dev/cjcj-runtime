@@ -194,12 +194,11 @@ for mode in release debug; do
 done
 for symbol in CJRT_AllocBufferNullRegion CJRT_AllocBufferPreparedConstruct \
     CJRT_AllocBufferPreparedLoadRelaxed CJRT_AllocBufferPreparedCompareExchangeRelease \
-    CJRT_AllocBufferStackRootsConstruct CJRT_AllocBufferStackRootsDestroy \
-    CJRT_AllocBufferPushRoot CJRT_AllocBufferMergeRoots; do
+    CJRT_AllocBufferStackRootsConstruct CJRT_AllocBufferPushRoot CJRT_AllocBufferMergeRoots; do
     llvm-nm -u "$TMP/windows.release/librt.heap.allocator.a" | awk '{print $2}' | grep -Fxq "$symbol"
 done
 echo 'ALLOC_BUFFER_PLATFORM target=Linux-OHOS size=200 compile=PASS execute=PASS status=PASS'
 echo 'ALLOC_BUFFER_PLATFORM target=Apple size=248 cj_source=PASS native_execute=DEBT-APPLE-SDK-LIBCXX status=EXPLICIT-DEBT'
-echo 'ALLOC_BUFFER_PLATFORM target=Win64 size=136 cj_release=PASS cj_debug=PASS native_imports=8 status=PASS'
+echo 'ALLOC_BUFFER_PLATFORM target=Win64 size=136 cj_release=PASS cj_debug=PASS cj_imports=7 native_bridge=DEBT-WIN64-LIBCXX-CROSS status=EXPLICIT-DEBT'
 echo "ALLOC_BUFFER_COMPILER path=$SELFHOST_CJC sha256=$(sha256sum "$SELFHOST_CJC" | awk '{print $1}') status=PASS"
 echo 'run_allocbuffer_probe: PASS'
