@@ -36,7 +36,6 @@ foreign {
     @When[os == "Windows"]
     func cj_atomic_u64_fetch_or_seq_cst(p: CPointer<UInt64>, value: UInt64): UInt64
 
-    func abort(): Unit
 }
 
 private const MARKED_BYTES_PER_BIT: UInt64 = 8
@@ -141,25 +140,23 @@ public func RegionBitmapConstruct(bitmap: CPointer<RegionBitmap>, regionSize: UI
 public func RegionBitmapGetBitMaskInfo(start: UInt64, byteCnt: UInt64, maskInfo: CPointer<BitMaskInfo>): Unit {
     let headWordIdx = (start / MARKED_BYTES_PER_BIT) / BITS_PER_WORD
     let headMaskBitStart = (start / MARKED_BYTES_PER_BIT) % BITS_PER_WORD
-    unsafe { maskInfo.read(0).headWordIdx = headWordIdx }
+    var result = BitMaskInfo()
+    result.headWordIdx = headWordIdx
     let headBitCnt = BITS_PER_WORD - headMaskBitStart
     let maskBitCnt = byteCnt / MARKED_BYTES_PER_BIT
     if (maskBitCnt >= headBitCnt) {
         let tailBitCnt = maskBitCnt - headBitCnt
-        unsafe {
-            maskInfo.read(0).headMaskBits = UInt64.Max ^ ((1u64 << headMaskBitStart) - 1)
-            maskInfo.read(0).tailWordCnt = (tailBitCnt + BITS_PER_WORD - 1) / BITS_PER_WORD
-            maskInfo.read(0).lastMaskBits = (1u64 << (tailBitCnt % BITS_PER_WORD)) - 1
-        }
+        result.headMaskBits = UInt64.Max ^ ((1u64 << headMaskBitStart) - 1)
+        result.tailWordCnt = (tailBitCnt + BITS_PER_WORD - 1) / BITS_PER_WORD
+        result.lastMaskBits = (1u64 << (tailBitCnt % BITS_PER_WORD)) - 1
     } else {
         let headMaskBitEnd = headMaskBitStart + maskBitCnt
         let headMaskBits = (1u64 << headMaskBitEnd) - 1
-        unsafe {
-            maskInfo.read(0).headMaskBits = (headMaskBits >> headMaskBitStart) << headMaskBitStart
-            maskInfo.read(0).tailWordCnt = 0
-            maskInfo.read(0).lastMaskBits = 0
-        }
+        result.headMaskBits = (headMaskBits >> headMaskBitStart) << headMaskBitStart
+        result.tailWordCnt = 0
+        result.lastMaskBits = 0
     }
+    unsafe { maskInfo.write(0, result) }
 }
 
 @When[debug]
@@ -180,7 +177,7 @@ public func RegionBitmapApplyBitMaskInfo(bitmap: CPointer<RegionBitmap>, maskInf
     isMarked = (old & info.headMaskBits) != 0
     if (isMarked) { return true }
     var markWordSize = regionSize / (MARKED_BYTES_PER_BIT * BITS_PER_WORD)
-    let calFactor = if (markWordSize < 16) { markWordSize } else { 16 }
+    let calFactor = if (markWordSize < 16u64) { markWordSize } else { 16u64 }
     if (markWordSize % calFactor != 0) {
         markWordSize += calFactor - markWordSize % calFactor
     }
@@ -235,15 +232,15 @@ public func RegionBitmapGetPreMaskInfo(offset: UInt64, regionSize: UInt64,
     maskInfo: CPointer<PreMaskInfo>): Unit {
     let index = IntNative(offset / (BITS_PER_WORD * MARKED_BYTES_PER_BIT))
     var markWordSize = regionSize / (MARKED_BYTES_PER_BIT * BITS_PER_WORD)
-    let calFactor = if (markWordSize < 16) { markWordSize } else { 16 }
+    let calFactor = if (markWordSize < 16u64) { markWordSize } else { 16u64 }
     if (markWordSize % calFactor != 0) { markWordSize += calFactor - markWordSize % calFactor }
     let step = IntNative(markWordSize / calFactor)
-    unsafe {
-        maskInfo.read(0).index = index
-        maskInfo.read(0).partIndex = Int8(index / step - 1)
-        maskInfo.read(0).mask = (1u64 << ((offset / MARKED_BYTES_PER_BIT) % BITS_PER_WORD)) - 1
-        maskInfo.read(0).stepSize = step
-    }
+    var result = PreMaskInfo()
+    result.index = index
+    result.partIndex = Int8(index / step - 1)
+    result.mask = (1u64 << ((offset / MARKED_BYTES_PER_BIT) % BITS_PER_WORD)) - 1
+    result.stepSize = step
+    unsafe { maskInfo.write(0, result) }
 }
 
 public func RegionBitmapGetPreLiveBytes(bitmap: CPointer<RegionBitmap>, maskInfo: CPointer<PreMaskInfo>): UInt64 {
