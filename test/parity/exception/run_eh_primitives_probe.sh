@@ -33,8 +33,12 @@ mkdir -p "$TMP/exception" "$TMP/root"
 )
 "$SELFHOST_CJC" "$ROOT/test/parity/exception/eh_primitives_probe.cj" --import-path "$TMP" \
     --int-overflow wrapping "$TMP/librt.exception.a" -o "$TMP/eh_cj"
-g++ -std=c++14 -O2 -I "$RUNTIME_ROOT/src" \
+cpp_includes=(-I "$RUNTIME_ROOT/src" \
     -I "$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" \
+    -I "$RUNTIME_ROOT/src/CJThread/src/runtime/schedule/include/inner/gas/x86/x86_64")
+while IFS= read -r include_dir; do cpp_includes+=(-I "$include_dir"); done \
+    < <(find "$RUNTIME_ROOT/src/CJThread" -type d -name include | sort)
+g++ -std=c++14 -O2 "${cpp_includes[@]}" \
     "$ROOT/test/parity/exception/eh_primitives_ref.cpp" -L "$CPP_RUNTIME_LIB" \
     -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/eh_cpp"
 "$TMP/eh_cj" > "$TMP/cj.transcript"
