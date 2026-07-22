@@ -61,7 +61,7 @@ public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
     do {
         byte = unsafe { p.read() }
         p = unsafe { p + 1 }
-        value |= UInt64(byte & VALUE_MASK) << shift
+        value |= UInt64(byte & VALUE_MASK) << (shift & 63u64)
         shift += SHIFT_LENGTH
     } while ((byte & BYTE_MAX_BIT) != 0u8)
     if (shift < 64u64 && (byte & SIGNED_FLAG) != 0u8) {

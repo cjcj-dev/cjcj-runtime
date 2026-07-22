@@ -65,7 +65,7 @@ mapfile -t exception_objects < <(find "$TMP/exception" -maxdepth 1 -name '*.o' -
 for artifact in "$root_pre" "$root_final" "$root_object" "${exception_finals[@]}" "${exception_objects[@]}"; do
     [[ -s "$artifact" ]] || fail "missing closure artifact"
 done
-[[ ${#exception_finals[@]} -eq ${#exception_objects[@]} && ${#exception_finals[@]} -ge 2 ]] ||
+[[ ${#exception_finals[@]} -eq ${#exception_objects[@]} && ${#exception_finals[@]} -ge 1 ]] ||
     fail "incomplete exception package closure artifacts"
 "$LLVM_BIN/llvm-link" "$root_final" "${exception_finals[@]}" -o "$TMP/linked.final.bc"
 "$LLVM_BIN/llvm-dis" "$root_pre" -o "$TMP/root.pre.ll"

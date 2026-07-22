@@ -44,7 +44,7 @@ def parse_ir(path):
 def ir_calls(symbol, body):
     result = []
     for line in body.splitlines():
-        if not re.search(r'\b(?:call|invoke)\b', line): continue
+        if not re.search(r'(?:^|=\s)(?:(?:tail|musttail|notail)\s+)?(?:call|invoke)\b', line): continue
         refs = [a or b for a, b in IR_REF.findall(line)]
         if "@llvm.cj.gc.statepoint" in line:
             if len(refs) < 2: raise Failure(f"unresolved statepoint {symbol}")
