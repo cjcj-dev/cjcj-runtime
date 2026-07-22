@@ -13,7 +13,7 @@ private type EHFrameArchUInt = UInt64
 public func ReadEHFrameVarInt(point: CPointer<CPointer<UIntNative>>, validPos: CPointer<UInt32>): UInt32 {
     var p = unsafe { CPointer<UInt8>(point.read()) }
     var pos = unsafe { validPos.read() }
-    let tag = UInt32(unsafe { p.read() } >> (4u32 * pos)) & 0x0fu32
+    let tag = UInt32(unsafe { p.read() } >> ((pos & 1u32) << 2u32)) & 0x0fu32
 
     if (pos == 1u32) {
         p = unsafe { p + 1 }
@@ -38,8 +38,8 @@ public func ReadEHFrameVarInt(point: CPointer<CPointer<UIntNative>>, validPos: C
     } else if (tag == 14u32) {
         bitsLen = 24u32
     }
-    let bitsMask = if (bitsLen == 32u32) { UInt32.Max } else { (1u32 << bitsLen) - 1u32 }
-    let value = UInt32(unsafe { CPointer<EHFrameArchUInt>(p).read() } >> (4u32 * pos)) & bitsMask
+    let bitsMask = if (bitsLen == 32u32) { 0xffffffffu32 } else { (1u32 << bitsLen) - 1u32 }
+    let value = UInt32(unsafe { CPointer<EHFrameArchUInt>(p).read() } >> ((pos & 1u32) << 2u32)) & bitsMask
     p = unsafe { p + Int64(bitsLen >> 3u32) }
     unsafe { point.write(CPointer<UIntNative>(p)) }
     return value
