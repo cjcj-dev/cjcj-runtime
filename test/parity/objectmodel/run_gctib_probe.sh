@@ -11,8 +11,8 @@ export cjHeapSize=${cjHeapSize:-24GB}
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_gctib.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
 SOURCE="$ROOT/src/rt.objectmodel/GCTib.cj"
-[[ $(grep -Fc '@When[arch == "arm"]' "$SOURCE") -eq 3 ]]
-[[ $(grep -Fc '@When[arch != "arm"]' "$SOURCE") -eq 3 ]]
+[[ $(grep -Fc '@When[arch == "arm"]' "$SOURCE") -eq 5 ]]
+[[ $(grep -Fc '@When[arch != "arm"]' "$SOURCE") -eq 5 ]]
 echo 'GCTIB_SOURCE fresh=PASS linux_ohos=PASS apple=PASS win64=PASS arm32=PASS cpp_platform_branches=1'
 
 CPP_FLAGS=(-std=c++17 -O2 -DMRT_USE_CJTHREAD_RENAME -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include")

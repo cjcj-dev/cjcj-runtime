@@ -40,6 +40,16 @@ private func GCTibAlignRangeStart(address: UIntNative): UIntNative {
     return (address + 7) & (UIntNative.Max ^ UIntNative(7))
 }
 
+@When[arch == "arm"]
+private func GCTibRefShift(): UIntNative { return 2 }
+@When[arch != "arm"]
+private func GCTibRefShift(): UIntNative { return 3 }
+
+@When[arch == "arm"]
+private func GCTibMapShift(): UIntNative { return 5 }
+@When[arch != "arm"]
+private func GCTibMapShift(): UIntNative { return 6 }
+
 private func GCTibPointer(address: UIntNative): CPointer<UInt8> {
     return CPointer<UInt8>(RefFieldPointerFromAddress(address))
 }
@@ -62,7 +72,7 @@ public func ShortGCTibForEachBitmapWord(short: CPointer<ShortGCTib>, fieldAddres
 public func ShortGCTibForEachBitmapWordInRange(short: CPointer<ShortGCTib>, baseAddress: UIntNative,
     visitor: GCTibVisitor, context: CPointer<Unit>, rangeStart: UIntNative, rangeEnd: UIntNative): Unit {
     var gcInfo = unsafe { short.read().bitmap } & (UIntNative.Max ^ GCTibSignBit())
-    let startPosition = (rangeStart - baseAddress) / sizeOf<RefField>()
+    let startPosition = (rangeStart - baseAddress) >> GCTibRefShift()
     gcInfo >>= startPosition
     var current = rangeStart
     while (gcInfo != 0) {
@@ -126,14 +136,14 @@ public func StdGCTibForEachBitmapWordInRange(standard: CPointer<StdGCTib>, conte
     let words = StdGCTibBitmapWords(standard)
     let count = unsafe { standard.read().nBitmapWords }
     let mapWordSize = sizeOf<RefField>() * 8
-    let startIndex = UInt32((rangeStart - contentAddress) / mapWordSize)
+    let startIndex = UInt32((rangeStart - contentAddress) >> GCTibMapShift())
     var index = startIndex
     var baseAddress = UIntNative(startIndex) * mapWordSize + contentAddress
     while (index < count) {
         var bitmapWord = unsafe { (words + Int64(index)).read() }
         var fieldAddress = baseAddress
         if (index == startIndex && bitmapWord != 0) {
-            bitmapWord >>= UInt8((rangeStart - baseAddress) / sizeOf<RefField>())
+            bitmapWord >>= UInt8((rangeStart - baseAddress) >> GCTibRefShift())
             fieldAddress = rangeStart
         }
         while (bitmapWord != 0) {
