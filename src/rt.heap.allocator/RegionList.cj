@@ -396,7 +396,7 @@ extend CPointer<RegionList> {
         }
         RegionListLock(this)
         cache.SetElementType(regionType)
-        IncCounts(cache.GetRegionCount(), cache.GetUnitCount())
+        IncCounts(cache.GetRegionCount(), GetUnitCount(cache))
         let currentHead = ReadListHead(this)
         if (currentHead.isNull()) {
             WriteListHead(this, head)
@@ -487,10 +487,9 @@ extend CPointer<RegionList> {
         return head
     }
 
-    public func GetUnitCount(): UIntNative { return ReadUnitCount(this) }
     public func GetRegionCount(): UIntNative { return ReadRegionCount(this) }
     public func GetAllocatedSize(count!: Bool = false): UIntNative {
-        if (!count) { return GetUnitCount() * RegionInfo.UNIT_SIZE }
+        if (!count) { return GetUnitCount(this) * RegionInfo.UNIT_SIZE }
         return CountAllocatedSize()
     }
 
@@ -630,6 +629,12 @@ extend CPointer<RegionList> {
             RegionListAbort()
         }
     }
+}
+
+// RegionList.h:103. A concrete first-pointer overload is the canonical
+// CPointer member-boundary lowering when two pointee types share a C++ name.
+public func GetUnitCount(self: CPointer<RegionList>): UIntNative {
+    return ReadUnitCount(self)
 }
 
 extend CPointer<RegionCache> {
