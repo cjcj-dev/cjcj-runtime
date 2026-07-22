@@ -40,11 +40,12 @@ g++ "${CPP_FLAGS[@]}" "$ROOT/test/parity/gc/markworkstack_ref.cpp" \
 "$TMP/ref" > "$TMP/ref.txt"
 
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/test/parity/gc/markworkstack_alloc.cpp" -o "$TMP/alloc.o"
+g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.o"
 PROBE="$TMP/rt.gc.probe"
 cp -a "$ROOT/src/rt.gc" "$PROBE"
 cp "$ROOT/test/parity/gc/markworkstack_probe.cj" "$PROBE/Probe.cj"
 "$SELFHOST_CJC" --package "$PROBE" --int-overflow wrapping -Woff unused \
-    "$TMP/alloc.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
+    "$TMP/alloc.o" "$TMP/Atomic.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
 "$TMP/probe" > "$TMP/probe.txt"
 cmp "$TMP/ref.txt" "$TMP/probe.txt"
 cat "$TMP/probe.txt"
@@ -59,7 +60,7 @@ CLEAR_PROBE="$TMP/rt.gc.clear"
 cp -a "$ROOT/src/rt.gc" "$CLEAR_PROBE"
 cp "$ROOT/test/parity/gc/markworkstack_nonempty_clear.cj" "$CLEAR_PROBE/Clear.cj"
 "$SELFHOST_CJC" --package "$CLEAR_PROBE" --int-overflow wrapping -Woff unused \
-    --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/clear.cj"
+    "$TMP/Atomic.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/clear.cj"
 ulimit -c 0 || true
 set +e
 "$TMP/clear.ref" >/dev/null 2>&1
