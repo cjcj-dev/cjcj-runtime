@@ -1,6 +1,8 @@
 #define private public
 #include "Exception/EhTable.h"
 #include "Exception/EhFrameInfo.h"
+#include "Exception/CalleeSavedRegisterContext.h"
+#include "Exception/Exception.h"
 #undef private
 
 #include <cstddef>
@@ -93,5 +95,34 @@ int main()
         EHTable::IsAbnormalEHTable(nullptr) ? "true" : "false",
         EHTable::IsAbnormalEHTable(reinterpret_cast<uint8_t*>(&tags[0])) ? "true" : "false",
         EHTable::IsAbnormalEHTable(reinterpret_cast<uint8_t*>(&tags[1])) ? "true" : "false");
+    uint8_t lsda[32] = {};
+    lsda[0] = 0; lsda[1] = static_cast<uint8_t>(EHTable::TTypeEncoding::ABS_PTR); lsda[2] = 26;
+    lsda[3] = 0; lsda[4] = 8;
+    lsda[5] = 0; lsda[6] = 4; lsda[7] = 16; lsda[8] = 0;
+    lsda[9] = 4; lsda[10] = 4; lsda[11] = 32; lsda[12] = 1;
+    lsda[13] = 1; lsda[14] = 0;
+    EHTable scanTable(lsda);
+    std::printf("EHTABLE %zu %zu %zu %zu %zu %zu %zu\n", sizeof(scanTable), alignof(EHTable),
+        static_cast<size_t>(scanTable.callSiteTableStart - lsda),
+        static_cast<size_t>(scanTable.callSiteTableEnd - lsda),
+        static_cast<size_t>(scanTable.actionTableStart - lsda),
+        static_cast<size_t>(scanTable.ttypeEncoding - lsda),
+        static_cast<size_t>(scanTable.exceptionTypeStart - lsda));
+    uint32_t code[16] = {};
+    MapleRuntime::ExceptionWrapper wrapper;
+    ScanResult cleanup{};
+    scanTable.ScanEHTable(reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(code) + 3),
+        wrapper, code, cleanup);
+    ScanResult caught{};
+    scanTable.ScanEHTable(reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(code) + 6),
+        wrapper, code, caught);
+    std::printf("EHSCAN %llu %llu %s %llu %llu %s\n",
+        static_cast<unsigned long long>(cleanup.typeIndex),
+        static_cast<unsigned long long>(cleanup.landingPad - reinterpret_cast<uintptr_t>(code)),
+        cleanup.isCaught ? "true" : "false", static_cast<unsigned long long>(caught.typeIndex),
+        static_cast<unsigned long long>(caught.landingPad - reinterpret_cast<uintptr_t>(code)),
+        caught.isCaught ? "true" : "false");
+    std::printf("CALLEE_CONTEXT %zu %zu\n", sizeof(MapleRuntime::CalleeSavedRegisterContext),
+        alignof(MapleRuntime::CalleeSavedRegisterContext));
     return 0;
 }

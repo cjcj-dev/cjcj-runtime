@@ -25,6 +25,9 @@ CPP_CC="$RUNTIME_ROOT/src/Exception/EhTable.cpp"
 [[ $(grep -Ec '^@When\[arch (==|!=) "arm"\]$' "$ROOT/src/rt.exception/EhFramePrimitives.cj") -eq 2 ]] ||
     fail "incomplete Cangjie frame-reader width branches"
 echo "EH_PLATFORM linux_x86_64=EXECUTED apple=SOURCE_AUDITED windows=SOURCE_AUDITED arm=SOURCE_AUDITED table_width_branches=2 frame_width_branches=2 status=PASS"
+[[ $(grep -Ec '^@When\[.*arch == "x86_64".*\]$|^@When\[arch == "aarch64"\]$|^@When\[arch == "arm"\]$|^@When\[os == "Windows" && arch == "x86_64"\]$' \
+    "$ROOT/src/rt.exception/CalleeSavedRegisterContext.cj") -eq 5 ]] || fail "incomplete callee-saved platform arms"
+echo "EH_CONTEXT_PLATFORM linux_x86_64=EXECUTED apple_x86_64=SOURCE_AUDITED aarch64=SOURCE_AUDITED arm=SOURCE_AUDITED win64=SOURCE_AUDITED status=PASS"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_eh_primitives.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT

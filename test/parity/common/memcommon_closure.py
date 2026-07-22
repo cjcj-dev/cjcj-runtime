@@ -7,25 +7,18 @@ import sys
 from collections import deque
 from pathlib import Path
 
-ROOTS = (
-    "EHReadULEBRoot", "EHAbnormalRoot", "EHReadSLEBRoot", "EHReadAbsPtrRoot",
-    "EHReadUData4Root", "EHReadIndir4Root", "EHReadIndir8Root", "EHFrameVarIntRoot",
-    "EHTableScanRoot", "EHContextLayoutRoot",
-)
-PREFIXES = ("_CN12rt.exception",)
+ROOTS = ("MemCommonRoundRoot", "MemCommonIndexRoot", "MemCommonLimitRoot", "MemCommonPagesRoot")
+PREFIXES = ("_CN9rt.common",)
 FORBIDDEN = re.compile(
     r"(?:CJ_)?MCC_New|RawArrayAllocate|StringBuilder|std[.:]core[.:](?:String|Array)|"
     r"ArrayList|HashMap|HashSet|LinkedList|mallocCString|lambda|closure|"
     r"llvm[.]cj[.]throw|Create[A-Za-z0-9_]*Exception|"
-    r"(?:^|[^A-Za-z0-9_])(?:malloc|calloc|realloc|free)(?:$|[^A-Za-z0-9_])",
-    re.IGNORECASE,
-)
+    r"(?:^|[^A-Za-z0-9_])(?:malloc|calloc|realloc|free)(?:$|[^A-Za-z0-9_])", re.IGNORECASE)
 IR_DEF = re.compile(r'^define\b.*?@(?:"([^"]+)"|([^\s(]+))\(')
 IR_REF = re.compile(r'@(?:"([^"]+)"|([A-Za-z0-9_.$:-]+))')
 OBJ_DEF = re.compile(r'^([0-9a-fA-F]+) <(.+)>:$')
 
-class Failure(RuntimeError):
-    pass
+class Failure(RuntimeError): pass
 
 def parse_ir(path):
     definitions, current, body = {}, None, []
@@ -95,8 +88,7 @@ def traverse(definitions, calls, stage, inject):
         for target in targets:
             if target in definitions:
                 if target not in reached: reached.add(target); queue.append(target)
-            elif target.startswith(PREFIXES):
-                raise Failure(f"missing project {stage} edge {symbol}->{target}")
+            elif target.startswith(PREFIXES): raise Failure(f"missing project {stage} edge {symbol}->{target}")
             else: external.add(target)
     scanned = {name for name in reached if definitions.get(name, "").strip()}
     if reached != scanned: raise Failure(f"{stage} reachable/scanned mismatch")
@@ -109,25 +101,21 @@ def traverse(definitions, calls, stage, inject):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pre", required=True)
-    parser.add_argument("--final", required=True)
-    parser.add_argument("--object", action="append", required=True)
-    parser.add_argument("--inject-forbidden", action="store_true")
+    parser.add_argument("--pre", required=True); parser.add_argument("--final", required=True)
+    parser.add_argument("--object", action="append", required=True); parser.add_argument("--inject-forbidden", action="store_true")
     args = parser.parse_args()
     try:
         pre, final, objects = parse_ir(args.pre), parse_ir(args.final), parse_objects(args.object)
         for root in ROOTS:
-            if root not in pre or root not in final or root not in objects:
-                raise Failure(f"root absent from pre/final/object {root}")
+            if root not in pre or root not in final or root not in objects: raise Failure(f"root absent from pre/final/object {root}")
         final_result = traverse(final, ir_calls, "final", args.inject_forbidden)
         object_result = traverse(objects, object_calls, "object", args.inject_forbidden)
         if args.inject_forbidden: raise Failure("negative unexpectedly accepted")
-        print(f"EH_FINAL_CLOSURE reachable_defs={len(final_result[0])} scanned_defs={len(final_result[1])} external={len(final_result[2])} status=PASS")
-        print(f"EH_OBJECT_CLOSURE reachable_defs={len(object_result[0])} scanned_defs={len(object_result[1])} external={len(object_result[2])} status=PASS")
-        print("EH_NOHEAP final_forbidden=0 object_forbidden=0 status=PASS")
+        print(f"MEMCOMMON_FINAL_CLOSURE reachable_defs={len(final_result[0])} scanned_defs={len(final_result[1])} external={len(final_result[2])} status=PASS")
+        print(f"MEMCOMMON_OBJECT_CLOSURE reachable_defs={len(object_result[0])} scanned_defs={len(object_result[1])} external={len(object_result[2])} status=PASS")
+        print("MEMCOMMON_NOHEAP final_forbidden=0 object_forbidden=0 status=PASS")
         return 0
     except (Failure, OSError, subprocess.CalledProcessError) as error:
-        print(f"EH_CLOSURE FAIL reason={error}", file=sys.stderr)
-        return 1
+        print(f"MEMCOMMON_CLOSURE FAIL reason={error}", file=sys.stderr); return 1
 
 if __name__ == "__main__": sys.exit(main())

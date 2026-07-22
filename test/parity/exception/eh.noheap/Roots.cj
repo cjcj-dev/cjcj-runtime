@@ -41,3 +41,14 @@ public func EHReadIndir8Root(data: CPointer<UInt8>): CPointer<Unit> {
 public func EHFrameVarIntRoot(point: CPointer<CPointer<UIntNative>>, validPos: CPointer<UInt32>): UInt32 {
     return ReadEHFrameVarInt(point, validPos)
 }
+
+@C
+public func EHTableScanRoot(table: CPointer<EHTable>, pc: CPointer<UInt32>, exceptionRef: CPointer<Unit>,
+    startIp: CPointer<UInt32>, result: CPointer<ScanResult>): Unit {
+    unsafe { table.read().ScanEHTable(pc, exceptionRef, startIp, result) }
+}
+
+@C
+public func EHContextLayoutRoot(): UIntNative {
+    return sizeOf<CalleeSavedRegisterContext>() + alignOf<CalleeSavedRegisterContext>()
+}

@@ -71,5 +71,32 @@ main(): Int64 {
     let abnormalPtr = unsafe { CPointer<UInt8>(inout abnormal) }
     let normalPtr = unsafe { CPointer<UInt8>(CPointer<UInt32>(inout abnormal) + 1) }
     println("ABNORMAL ${IsAbnormalEHTable(CPointer<UInt8>())} ${IsAbnormalEHTable(abnormalPtr)} ${IsAbnormalEHTable(normalPtr)}")
+
+    var lsda = VArray<UInt8, $32>(repeat: 0u8)
+    lsda[0] = 0u8; lsda[1] = UInt8(ABS_PTR); lsda[2] = 26u8
+    lsda[3] = 0u8; lsda[4] = 8u8
+    lsda[5] = 0u8; lsda[6] = 4u8; lsda[7] = 16u8; lsda[8] = 0u8
+    lsda[9] = 4u8; lsda[10] = 4u8; lsda[11] = 32u8; lsda[12] = 1u8
+    lsda[13] = 1u8; lsda[14] = 0u8
+    let lsdaBase = unsafe { CPointer<UInt8>(inout lsda) }
+    var table = EHTable(lsdaBase)
+    let tableWords = unsafe { CPointer<CPointer<UInt8>>(inout table) }
+    println("EHTABLE ${sizeOf<EHTable>()} ${alignOf<EHTable>()} " +
+        "${unsafe { tableWords.read(0) }.toUIntNative() - lsdaBase.toUIntNative()} " +
+        "${unsafe { tableWords.read(1) }.toUIntNative() - lsdaBase.toUIntNative()} " +
+        "${unsafe { tableWords.read(2) }.toUIntNative() - lsdaBase.toUIntNative()} " +
+        "${unsafe { tableWords.read(3) }.toUIntNative() - lsdaBase.toUIntNative()} " +
+        "${unsafe { tableWords.read(4) }.toUIntNative() - lsdaBase.toUIntNative()}")
+    var code = VArray<UInt32, $16>(repeat: 0u32)
+    let codeStart = unsafe { CPointer<UInt32>(inout code) }
+    var cleanup = ScanResult()
+    table.ScanEHTable(unsafe { CPointer<UInt32>(CPointer<UInt8>(codeStart) + 3) }, CPointer<Unit>(), codeStart,
+        unsafe { CPointer<ScanResult>(inout cleanup) })
+    var caught = ScanResult()
+    table.ScanEHTable(unsafe { CPointer<UInt32>(CPointer<UInt8>(codeStart) + 6) }, CPointer<Unit>(), codeStart,
+        unsafe { CPointer<ScanResult>(inout caught) })
+    println("EHSCAN ${cleanup.typeIndex} ${cleanup.landingPad - UInt64(codeStart.toUIntNative())} ${cleanup.isCaught} " +
+        "${caught.typeIndex} ${caught.landingPad - UInt64(codeStart.toUIntNative())} ${caught.isCaught}")
+    println("CALLEE_CONTEXT ${sizeOf<CalleeSavedRegisterContext>()} ${alignOf<CalleeSavedRegisterContext>()}")
     return 0
 }
