@@ -76,6 +76,7 @@ file(GLOB RT0_ARCH_SOURCES CONFIGURE_DEPENDS "arch/${RT0_ARCH}/*.S")
 if(MINGW OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(RT0_PLATFORM_SOURCES
         os/Windows/Loader.cpp
+        os/Windows/PagePoolMutex.cpp
         os/Windows/Path.cpp
         os/Windows/UnwindWin.cpp
         os/Windows/WinModuleManager.cpp
@@ -87,6 +88,10 @@ else()
         signal/SignalStack.cpp
         signal/SignalUtils.cpp
         signal/SignalVectorCompat.cpp)
+endif()
+
+if(APPLE OR IOS)
+    list(APPEND RT0_PLATFORM_SOURCES os/Macos/PagePoolMutex.cpp)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
