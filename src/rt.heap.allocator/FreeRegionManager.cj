@@ -346,8 +346,9 @@ extend CPointer<FreeRegionManager> {
 
 @When[os == "Windows"]
 private func FreeRegionCommitMemory(idx: UIntNative, num: UIntNative): Unit {
-    MemMap.CommitMemory(CPointer<Unit>(RegionInfo.GetUnitAddress(idx)),
-        num * RegionInfo.UNIT_SIZE)
+    let address = RegionInfo.GetUnitAddress(idx)
+    let unitAddress = unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(address)) }
+    MemMap.CommitMemory(unitAddress, num * RegionInfo.UNIT_SIZE)
 }
 
 @When[os != "Windows"]
