@@ -3,36 +3,19 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
-COMPILER_SOURCE=e74a6f39fe1c03c71c57b2b378d7f1e7993b28c7
-COMPILER_SHA=e9aa3c48bcddce1e16808f35e6c695e788811677ea56178b67dbce45241fc459
-COMPILER_SIZE=51140224
-TOOLCHAIN=/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029
+source "$ROOT/test/compiler_identity.sh"
 CPP_RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 CJTHREAD_ROOT="$CPP_RUNTIME_ROOT/src/CJThread/src"
-export CANGJIE_HOME="$TOOLCHAIN"
-LLVM_BIN="$CANGJIE_HOME/third_party/llvm/bin"
-CJC_BIN_DIR=$(cd "$(dirname "$SELFHOST_CJC")" && pwd)
-SELFHOST_RT="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
-export PATH=/root/.cjv/bin:$PATH
-export LD_LIBRARY_PATH="$SELFHOST_RT:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 export cjHeapSize=24GB
 
 fail() { echo "run_sched_lowdeps_probe: FAIL $*" >&2; exit 1; }
-check_compiler()
-{
-    [[ $(sha256sum "$SELFHOST_CJC" | awk '{print $1}') == "$COMPILER_SHA" ]] || fail "compiler sha drift"
-    [[ $(stat -c %s "$SELFHOST_CJC") == "$COMPILER_SIZE" ]] || fail "compiler size drift"
-    git -C /root/cj_build/cjcj cat-file -e "$COMPILER_SOURCE^{commit}" 2>/dev/null || fail "compiler source absent"
-}
-run_cjc() { check_compiler; "$SELFHOST_CJC" "$@"; }
+run_cjc() { "$SELFHOST_CJC" "$@"; }
 
 [[ $(uname -s)/$(uname -m) == Linux/x86_64 ]] || fail "Linux x86_64 execution required"
-for tool in g++ python3 cmp sha256sum stat git awk rg llvm-nm mktemp; do
+for tool in g++ python3 cmp sha256sum awk rg llvm-nm mktemp; do
     command -v "$tool" >/dev/null || fail "missing tool=$tool"
 done
-check_compiler
-echo "SCHED_LOWDEPS_COMPILER path=$SELFHOST_CJC source=$COMPILER_SOURCE sha256=$COMPILER_SHA size=$COMPILER_SIZE status=PASS"
+echo "SCHED_LOWDEPS_COMPILER path=$SELFHOST_CJC source=$COMPILER_SOURCE sha256=$COMPILER_SHA256 size=$COMPILER_SIZE toolchain_root=$CANGJIE_HOME toolchain=$COMPILER_BUILD_TOOLCHAIN llvm_bin=$LLVM_BIN runtime_lib=$RUNTIME_TOOLCHAIN_RT_LIB status=PASS"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_sched_lowdeps.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
