@@ -33,10 +33,15 @@ cp "$ROOT/test/parity/sched/cjthread_preemption_noheap_roots.cj" \
     --output-dir "$TMP" -o libcjthreadpreemption.noheap.a
 g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
     -c "$ROOT/test/parity/sched/cjthread_preemption_ref.cpp" -o "$TMP/ref.o"
+g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
+    -c "$ROOT/rt0/os/Linux/CJThreadSemaphore.cpp" -o "$TMP/semaphore.o"
+g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
+    -c "$ROOT/rt0/os/Linux/CJThreadSpinLock.cpp" -o "$TMP/spinlock.o"
 "$SELFHOST_CJC" "$ROOT/test/parity/sched/cjthread_preemption_probe.cj" \
     --import-path "$TMP" --int-overflow wrapping \
     "$TMP/libcjthreadpreemption.noheap.a" "$TMP/librt.sched.a" "$TMP/ref.o" \
-    --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
+    "$TMP/semaphore.o" "$TMP/spinlock.o" --link-option=-lstdc++ \
+    --link-option=-lpthread --link-option=-lgcc_s -o "$TMP/probe"
 
 "$TMP/probe" > "$TMP/transcript"
 grep -Fxq 'CJTHREAD_PREEMPTION add=0 sub=0 resched=0 add_symbol=1 sub_symbol=1 resched_symbol=1 status=PASS' \
