@@ -1,6 +1,7 @@
 // CJThread list.h:25-302, cjthread.h:30-100,173-185 and timer_impl.h:21-94.
 #include <cstddef>
 #include <cstdint>
+#include <cerrno>
 #include <cstdio>
 #include <type_traits>
 
