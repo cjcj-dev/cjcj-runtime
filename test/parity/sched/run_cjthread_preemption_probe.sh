@@ -39,7 +39,7 @@ g++ -std=c++14 -O2 -fPIC -Wall -Wextra -Werror \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
 
 "$TMP/probe" > "$TMP/transcript"
-grep -Fxq 'CJTHREAD_PREEMPTION add=0 sub=0 add_symbol=1 sub_symbol=1 resched_symbol=1 status=PASS' \
+grep -Fxq 'CJTHREAD_PREEMPTION add=0 sub=0 resched=0 add_symbol=1 sub_symbol=1 resched_symbol=1 status=PASS' \
     "$TMP/transcript" || fail "behavior transcript mismatch"
 
 for symbol in CJ_CJThreadPreemptOffCntAdd CJ_CJThreadPreemptOffCntSub CJ_CJThreadResched; do
