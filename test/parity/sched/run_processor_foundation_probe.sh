@@ -53,7 +53,8 @@ CPP_INCLUDE=(
     -I "$CJTHREAD_ROOT/trace/include/inner"
 )
 CPP_SELECT=(-DMRT_HARDWARE_PLATFORM=MRT_X86 -DVOS_WORDSIZE=64)
-CPP_WARN=(-Wall -Wextra -Werror -Wno-invalid-offset-of -Wno-strict-aliasing -Wno-type-limits)
+CPP_WARN=(-Wall -Wextra -Werror -Wno-invalid-offset-of -Wno-strict-aliasing
+    -Wno-overloaded-virtual -Wno-type-limits)
 
 g++ -std=c++14 -O2 "${CPP_WARN[@]}" "${CPP_SELECT[@]}" "${CPP_INCLUDE[@]}" \
     -DPROCESSOR_FOUNDATION_CPP_ORACLE "$ROOT/test/parity/sched/processor_foundation_ref.cpp" \
