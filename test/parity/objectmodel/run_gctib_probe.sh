@@ -18,9 +18,10 @@ echo 'GCTIB_SOURCE fresh=PASS linux_ohos=PASS apple=PASS win64=PASS arm32=PASS c
 CPP_FLAGS=(-std=c++17 -O2 -DMRT_USE_CJTHREAD_RENAME -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include")
 g++ "${CPP_FLAGS[@]}" "$ROOT/test/parity/objectmodel/gctib_ref.cpp" -L"$CPP_RUNTIME_LIB" -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/ref"
 "$TMP/ref" > "$TMP/ref.txt"
+g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.o"
 cp -a "$ROOT/src/rt.objectmodel" "$TMP/rt.objectmodel.probe"
 cp "$ROOT/test/parity/objectmodel/gctib_probe.cj" "$TMP/rt.objectmodel.probe/Probe.cj"
-"$SELFHOST_CJC" --package "$TMP/rt.objectmodel.probe" --int-overflow wrapping -Woff unused -o "$TMP/probe"
+"$SELFHOST_CJC" --package "$TMP/rt.objectmodel.probe" --int-overflow wrapping -Woff unused "$TMP/Atomic.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
 "$TMP/probe" > "$TMP/probe.txt"
 cmp "$TMP/ref.txt" "$TMP/probe.txt"
 cat "$TMP/probe.txt"
