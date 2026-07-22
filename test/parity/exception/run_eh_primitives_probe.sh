@@ -21,7 +21,13 @@ CPP_H="$RUNTIME_ROOT/src/Exception/EhTable.h"
 CPP_CC="$RUNTIME_ROOT/src/Exception/EhTable.cpp"
 [[ $(sed -n '14,72p' "$CPP_H" | grep -Ec '^#if|^#ifdef|^#elif') -eq 0 ]] || fail "unexpected primitive header platform branch"
 [[ $(sed -n '52,65p' "$CPP_CC" | grep -Ec '^#if|^#ifdef|^#elif') -eq 0 ]] || fail "unexpected ULEB platform branch"
-echo "EH_PLATFORM linux_x86_64=EXECUTED apple=SHARED_LOGIC windows=SHARED_LOGIC arm=SHARED_LOGIC branches=0 status=PASS"
+[[ $(sed -n '17,27p' "$CPP_CC" | grep -Ec '^#ifdef __arm__$') -eq 1 ]] || fail "missing C++ ReadAbsPtr ARM branch"
+[[ $(sed -n '68,88p' "$CPP_CC" | grep -Ec '^#if defined\(__APPLE__\)$') -eq 1 ]] || fail "missing C++ SLEB Apple branch"
+[[ $(grep -Ec '^@When\[arch (==|!=) "arm"\]$' "$ROOT/src/rt.exception/EhTablePrimitives.cj") -eq 2 ]] ||
+    fail "incomplete Cangjie ttype-reader width branches"
+[[ $(grep -Ec '^@When\[arch (==|!=) "arm"\]$' "$ROOT/src/rt.exception/EhFramePrimitives.cj") -eq 2 ]] ||
+    fail "incomplete Cangjie frame-reader width branches"
+echo "EH_PLATFORM linux_x86_64=EXECUTED apple=SOURCE_AUDITED windows=SOURCE_AUDITED arm=SOURCE_AUDITED table_width_branches=2 frame_width_branches=2 status=PASS"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_eh_primitives.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
