@@ -6,14 +6,6 @@ foreign {
 }
 
 main(): Int64 {
-    println("RUNTIMEPARAM_LAYOUT heap=${sizeOf<HeapParam>()}/${alignOf<HeapParam>()} " +
-        "gc=${sizeOf<GCParam>()}/${alignOf<GCParam>()} " +
-        "log=${sizeOf<LogParam>()}/${alignOf<LogParam>()} " +
-        "concurrency=${sizeOf<ConcurrencyParam>()}/${alignOf<ConcurrencyParam>()} " +
-        "runtime=${sizeOf<RuntimeParam>()}/${alignOf<RuntimeParam>()} " +
-        "heap_off=0 gc_off=${sizeOf<HeapParam>()} " +
-        "log_off=${sizeOf<HeapParam>() + sizeOf<GCParam>()} concurrency_off=104")
-
     var value = RuntimeParam()
     unsafe { let _ = memset(CPointer<Unit>(CPointer<RuntimeParam>(inout value)), 0, sizeOf<RuntimeParam>()) }
     value.heapParam.regionSize = 0x0102030405060708

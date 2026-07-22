@@ -6,6 +6,7 @@
 
 int main()
 {
+#ifdef RUNTIMEPARAM_LAYOUT_ONLY
     std::printf(
         "RUNTIMEPARAM_LAYOUT heap=%zu/%zu gc=%zu/%zu log=%zu/%zu concurrency=%zu/%zu runtime=%zu/%zu "
         "heap_off=%zu gc_off=%zu log_off=%zu concurrency_off=%zu\n",
@@ -13,7 +14,7 @@ int main()
         sizeof(LogParam), alignof(LogParam), sizeof(ConcurrencyParam), alignof(ConcurrencyParam),
         sizeof(RuntimeParam), alignof(RuntimeParam), offsetof(RuntimeParam, heapParam),
         offsetof(RuntimeParam, gcParam), offsetof(RuntimeParam, logParam), offsetof(RuntimeParam, coParam));
-
+#else
     RuntimeParam value;
     std::memset(&value, 0, sizeof(value));
     value.heapParam.regionSize = 0x0102030405060708ULL;
@@ -28,10 +29,11 @@ int main()
     value.gcParam.gcInterval = 0x4142434445464748ULL;
     value.gcParam.backupGCInterval = 0x5152535455565758ULL;
     value.gcParam.gcThreads = 0x61626364;
-    value.logParam.logLevel = 5;
+    value.logParam.logLevel = static_cast<RTLogLevel>(5);
     value.coParam.thStackSize = 0x7172737475767778ULL;
     value.coParam.coStackSize = 0x8182838485868788ULL;
     value.coParam.processorNum = 0x91929394U;
     std::fwrite(&value, 1, sizeof(value), stdout);
+#endif
     return 0;
 }
