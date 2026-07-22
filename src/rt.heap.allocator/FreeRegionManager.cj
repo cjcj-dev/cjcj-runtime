@@ -117,13 +117,13 @@ public struct FreeRegionManager {
     // destruction, exactly as in the original destructor.
     @NoHeapAlloc
     public static func Destroy(manager: CPointer<FreeRegionManager>): Unit {
-        let released = manager.ReleasedTree()
-        let dirty = manager.DirtyTree()
+        let released = FreeRegionReleasedTree(manager)
+        let dirty = FreeRegionDirtyTree(manager)
         Fini(dirty)
         Fini(released)
         unsafe {
-            CJRT_PagePoolMutexDestroy(manager.DirtyMutex())
-            CJRT_PagePoolMutexDestroy(manager.ReleasedMutex())
+            CJRT_PagePoolMutexDestroy(FreeRegionDirtyMutex(manager))
+            CJRT_PagePoolMutexDestroy(FreeRegionReleasedMutex(manager))
         }
     }
 }
@@ -134,27 +134,43 @@ private var FREE_REGION_MERGE_FATAL: VArray<UInt8, $36> = [
     105u8,110u8,118u8,97u8,114u8,105u8,97u8,110u8,116u8,0u8,0u8,0u8
 ]
 
+private func FreeRegionReleasedMutex(manager: CPointer<FreeRegionManager>): CPointer<Unit> {
+    return unsafe { CPointer<Unit>(CPointer<UInt8>(manager) + 8) }
+}
+
+private func FreeRegionReleasedTree(manager: CPointer<FreeRegionManager>): CPointer<CartesianTree> {
+    return unsafe {
+        CPointer<CartesianTree>(CPointer<UInt8>(manager) + FREE_REGION_RELEASED_TREE_OFFSET)
+    }
+}
+
+private func FreeRegionDirtyMutex(manager: CPointer<FreeRegionManager>): CPointer<Unit> {
+    return unsafe {
+        CPointer<Unit>(CPointer<UInt8>(manager) + FREE_REGION_DIRTY_MUTEX_OFFSET)
+    }
+}
+
+private func FreeRegionDirtyTree(manager: CPointer<FreeRegionManager>): CPointer<CartesianTree> {
+    return unsafe {
+        CPointer<CartesianTree>(CPointer<UInt8>(manager) + FREE_REGION_DIRTY_TREE_OFFSET)
+    }
+}
+
 extend CPointer<FreeRegionManager> {
     private func ReleasedMutex(): CPointer<Unit> {
-        return unsafe { CPointer<Unit>(CPointer<UInt8>(this) + 8) }
+        return FreeRegionReleasedMutex(this)
     }
 
     private func ReleasedTree(): CPointer<CartesianTree> {
-        return unsafe {
-            CPointer<CartesianTree>(CPointer<UInt8>(this) + FREE_REGION_RELEASED_TREE_OFFSET)
-        }
+        return FreeRegionReleasedTree(this)
     }
 
     private func DirtyMutex(): CPointer<Unit> {
-        return unsafe {
-            CPointer<Unit>(CPointer<UInt8>(this) + FREE_REGION_DIRTY_MUTEX_OFFSET)
-        }
+        return FreeRegionDirtyMutex(this)
     }
 
     private func DirtyTree(): CPointer<CartesianTree> {
-        return unsafe {
-            CPointer<CartesianTree>(CPointer<UInt8>(this) + FREE_REGION_DIRTY_TREE_OFFSET)
-        }
+        return FreeRegionDirtyTree(this)
     }
 
     // FreeRegionManager.h:32-36.
@@ -173,7 +189,7 @@ extend CPointer<FreeRegionManager> {
         var tryReleasedTree = true
         while (tryDirtyTree || tryReleasedTree) {
             if (tryDirtyTree && unsafe { CJRT_PagePoolMutexTryLock(DirtyMutex()) }) {
-                let dirtyOk = DirtyTree().TakeUnitsLowAddr(Count(num),
+                let dirtyOk = DirtyTree().TakeUnitsLowAddr(UInt32(num),
                     unsafe { CPointer<Index>(inout idx) })
                 if (dirtyOk) {
                     RegionInfo.ClearUnits(UIntNative(idx), num)
@@ -185,7 +201,7 @@ extend CPointer<FreeRegionManager> {
                 unsafe { CJRT_PagePoolMutexUnlock(DirtyMutex()) }
             }
             if (tryReleasedTree && unsafe { CJRT_PagePoolMutexTryLock(ReleasedMutex()) }) {
-                let releasedOk = ReleasedTree().TakeUnitsLowAddr(Count(num),
+                let releasedOk = ReleasedTree().TakeUnitsLowAddr(UInt32(num),
                     unsafe { CPointer<Index>(inout idx) })
                 if (releasedOk) {
                     FreeRegionCommitMemory(UIntNative(idx), num)
