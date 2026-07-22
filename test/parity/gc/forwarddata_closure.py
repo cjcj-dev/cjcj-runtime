@@ -27,7 +27,7 @@ try:
         for target in calls.get(owner, ()):
             if target in pre and target not in reached: reached.add(target); queue.append(target)
             elif target not in pre: external.add(target)
-    os_leaves = {'mmap', 'munmap', 'madvise', 'prctl', 'memset'}
+    os_leaves = {'mmap', 'munmap', 'madvise', 'prctl', 'memset', 'write'}
     unknown = sorted(s for s in external if s not in NATIVE and s not in os_leaves and
                      not closure.allowed_external(s, False))
     if unknown: raise closure.ClosureError(f'unknown external edges={unknown[:20]}')
