@@ -148,6 +148,7 @@ set_target_properties(cjcj_rt0 PROPERTIES
     POSITION_INDEPENDENT_CODE ON)
 target_compile_features(cjcj_rt0 PRIVATE cxx_std_14)
 target_include_directories(cjcj_rt0 PRIVATE
+    "${CANGJIE_RUNTIME_SOURCE}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/signal"
     "${CMAKE_CURRENT_SOURCE_DIR}/os"
     "${CMAKE_CURRENT_SOURCE_DIR}/os/Windows"
