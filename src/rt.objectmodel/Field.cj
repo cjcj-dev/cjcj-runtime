@@ -83,59 +83,55 @@ public func FieldSet<T>(field: CPointer<T>, value: T): Unit where T <: CType {
     unsafe { field.write(0, value) }
 }
 
-private func BitsToValue<T>(bits: UInt64): T where T <: CType {
-    var storage = bits
-    return unsafe { CPointer<T>(CPointer<UInt64>(inout storage)).read() }
+// The mandated compiler cannot take `inout` of a generic T even under a CType
+// constraint.  Field's instantiated atomic storage is therefore carried as its
+// exact 1/2/4/8-byte bit pattern; no managed box or alternate owner is created.
+public func AtomicFieldLoadBits(field: CPointer<Unit>, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 {
+    return unsafe { cj_atomic_field_load(field, size, order) }
 }
 
-public func AtomicFieldGet<T>(field: CPointer<T>, order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType {
-    let bits = unsafe { cj_atomic_field_load(CPointer<Unit>(field), sizeOf<T>(), order) }
-    return BitsToValue<T>(bits)
-}
-
-public func AtomicFieldSet<T>(field: CPointer<T>, value: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): Unit where T <: CType {
+public func AtomicFieldStoreBits(field: CPointer<Unit>, value: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): Unit {
     var desired = value
-    unsafe { cj_atomic_field_store(CPointer<Unit>(field), CPointer<Unit>(CPointer<T>(inout desired)), sizeOf<T>(), order) }
+    unsafe { cj_atomic_field_store(field, CPointer<Unit>(CPointer<UInt64>(inout desired)), size, order) }
 }
 
-public func AtomicFieldCompareExchange<T>(field: CPointer<T>, expectedValue: T, newValue: T,
-    success!: Int32 = MEMORY_ORDER_RELAXED, failure!: Int32 = MEMORY_ORDER_RELAXED): Bool where T <: CType {
+public func AtomicFieldCompareExchangeBits(field: CPointer<Unit>, expectedValue: UInt64, newValue: UInt64,
+    size: UIntNative, success!: Int32 = MEMORY_ORDER_RELAXED, failure!: Int32 = MEMORY_ORDER_RELAXED): Bool {
     var expected = expectedValue
     var desired = newValue
-    return unsafe { cj_atomic_field_compare_exchange(CPointer<Unit>(field),
-        CPointer<Unit>(CPointer<T>(inout expected)), CPointer<Unit>(CPointer<T>(inout desired)),
-        sizeOf<T>(), success, failure) != 0 }
+    return unsafe { cj_atomic_field_compare_exchange(field, CPointer<Unit>(CPointer<UInt64>(inout expected)),
+        CPointer<Unit>(CPointer<UInt64>(inout desired)), size, success, failure) != 0 }
 }
 
-public func AtomicFieldExchange<T>(field: CPointer<T>, newValue: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType {
+public func AtomicFieldExchangeBits(field: CPointer<Unit>, newValue: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 {
     var desired = newValue
-    return BitsToValue<T>(unsafe { cj_atomic_field_exchange(CPointer<Unit>(field),
-        CPointer<Unit>(CPointer<T>(inout desired)), sizeOf<T>(), order) })
+    return unsafe { cj_atomic_field_exchange(field, CPointer<Unit>(CPointer<UInt64>(inout desired)), size, order) }
 }
 
-private func AtomicFieldFetch<T>(field: CPointer<T>, value: T, order: Int32,
-    operation: Int32): T where T <: CType {
+private func AtomicFieldFetchBits(field: CPointer<Unit>, value: UInt64, size: UIntNative, order: Int32,
+    operation: Int32): UInt64 {
     var operand = value
-    let pointer = CPointer<Unit>(CPointer<T>(inout operand))
+    let pointer = CPointer<Unit>(CPointer<UInt64>(inout operand))
     let bits = unsafe {
-        if (operation == 0) { cj_atomic_field_fetch_add(CPointer<Unit>(field), pointer, sizeOf<T>(), order) }
-        else if (operation == 1) { cj_atomic_field_fetch_sub(CPointer<Unit>(field), pointer, sizeOf<T>(), order) }
-        else if (operation == 2) { cj_atomic_field_fetch_and(CPointer<Unit>(field), pointer, sizeOf<T>(), order) }
-        else if (operation == 3) { cj_atomic_field_fetch_or(CPointer<Unit>(field), pointer, sizeOf<T>(), order) }
-        else { cj_atomic_field_fetch_xor(CPointer<Unit>(field), pointer, sizeOf<T>(), order) }
+        if (operation == 0) { cj_atomic_field_fetch_add(field, pointer, size, order) }
+        else if (operation == 1) { cj_atomic_field_fetch_sub(field, pointer, size, order) }
+        else if (operation == 2) { cj_atomic_field_fetch_and(field, pointer, size, order) }
+        else if (operation == 3) { cj_atomic_field_fetch_or(field, pointer, size, order) }
+        else { cj_atomic_field_fetch_xor(field, pointer, size, order) }
     }
-    return BitsToValue<T>(bits)
+    return bits
 }
 
-public func AtomicFieldFetchAdd<T>(field: CPointer<T>, value: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType { return AtomicFieldFetch(field, value, order, 0) }
-public func AtomicFieldFetchSub<T>(field: CPointer<T>, value: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType { return AtomicFieldFetch(field, value, order, 1) }
-public func AtomicFieldFetchAnd<T>(field: CPointer<T>, value: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType { return AtomicFieldFetch(field, value, order, 2) }
-public func AtomicFieldFetchOr<T>(field: CPointer<T>, value: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType { return AtomicFieldFetch(field, value, order, 3) }
-public func AtomicFieldFetchXor<T>(field: CPointer<T>, value: T,
-    order!: Int32 = MEMORY_ORDER_RELAXED): T where T <: CType { return AtomicFieldFetch(field, value, order, 4) }
+public func AtomicFieldFetchAddBits(field: CPointer<Unit>, value: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 { return AtomicFieldFetchBits(field, value, size, order, 0) }
+public func AtomicFieldFetchSubBits(field: CPointer<Unit>, value: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 { return AtomicFieldFetchBits(field, value, size, order, 1) }
+public func AtomicFieldFetchAndBits(field: CPointer<Unit>, value: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 { return AtomicFieldFetchBits(field, value, size, order, 2) }
+public func AtomicFieldFetchOrBits(field: CPointer<Unit>, value: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 { return AtomicFieldFetchBits(field, value, size, order, 3) }
+public func AtomicFieldFetchXorBits(field: CPointer<Unit>, value: UInt64, size: UIntNative,
+    order!: Int32 = MEMORY_ORDER_RELAXED): UInt64 { return AtomicFieldFetchBits(field, value, size, order, 4) }

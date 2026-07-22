@@ -46,7 +46,7 @@ public func RefFieldGetAddress(field: CPointer<RefField>): UIntNative {
     return unsafe { field.read().fieldValue } & AddressMask()
 }
 public func RefFieldGetTargetObject(field: CPointer<RefField>): CPointer<Unit> {
-    return CPointer<Unit>(RefFieldGetAddress(field))
+    return RefFieldPointerFromAddress(RefFieldGetAddress(field))
 }
 public func RefFieldGetFieldValue(field: CPointer<RefField>): UIntNative {
     return unsafe { field.read().fieldValue }
@@ -64,28 +64,34 @@ public func RefFieldSetFieldValue(field: CPointer<RefField>, value: UIntNative):
     unsafe { CPointer<UIntNative>(field).write(0, value) }
 }
 
+public func RefFieldPointerFromAddress(address: UIntNative): CPointer<Unit> {
+    var bits = address
+    return unsafe { CPointer<CPointer<Unit>>(CPointer<UIntNative>(inout bits)).read() }
+}
+
 public func AtomicRefFieldGetFieldValue(field: CPointer<RefField>,
     order!: Int32 = MEMORY_ORDER_RELAXED): UIntNative {
-    return AtomicFieldGet(CPointer<UIntNative>(field), order: order)
+    return UIntNative(AtomicFieldLoadBits(CPointer<Unit>(field), sizeOf<UIntNative>(), order: order))
 }
 public func AtomicRefFieldGetTargetObject(field: CPointer<RefField>,
     order!: Int32 = MEMORY_ORDER_RELAXED): CPointer<Unit> {
-    return CPointer<Unit>(AtomicRefFieldGetFieldValue(field, order: order) & AddressMask())
+    return RefFieldPointerFromAddress(AtomicRefFieldGetFieldValue(field, order: order) & AddressMask())
 }
 public func AtomicRefFieldSetTargetObject(field: CPointer<RefField>, object: CPointer<Unit>,
     order!: Int32 = MEMORY_ORDER_RELAXED): Unit {
-    AtomicFieldSet(CPointer<UIntNative>(field), object.toUIntNative() & AddressMask(), order: order)
+    AtomicFieldStoreBits(CPointer<Unit>(field), UInt64(object.toUIntNative() & AddressMask()),
+        sizeOf<UIntNative>(), order: order)
 }
 public func AtomicRefFieldSetFieldValue(field: CPointer<RefField>, value: UIntNative,
     order!: Int32 = MEMORY_ORDER_RELAXED): Unit {
-    AtomicFieldSet(CPointer<UIntNative>(field), value, order: order)
+    AtomicFieldStoreBits(CPointer<Unit>(field), UInt64(value), sizeOf<UIntNative>(), order: order)
 }
 public func AtomicRefFieldCompareExchange(field: CPointer<RefField>, expectedValue: UIntNative,
     newValue: UIntNative, success!: Int32 = MEMORY_ORDER_RELAXED,
     failure!: Int32 = MEMORY_ORDER_RELAXED): Bool {
     if (newValue == UIntNative.Max) { unsafe { abort() } }
-    return AtomicFieldCompareExchange(CPointer<UIntNative>(field), expectedValue, newValue,
-        success: success, failure: failure)
+    return AtomicFieldCompareExchangeBits(CPointer<Unit>(field), UInt64(expectedValue), UInt64(newValue),
+        sizeOf<UIntNative>(), success: success, failure: failure)
 }
 public func AtomicRefFieldCompareExchange(field: CPointer<RefField>, expectedObject: CPointer<Unit>,
     newObject: CPointer<Unit>, success!: Int32 = MEMORY_ORDER_RELAXED,
@@ -96,7 +102,8 @@ public func AtomicRefFieldCompareExchange(field: CPointer<RefField>, expectedObj
 public func AtomicRefFieldExchange(field: CPointer<RefField>, newValue: UIntNative,
     order!: Int32 = MEMORY_ORDER_RELAXED): UIntNative {
     if (unsafe { CPointer<UIntNative>(field).read() } == UIntNative.Max) { unsafe { abort() } }
-    return AtomicFieldExchange(CPointer<UIntNative>(field), newValue, order: order)
+    return UIntNative(AtomicFieldExchangeBits(CPointer<Unit>(field), UInt64(newValue),
+        sizeOf<UIntNative>(), order: order))
 }
 public func AtomicRefFieldExchange(field: CPointer<RefField>, object: CPointer<Unit>,
     order!: Int32 = MEMORY_ORDER_RELAXED): UIntNative {

@@ -8,31 +8,32 @@ main(): Int64 {
 
     var atomic = 0u32
     let atomicPtr = unsafe { CPointer<UInt32>(inout atomic) }
-    AtomicFieldSet(atomicPtr, 10u32, order: MEMORY_ORDER_RELEASE)
-    let load = AtomicFieldGet(atomicPtr, order: MEMORY_ORDER_ACQUIRE)
-    let casOk = AtomicFieldCompareExchange(atomicPtr, 10u32, 20u32,
+    let atomicRaw = CPointer<Unit>(atomicPtr)
+    AtomicFieldStoreBits(atomicRaw, 10, 4, order: MEMORY_ORDER_RELEASE)
+    let load = AtomicFieldLoadBits(atomicRaw, 4, order: MEMORY_ORDER_ACQUIRE)
+    let casOk = AtomicFieldCompareExchangeBits(atomicRaw, 10, 20, 4,
         success: MEMORY_ORDER_ACQ_REL, failure: MEMORY_ORDER_ACQUIRE)
-    let casFail = AtomicFieldCompareExchange(atomicPtr, 10u32, 30u32,
+    let casFail = AtomicFieldCompareExchangeBits(atomicRaw, 10, 30, 4,
         success: MEMORY_ORDER_SEQ_CST, failure: MEMORY_ORDER_SEQ_CST)
-    let exchanged = AtomicFieldExchange(atomicPtr, 40u32, order: MEMORY_ORDER_SEQ_CST)
-    let added = AtomicFieldFetchAdd(atomicPtr, 2u32)
-    let subbed = AtomicFieldFetchSub(atomicPtr, 3u32)
-    let anded = AtomicFieldFetchAnd(atomicPtr, 0x2fu32)
-    let ored = AtomicFieldFetchOr(atomicPtr, 0x80u32)
-    let xored = AtomicFieldFetchXor(atomicPtr, 0x0fu32)
+    let exchanged = AtomicFieldExchangeBits(atomicRaw, 40, 4, order: MEMORY_ORDER_SEQ_CST)
+    let added = AtomicFieldFetchAddBits(atomicRaw, 2, 4)
+    let subbed = AtomicFieldFetchSubBits(atomicRaw, 3, 4)
+    let anded = AtomicFieldFetchAndBits(atomicRaw, 0x2f, 4)
+    let ored = AtomicFieldFetchOrBits(atomicRaw, 0x80, 4)
+    let xored = AtomicFieldFetchXorBits(atomicRaw, 0x0f, 4)
     println("ATOMIC load=${load} cas_ok=${casOk} cas_fail=${casFail} exchange=${exchanged} " +
-        "add=${added} sub=${subbed} and=${anded} or=${ored} xor=${xored} final=${AtomicFieldGet(atomicPtr)}")
+        "add=${added} sub=${subbed} and=${anded} or=${ored} xor=${xored} final=${AtomicFieldLoadBits(atomicRaw, 4)}")
 
-    var plainRef = RefFieldFromTaggedAddress(CPointer<Unit>(UIntNative(0x123456789ab0u64)), 1u16, 1u16)
+    var plainRef = RefFieldFromTaggedAddress(RefFieldPointerFromAddress(UIntNative(0x123456789ab0u64)), 1u16, 1u16)
     let plainRefPtr = unsafe { CPointer<RefField>(inout plainRef) }
     println("REF raw=${RefFieldGetFieldValue(plainRefPtr).toString(radix: 16)} " +
         "address=${RefFieldGetAddress(plainRefPtr).toString(radix: 16)} tagged=${RefFieldIsTagged(plainRefPtr)} " +
         "tag=${RefFieldGetTagId(plainRefPtr)}")
-    RefFieldSetTargetObject(plainRefPtr, CPointer<Unit>(UIntNative(0x223344556670u64)))
+    RefFieldSetTargetObject(plainRefPtr, RefFieldPointerFromAddress(UIntNative(0x223344556670u64)))
     println("REF_SET raw=${RefFieldGetFieldValue(plainRefPtr).toString(radix: 16)} " +
         "target=${RefFieldGetTargetObject(plainRefPtr).toUIntNative().toString(radix: 16)}")
 
-    var atomicRef = RefFieldFromAddress(CPointer<Unit>(UIntNative(0x1000u64)))
+    var atomicRef = RefFieldFromAddress(RefFieldPointerFromAddress(UIntNative(0x1000u64)))
     let atomicRefPtr = unsafe { CPointer<RefField>(inout atomicRef) }
     let old = AtomicRefFieldExchange(atomicRefPtr, UIntNative(0x2000u64), order: MEMORY_ORDER_ACQ_REL)
     let refCasOk = AtomicRefFieldCompareExchange(atomicRefPtr, UIntNative(0x2000u64), UIntNative(0x3000u64),
