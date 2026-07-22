@@ -2,15 +2,12 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
+source "$ROOT/test/compiler_identity.sh"
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 CPP_RUNTIME_LIB="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative"
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-LLVM_BIN="$CANGJIE_HOME/third_party/llvm/bin"
 CJC_BIN_DIR=$(cd "${SELFHOST_CJC%/*}" && pwd -P)
 SELFHOST_RT="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
-export CANGJIE_HOME
-export LD_LIBRARY_PATH="$SELFHOST_RT:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="$SELFHOST_RT:$LD_LIBRARY_PATH"
 export cjHeapSize=24GB
 fail() { echo "run_eh_primitives_probe: FAIL $*" >&2; exit 1; }
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || fail "executable target must be Linux x86_64"
