@@ -3,7 +3,7 @@ package rt.runtime
 foreign {
     // Common/Runtime.h:36-42,106 and CangjieRuntime.cpp:95. This is the existing
     // C++ singleton data symbol; it is not a new bridge ABI.
-    var _ZN12MapleRuntime7Runtime7runtimeE: CPointer<Unit>
+    let _ZN12MapleRuntime7Runtime7runtimeE: CPointer<Unit>
 
     // CangjieRuntime.h:49. The C++ member returns RuntimeParam by value. A
     // foreign function whose first explicit argument is `this` has the same
