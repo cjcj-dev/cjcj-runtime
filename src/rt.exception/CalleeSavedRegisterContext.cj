@@ -38,6 +38,12 @@ public struct CalleeSavedRegisterContext {
         rbp = 0u64
         rsp = 0u64
     }
+
+    // Exception/CalleeSavedRegisterContext.h:107-112.
+    @NoHeapAlloc
+    public mut func SetValueByIdx(idx: UInt32, value: ArchUInt): Unit {
+        unsafe { CPointer<ArchUInt>(inout this.rbx).write(Int64(idx), value) }
+    }
 }
 
 // Exception/CalleeSavedRegisterContext.h:32-54. AArch64 uses the same record
@@ -90,6 +96,12 @@ public struct CalleeSavedRegisterContext {
         d15 = 0u64
         sp = 0u64
     }
+
+    // Exception/CalleeSavedRegisterContext.h:107-112.
+    @NoHeapAlloc
+    public mut func SetValueByIdx(idx: UInt32, value: ArchUInt): Unit {
+        unsafe { CPointer<ArchUInt>(inout this.x19).write(Int64(idx), value) }
+    }
 }
 
 // Exception/CalleeSavedRegisterContext.h:55-75. ARM32 preserves the header's
@@ -135,6 +147,12 @@ public struct CalleeSavedRegisterContext {
         d14 = 0u64
         d15 = 0u64
         sp = 0u32
+    }
+
+    // Exception/CalleeSavedRegisterContext.h:107-112. ArchUInt is UInt32 on ARM.
+    @NoHeapAlloc
+    public mut func SetValueByIdx(idx: UInt32, value: ArchUInt): Unit {
+        unsafe { CPointer<ArchUInt>(inout this.r4).write(Int64(idx), value) }
     }
 }
 
@@ -191,19 +209,17 @@ public struct CalleeSavedRegisterContext {
     // the seven integer registers plus padding; each XMM consumes two slots.
     @NoHeapAlloc
     public mut func SetXMMValueByIdx(xmmIdx: UInt32, value: CPointer<XMMReg>): Unit {
-        let slot = unsafe { CPointer<UInt64>(inout this) + 8 + Int64(2u32 * xmmIdx) }
+        let slot = unsafe { CPointer<UInt64>(inout this.rbx) + 8 + Int64(2u32 * xmmIdx) }
         unsafe {
             slot.write(0, value.read().low)
             slot.write(1, value.read().high)
         }
     }
-}
 
-extend CalleeSavedRegisterContext {
     // Exception/CalleeSavedRegisterContext.h:107-112. ArchUInt preserves the
     // C++ target-width slot walk, including 32-bit ARM's four-byte indexing.
     @NoHeapAlloc
     public mut func SetValueByIdx(idx: UInt32, value: ArchUInt): Unit {
-        unsafe { CPointer<ArchUInt>(inout this).write(Int64(idx), value) }
+        unsafe { CPointer<ArchUInt>(inout this.rbx).write(Int64(idx), value) }
     }
 }
