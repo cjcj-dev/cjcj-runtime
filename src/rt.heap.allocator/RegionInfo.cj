@@ -477,7 +477,7 @@ public struct UnitInfo {
         let ptr: UIntNative = unit.toUIntNative()
         if (ptr < heapStartAddress) {
             let unitSize: UIntNative = sizeOf<UnitInfo>()
-            return (heapStartAddress - ptr) / unitSize - 1
+            return (heapStartAddress - ptr).wrappingDiv(unitSize) - 1
         }
         unsafe { RtFatal(CString(CPointer<UInt8>(inout regionInfoInvariantMessages) + 85)) }
         return 0
@@ -1130,7 +1130,7 @@ extend CPointer<RegionInfo> {
         }
         // RegionInfo.h:65 and 1087-1092; live sizeof(UnitInfo)=88 is guarded by
         // the original-vs-port layout oracle, and avoids a runtime generic sizeof.
-        let idx = (UnitInfo.heapStartAddress - ptr) / 88 - 1
+        let idx = (UnitInfo.heapStartAddress - ptr).wrappingDiv(88) - 1
         if (idx >= UnitInfo.totalUnitCount) {
             unsafe { RtFatal(CString(CPointer<UInt8>(inout regionInfoInvariantMessages) + 215)) }
         }
@@ -1150,7 +1150,7 @@ extend CPointer<RegionInfo> {
     // RegionInfo.h:605.
     public func GetUnitCount(): UIntNative {
         let size = GetRegionSize()
-        return size / RegionInfo.UNIT_SIZE
+        return size.wrappingDiv(RegionInfo.UNIT_SIZE)
     }
 
     // RegionInfo.h:814.
