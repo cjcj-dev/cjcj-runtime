@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
+CPP_RUNTIME_LIB="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative"
 CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
 LLVM_BIN="$CANGJIE_HOME/third_party/llvm/bin"
 CJC_BIN_DIR=$(cd "${SELFHOST_CJC%/*}" && pwd -P)
@@ -32,12 +33,13 @@ mkdir -p "$TMP/exception" "$TMP/root"
 )
 "$SELFHOST_CJC" "$ROOT/test/parity/exception/eh_primitives_probe.cj" --import-path "$TMP" \
     --int-overflow wrapping "$TMP/librt.exception.a" -o "$TMP/eh_cj"
-g++ -std=c++14 -O2 -ffunction-sections -fdata-sections -I "$RUNTIME_ROOT/src" \
+g++ -std=c++14 -O2 -I "$RUNTIME_ROOT/src" \
     -I "$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" \
-    "$ROOT/test/parity/exception/eh_primitives_ref.cpp" "$CPP_CC" \
-    -Wl,--gc-sections -o "$TMP/eh_cpp"
+    "$ROOT/test/parity/exception/eh_primitives_ref.cpp" -L "$CPP_RUNTIME_LIB" \
+    -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/eh_cpp"
 "$TMP/eh_cj" > "$TMP/cj.transcript"
-"$TMP/eh_cpp" > "$TMP/cpp.transcript"
+LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$CANGJIE_HOME/third_party/llvm/lib" \
+    "$TMP/eh_cpp" > "$TMP/cpp.transcript"
 cmp "$TMP/cpp.transcript" "$TMP/cj.transcript"
 cat "$TMP/cj.transcript"
 echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") cmp=identical status=PASS"

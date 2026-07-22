@@ -6,7 +6,6 @@
 
 using MapleRuntime::EHTable;
 using MapleRuntime::ScanResult;
-using MapleRuntime::TTypeEncoding;
 
 static void Emit(const char* name, const uint8_t* bytes)
 {
@@ -26,9 +25,10 @@ int main()
         static_cast<unsigned long long>(result.typeIndex),
         static_cast<unsigned long long>(result.landingPad), result.isCaught ? "true" : "false");
     std::printf("TTYPE %d %d %d %d\n",
-        static_cast<int>(TTypeEncoding::ABS_PTR), static_cast<int>(TTypeEncoding::U_DATA_4),
-        static_cast<int>(TTypeEncoding::INDIR_PC_REL_S_DATA_4),
-        static_cast<int>(TTypeEncoding::INDIR_PC_REL_S_DATA_8));
+        static_cast<int>(EHTable::TTypeEncoding::ABS_PTR),
+        static_cast<int>(EHTable::TTypeEncoding::U_DATA_4),
+        static_cast<int>(EHTable::TTypeEncoding::INDIR_PC_REL_S_DATA_4),
+        static_cast<int>(EHTable::TTypeEncoding::INDIR_PC_REL_S_DATA_8));
     const uint8_t zero[] = {0x00}; Emit("zero", zero);
     const uint8_t one[] = {0x01}; Emit("one", one);
     const uint8_t v127[] = {0x7f}; Emit("127", v127);
