@@ -37,8 +37,10 @@ mkdir -p "$TMP/exception" "$TMP/root"
     "$SELFHOST_CJC" --package "$ROOT/src/rt.exception" --output-type=staticlib -O2 \
         --int-overflow wrapping --save-temps "$TMP/exception" --output-dir "$TMP" -o librt.exception.a
 )
+g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 "$SELFHOST_CJC" "$ROOT/test/parity/exception/eh_primitives_probe.cj" --import-path "$TMP" \
-    --int-overflow wrapping "$TMP/librt.exception.a" -o "$TMP/eh_cj"
+    --int-overflow wrapping "$TMP/librt.exception.a" "$TMP/Panic.o" \
+    --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/eh_cj"
 cpp_includes=(-I "$RUNTIME_ROOT/src" \
     -I "$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" \
     -I "$RUNTIME_ROOT/src/CJThread/src/runtime/schedule/include/inner/gas/x86/x86_64")
