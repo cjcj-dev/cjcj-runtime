@@ -62,3 +62,9 @@ public func FreshRegionCache(cache: CPointer<RegionCache>, name: CString,
 public func FreshRegionListRemove(list: CPointer<RegionList>, region: CPointer<RegionInfo>): Unit {
     RemoveRegionLocked(list, region)
 }
+
+@When[debug]
+@NoHeapAlloc
+public func FreshRegionListDebug(list: CPointer<RegionList>, message: CPointer<UInt8>): Unit {
+    list.DumpRegionList(message)
+}
