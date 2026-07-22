@@ -1,7 +1,8 @@
-package rt.heap.allocator
+package rt.gc.forwarddata
 
 import rt.base.*
 import rt.gc.*
+import rt.heap.allocator.*
 import rt.sync.*
 import std.overflow.*
 
@@ -361,7 +362,7 @@ public func ForwardDataUnbindPrevious(manager: CPointer<ForwardDataManager>): Un
         let liveInfo = unsafe { CPointer<LiveInfo>(CPointer<UInt8>() + Int64(current)) }
         let region = CPointer<RegionInfo>(unsafe { liveInfo.read(0).bindedRegion })
         if (region.isNull()) { unsafe { abort() } }
-        region.CheckAndClearLiveInfo(CPointer<Unit>(liveInfo))
+        RegionInfo.CheckAndClearLiveInfo(region, CPointer<Unit>(liveInfo))
         current = current.wrappingAdd(sizeOf<LiveInfo>())
     }
 }

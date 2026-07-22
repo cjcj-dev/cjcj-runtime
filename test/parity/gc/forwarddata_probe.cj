@@ -1,6 +1,7 @@
-package rt.heap.allocator
+package rt.gc.forwarddata
 
 import rt.gc.*
+import rt.heap.allocator.*
 
 @When[os != "Windows"]
 private func ProbeManagerOffset(): Int64 { return 96 }

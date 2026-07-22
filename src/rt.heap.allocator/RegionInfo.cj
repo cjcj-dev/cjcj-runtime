@@ -750,6 +750,13 @@ public struct RegionInfo {
         let free: Bool = region.IsFreeRegion()
         return free
     }
+
+    // RegionInfo.h:739-752. Explicit receiver package boundary for the
+    // ForwardDataManager owner; CPointer extensions are not exported by 0619 cjc.
+    public static func CheckAndClearLiveInfo(region: CPointer<RegionInfo>,
+        liveInfo: CPointer<Unit>): Unit {
+        region.CheckAndClearLiveInfo(liveInfo)
+    }
 }
 
 // runtime/src/Heap/Allocator/RegionInfo.h:759-763.

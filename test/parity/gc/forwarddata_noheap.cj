@@ -1,6 +1,7 @@
-package rt.heap.allocator
+package rt.gc.forwarddata
 
 import rt.gc.*
+import rt.heap.allocator.*
 
 @NoHeapAlloc
 public func ForwardDataNoHeapRoot(manager: CPointer<ForwardDataManager>, region: CPointer<RegionInfo>): UIntNative {
