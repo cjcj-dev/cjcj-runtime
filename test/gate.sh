@@ -2,23 +2,19 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+source "$ROOT/test/compiler_identity.sh"
 OUT=${OUT:-"$ROOT/out/gate"}
 REPO=${REPO:-/root/cj_build/cjcj}
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-CJC=${CJC:-"$REPO/target/release/bin/cjcj::cjc"}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
-RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
-export CANGJIE_HOME
-export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
-SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/heap/run_freeregionmanager_probe.sh"
+bash "$ROOT/test/parity/heap/run_freeregionmanager_probe.sh"
 bash "$ROOT/test/parity/exception/run_eh_primitives_probe.sh"
 bash "$ROOT/test/parity/runtime/run_runtimeparam_probe.sh"
-SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_markworkstack_probe.sh"
-SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_regionbitmap_probe.sh"
-SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_forwarddata_probe.sh"
-SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/objectmodel/run_field_ref_probe.sh"
-SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/objectmodel/run_gctib_probe.sh"
+bash "$ROOT/test/parity/gc/run_markworkstack_probe.sh"
+bash "$ROOT/test/parity/gc/run_regionbitmap_probe.sh"
+bash "$ROOT/test/parity/gc/run_forwarddata_probe.sh"
+bash "$ROOT/test/parity/objectmodel/run_field_ref_probe.sh"
+bash "$ROOT/test/parity/objectmodel/run_gctib_probe.sh"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
@@ -113,13 +109,12 @@ printf 'INJECT PASS objects=%s\n' "$inject_count"
 
 MANAGED_HOST_STAGE="$OUT/managed-host"
 bash "$ROOT/test/contract/instance/run_staged_managed_host.sh" \
-    "$CJC" "$HYBRID" "$MANAGED_HOST_STAGE"
+    "$HYBRID" "$MANAGED_HOST_STAGE"
 
-HYBRID="$HYBRID" SELFHOST_CJC="$MANAGED_HOST_STAGE/bin/$(basename "$CJC")" \
-    OUT="$OUT/instance-contract" \
+HYBRID="$HYBRID" OUT="$OUT/instance-contract" \
     bash "$ROOT/test/contract/instance/run_contract.sh"
 
-HYBRID="$HYBRID" SELFHOST="$REPO" CJC="$CJC" \
+HYBRID="$HYBRID" SELFHOST="$REPO" \
     BUILD="$OUT/demangle-parity" bash "$ROOT/test/parity/demangle/run_parity.sh" \
     | tee "$OUT/demangle-parity.log"
 
@@ -128,11 +123,16 @@ if [ "${SKIP_DIFFTEST:-0}" = 1 ]; then
     exit 0
 fi
 
+DIFFTEST_ROOT="$OUT/difftest-selfhost"
+mkdir -p "$DIFFTEST_ROOT/scripts" "$DIFFTEST_ROOT/target/release/bin"
+cp "$REPO/scripts/difftest.sh" "$DIFFTEST_ROOT/scripts/difftest.sh"
+ln -s "$ROOT/test/published_cjc.sh" "$DIFFTEST_ROOT/target/release/bin/cjcj::cjc"
+
 (
-    cd "$REPO"
+    cd "$DIFFTEST_ROOT"
     LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" \
-        bash scripts/difftest.sh -j "${DIFFTEST_JOBS:-8}"
+        bash scripts/difftest.sh "$REPO/scripts/difftest_corpus" -j "${DIFFTEST_JOBS:-8}"
 ) | tee "$OUT/difftest.log"
 grep -Fq 'TOTAL=114  PASS=114  MISMATCH=0  FAIL=0' "$OUT/difftest.log"
-printf 'W2 GATE PASS rt0=1 instance=1 inject=%s symcheck=2692/2695 demangle=byte-identical difftest=114/114\n' \
+printf 'W2 GATE PASS rt0=1 instance=1 inject=%s symcheck=2692/2695 demangle=byte-identical TOTAL=114 PASS=114 MISMATCH=0 FAIL=0\n' \
     "$inject_count"
