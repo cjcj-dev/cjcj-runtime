@@ -142,7 +142,7 @@ for final_bc in "$NOHEAP_TEMPS"/[0-9]*-rt.heap.allocator.opt.bc; do
         gsub(/^"|"$/, "", name)
         emit = (name in keep)
     }
-    emit { print }
+    emit { print; if ($0 ~ /^}/) emit = 0 }
     ' "$module_ir" > "$closure_ir"
     if grep -q '^define ' "$closure_ir"; then
         FINAL_BC_COUNT=$((FINAL_BC_COUNT + 1))
