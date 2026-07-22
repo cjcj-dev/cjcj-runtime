@@ -7,6 +7,7 @@
 #define private public
 #include "Heap/Allocator/FreeRegionManager.h"
 #include "Heap/Allocator/RegionManager.h"
+#include "Heap/Allocator/CartesianTree.cpp"
 #undef private
 
 using namespace MapleRuntime;
