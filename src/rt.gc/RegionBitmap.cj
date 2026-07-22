@@ -44,6 +44,11 @@ private const MARKED_BYTES_PER_BIT: UInt64 = 8
 private const BITS_PER_WORD: UInt64 = 64
 private const BITMAP_HEADER_SIZE: Int64 = 48
 
+private func AddressOffset(value: UInt64): Int64 {
+    var bits = value
+    return unsafe { CPointer<Int64>(CPointer<UInt64>(inout bits)).read(0) }
+}
+
 @C
 public struct RegionBitmap {
     private var partLiveBytes: VArray<UInt16, $16>
@@ -103,7 +108,7 @@ public struct LiveInfo {
 }
 
 private func PartAddress(bitmap: CPointer<RegionBitmap>, index: UInt64): CPointer<UInt16> {
-    return CPointer<UInt16>(bitmap.toUIntNative() + UIntNative(index * 2))
+    return unsafe { CPointer<UInt16>(CPointer<UInt8>(bitmap) + AddressOffset(index * 2)) }
 }
 
 private func LiveBytesAddress(bitmap: CPointer<RegionBitmap>): CPointer<UInt64> {
@@ -115,7 +120,7 @@ private func WordCountAddress(bitmap: CPointer<RegionBitmap>): CPointer<UInt64> 
 }
 
 private func MarkWordAddress(bitmap: CPointer<RegionBitmap>, index: UInt64): CPointer<UInt64> {
-    return CPointer<UInt64>(bitmap.toUIntNative() + UIntNative(BITMAP_HEADER_SIZE) + UIntNative(index * 8))
+    return unsafe { CPointer<UInt64>(CPointer<UInt8>(bitmap) + BITMAP_HEADER_SIZE + AddressOffset(index * 8)) }
 }
 
 private func PopCount(value: UInt64): UInt64 {
