@@ -1,5 +1,23 @@
 package rt.objectmodel
 
+foreign {
+    // rt0/GCTibShift.cpp and ObjectModel/MClass.h:247-250,320-325.
+    @When[os == "Linux" || env == "ohos"]
+    func CJRT_GCTibShiftUIntNative(value: UIntNative, count: UIntNative): UIntNative
+    @When[os == "Linux" || env == "ohos"]
+    func CJRT_GCTibShiftUInt8(value: UInt8, count: UIntNative): UInt8
+
+    @When[os == "macOS" || os == "iOS"]
+    func CJRT_GCTibShiftUIntNative(value: UIntNative, count: UIntNative): UIntNative
+    @When[os == "macOS" || os == "iOS"]
+    func CJRT_GCTibShiftUInt8(value: UInt8, count: UIntNative): UInt8
+
+    @When[os == "Windows"]
+    func CJRT_GCTibShiftUIntNative(value: UIntNative, count: UIntNative): UIntNative
+    @When[os == "Windows"]
+    func CJRT_GCTibShiftUInt8(value: UInt8, count: UIntNative): UInt8
+}
+
 // ObjectModel/MClass.h:229-382.  GCTib is a one-word tagged union.  A
 // non-capturing CFunc plus an explicit context carries the same visitor state
 // as the C++ RefFieldVisitor without creating a managed closure.
@@ -41,14 +59,14 @@ private func GCTibAlignRangeStart(address: UIntNative): UIntNative {
 }
 
 @When[arch == "arm"]
-private func GCTibRefShift(): UIntNative { return 2 }
+private func GCTibRefIndex(bytes: UIntNative): UIntNative { return bytes >> 2 }
 @When[arch != "arm"]
-private func GCTibRefShift(): UIntNative { return 3 }
+private func GCTibRefIndex(bytes: UIntNative): UIntNative { return bytes >> 3 }
 
 @When[arch == "arm"]
-private func GCTibMapShift(): UIntNative { return 5 }
+private func GCTibMapIndex(bytes: UIntNative): UIntNative { return bytes >> 5 }
 @When[arch != "arm"]
-private func GCTibMapShift(): UIntNative { return 6 }
+private func GCTibMapIndex(bytes: UIntNative): UIntNative { return bytes >> 6 }
 
 private func GCTibPointer(address: UIntNative): CPointer<UInt8> {
     return CPointer<UInt8>(RefFieldPointerFromAddress(address))
@@ -72,8 +90,8 @@ public func ShortGCTibForEachBitmapWord(short: CPointer<ShortGCTib>, fieldAddres
 public func ShortGCTibForEachBitmapWordInRange(short: CPointer<ShortGCTib>, baseAddress: UIntNative,
     visitor: GCTibVisitor, context: CPointer<Unit>, rangeStart: UIntNative, rangeEnd: UIntNative): Unit {
     var gcInfo = unsafe { short.read().bitmap } & (UIntNative.Max ^ GCTibSignBit())
-    let startPosition = (rangeStart - baseAddress) >> GCTibRefShift()
-    gcInfo >>= startPosition
+    let startPosition = GCTibRefIndex(rangeStart - baseAddress)
+    gcInfo = unsafe { CJRT_GCTibShiftUIntNative(gcInfo, startPosition) }
     var current = rangeStart
     while (gcInfo != 0) {
         if (current >= rangeEnd) { return }
@@ -136,14 +154,14 @@ public func StdGCTibForEachBitmapWordInRange(standard: CPointer<StdGCTib>, conte
     let words = StdGCTibBitmapWords(standard)
     let count = unsafe { standard.read().nBitmapWords }
     let mapWordSize = sizeOf<RefField>() * 8
-    let startIndex = UInt32((rangeStart - contentAddress) >> GCTibMapShift())
+    let startIndex = UInt32(GCTibMapIndex(rangeStart - contentAddress))
     var index = startIndex
     var baseAddress = UIntNative(startIndex) * mapWordSize + contentAddress
     while (index < count) {
         var bitmapWord = unsafe { (words + Int64(index)).read() }
         var fieldAddress = baseAddress
         if (index == startIndex && bitmapWord != 0) {
-            bitmapWord >>= UInt8((rangeStart - baseAddress) >> GCTibRefShift())
+            bitmapWord = unsafe { CJRT_GCTibShiftUInt8(bitmapWord, GCTibRefIndex(rangeStart - baseAddress)) }
             fieldAddress = rangeStart
         }
         while (bitmapWord != 0) {

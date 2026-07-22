@@ -13,15 +13,19 @@ trap 'rm -rf "$TMP"' EXIT
 SOURCE="$ROOT/src/rt.objectmodel/GCTib.cj"
 [[ $(grep -Fc '@When[arch == "arm"]' "$SOURCE") -eq 5 ]]
 [[ $(grep -Fc '@When[arch != "arm"]' "$SOURCE") -eq 5 ]]
+[[ $(grep -Fc '@When[os == "Linux" || env == "ohos"]' "$SOURCE") -eq 2 ]]
+[[ $(grep -Fc '@When[os == "macOS" || os == "iOS"]' "$SOURCE") -eq 2 ]]
+[[ $(grep -Fc '@When[os == "Windows"]' "$SOURCE") -eq 2 ]]
 echo 'GCTIB_SOURCE fresh=PASS linux_ohos=PASS apple=PASS win64=PASS arm32=PASS cpp_platform_branches=1'
 
 CPP_FLAGS=(-std=c++17 -O2 -DMRT_USE_CJTHREAD_RENAME -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include")
 g++ "${CPP_FLAGS[@]}" "$ROOT/test/parity/objectmodel/gctib_ref.cpp" -L"$CPP_RUNTIME_LIB" -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/ref"
 "$TMP/ref" > "$TMP/ref.txt"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.o"
+g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/GCTibShift.cpp" -o "$TMP/GCTibShift.o"
 cp -a "$ROOT/src/rt.objectmodel" "$TMP/rt.objectmodel.probe"
 cp "$ROOT/test/parity/objectmodel/gctib_probe.cj" "$TMP/rt.objectmodel.probe/Probe.cj"
-"$SELFHOST_CJC" --package "$TMP/rt.objectmodel.probe" --int-overflow wrapping -Woff unused "$TMP/Atomic.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
+"$SELFHOST_CJC" --package "$TMP/rt.objectmodel.probe" --int-overflow wrapping -Woff unused "$TMP/Atomic.o" "$TMP/GCTibShift.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
 "$TMP/probe" > "$TMP/probe.txt"
 cmp "$TMP/ref.txt" "$TMP/probe.txt"
 cat "$TMP/probe.txt"
@@ -49,6 +53,8 @@ awk '/^Call graph node for function:/{line=$0;sub(/^.*function: '\''/,"",line);s
 final_args=(); object_args=()
 while IFS= read -r bc; do ll="$TMP/$(basename "$bc").ll"; "$CANGJIE_HOME/third_party/llvm/bin/llvm-dis" "$bc" -o "$ll"; final_args+=(--final "$ll"); done < <(find "$TMP/temps" -maxdepth 1 -type f -name '*.opt.bc' | sort)
 while IFS= read -r obj; do dump="$TMP/$(basename "$obj").objdump"; objdump -dr "$obj" > "$dump"; object_args+=(--object "$dump"); done < <(find "$TMP/temps" -maxdepth 1 -type f -name '*.o' | sort)
+objdump -dr "$TMP/GCTibShift.o" > "$TMP/GCTibShift.objdump"
+object_args+=(--object "$TMP/GCTibShift.objdump")
 python3 "$ROOT/test/parity/objectmodel/gctib_closure.py" --pre "$TMP/pre.ll" --calls "$TMP/calls.tsv" "${final_args[@]}" "${object_args[@]}"
 echo "GCTIB_COMPILER path=$SELFHOST_CJC sha256=$(sha256sum "$SELFHOST_CJC" | awk '{print $1}') status=PASS"
 echo 'run_gctib_probe: PASS'

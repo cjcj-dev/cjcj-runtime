@@ -115,6 +115,7 @@ endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
     Atomic.cpp
+    GCTibShift.cpp
     AllocBufferNative.cpp
     ScopedSaferegion.cpp
     os/Loader.h

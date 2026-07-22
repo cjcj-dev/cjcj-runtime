@@ -28,6 +28,7 @@ RT0_SHARED_MEMBERS = (
     "CjNativeRuntimeStartAndEnd.S.o",
     "ExclusiveScope.S.o",
     "HandleSafepointStub.S.o",
+    "GCTibShift.cpp.o",
     "Loader.cpp.o",
     "N2CStub.S.o",
     "Path.cpp.o",
@@ -39,6 +40,7 @@ RT0_SHARED_MEMBERS = (
 )
 RT0_REPLACED_RUNTIME_MEMBERS = frozenset(RT0_SHARED_MEMBERS) - {
     "CjNativeRuntimeStartAndEnd.S.o",
+    "GCTibShift.cpp.o",
     "SignalVectorCompat.cpp.o",
 }
 INSTANCE_EXPORTS = frozenset(
