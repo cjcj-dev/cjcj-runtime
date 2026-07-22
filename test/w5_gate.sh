@@ -2,19 +2,14 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+source "$ROOT/test/compiler_identity.sh"
 OUT=${OUT:-"$ROOT/out/w5-gate"}
 REPO=${REPO:-/root/cj_build/cjcj}
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-CJC=${CJC:-"$REPO/target/release/bin/cjcj::cjc"}
-REF_CJC=${REF_CJC:-"$CANGJIE_HOME/bin/cjc"}
+REF_CJC="$REFERENCE_CJC"
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
-RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
-LLC="$CANGJIE_HOME/third_party/llvm/bin/llc"
+LLC="$RUNTIME_LLVM_LLC"
 REFERENCE="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative/libcangjie-runtime.so"
 RUNTIME_ARCHIVE="$RUNTIME_ROOT/target/common/linux_release_x86_64/lib/linux_x86_64_cjnative/libcangjie-runtime.a"
-
-export CANGJIE_HOME
-export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/probe" "$OUT/g11/o0" "$OUT/g11/o2" "$OUT/abi" "$OUT/demangle-cwd" \
@@ -216,10 +211,15 @@ if [ "${SKIP_DIFFTEST:-0}" = 1 ]; then
     exit 0
 fi
 
+DIFFTEST_ROOT="$OUT/difftest-selfhost"
+mkdir -p "$DIFFTEST_ROOT/scripts" "$DIFFTEST_ROOT/target/release/bin"
+cp "$REPO/scripts/difftest.sh" "$DIFFTEST_ROOT/scripts/difftest.sh"
+ln -s "$ROOT/test/published_cjc.sh" "$DIFFTEST_ROOT/target/release/bin/cjcj::cjc"
+
 (
-    cd "$REPO"
+    cd "$DIFFTEST_ROOT"
     LD_PRELOAD="$HYBRID${LD_PRELOAD:+:$LD_PRELOAD}" \
-        bash scripts/difftest.sh -j "${DIFFTEST_JOBS:-4}"
+        bash scripts/difftest.sh "$REPO/scripts/difftest_corpus" -j "${DIFFTEST_JOBS:-4}"
 ) | tee "$OUT/difftest.log"
 grep -Fq 'TOTAL=114  PASS=114  MISMATCH=0  FAIL=0' "$OUT/difftest.log"
 printf 'W5 GATE PASS cfunc=1 instance=1 symcheck=2692/2695 base_text=%s difftest=114/114\n' "$text_bytes"
