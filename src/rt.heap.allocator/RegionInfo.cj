@@ -720,6 +720,11 @@ public struct RegionInfo {
         return address
     }
 
+    // RegionInfo.h:863-872.
+    public static func Alloc(region: CPointer<RegionInfo>, size: UIntNative): UIntNative {
+        return region.Alloc(size)
+    }
+
     public static func IsEmpty(region: CPointer<RegionInfo>): Bool {
         let empty: Bool = region.IsEmpty()
         return empty
@@ -1157,6 +1162,20 @@ extend CPointer<RegionInfo> {
     public func GetRegionAllocPtr(): UIntNative {
         let allocPtr = unsafe { this.read().metadata.allocPtr }
         return allocPtr
+    }
+
+    // RegionInfo.h:863-872. UIntNative wrapping addition is the exact C++
+    // size_t behavior, including its overflow comparison semantics.
+    @NoHeapAlloc
+    public func Alloc(size: UIntNative): UIntNative {
+        let limit = unsafe { this.read().metadata.regionEnd }
+        let allocPtr = unsafe { this.read().metadata.allocPtr }
+        let next = allocPtr.wrappingAdd(size)
+        if (next <= limit) {
+            unsafe { CPointer<UIntNative>(CPointer<UInt8>(this)).write(0, next) }
+            return allocPtr
+        }
+        return 0
     }
 
     // RegionInfo.h:592-596.
