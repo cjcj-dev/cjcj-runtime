@@ -21,7 +21,7 @@ try:
             if target in pre and target not in reached: reached.add(target); queue.append(target)
             elif target not in pre: external.add(target)
     allowed = (r'^external node$', r'^llvm\.', r'^CJ_MCC_', r'^CJ_MRT_', r'^__cangjie_',
-        r'^__stack_chk_fail$', r'^_CNat', r'^_CGPat', r'^cj_atomic_u(16|64)_', r'^abort$',
+        r'^__stack_chk_fail$', r'^_CNat', r'^_CNap', r'^_CGPat', r'^cj_atomic_u(16|64)_', r'^abort$',
         r'^_Znwm$', r'^_ZdlPv$', r'^rt\$CreateArithmeticException_msg$')
     unknown = sorted(s for s in external if not any(re.match(p, s) for p in allowed))
     if unknown: raise closure.ClosureError(f'unknown external edges={unknown[:20]}')
