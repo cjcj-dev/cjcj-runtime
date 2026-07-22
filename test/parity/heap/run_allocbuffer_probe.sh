@@ -5,10 +5,12 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 export CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
+export cjHeapSize=${cjHeapSize:-24GB}
 SELFHOST_RUNTIME=/root/cj_build/cjcj/target/release/runtime/lib/linux_x86_64_cjnative
 export LD_LIBRARY_PATH="$SELFHOST_RUNTIME:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_allocbuffer_probe.XXXXXX")
+trap 'rm -rf "$TMP"' EXIT
 CPP_OUT="$TMP/cpp.txt"
 CJ_OUT="$TMP/cj.txt"
 PKG="$TMP/rt.heap.allocator"
