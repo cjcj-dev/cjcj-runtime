@@ -67,7 +67,6 @@ public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
     if (shift < 64u64 && (byte & SIGNED_FLAG) != 0u8) {
         value |= UInt64.Max << shift
     }
-    unsafe { data.write(p) }
     return Int64(value)
 }
 
