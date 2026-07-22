@@ -56,6 +56,30 @@ extern "C" uint64_t cj_atomic_u64_fetch_or_seq_cst(uint64_t* p, uint64_t v)
     return __atomic_fetch_or(p, v, __ATOMIC_SEQ_CST);
 }
 
+// Heap/Collector/ForwardDataManager.h:42-85,110-114.  The zone cursor is an
+// inline std::atomic<uintptr_t>; Windows additionally keeps relaxed-load /
+// seq_cst-store commit cursors in caller-owned storage.
+extern "C" uintptr_t cj_atomic_uintptr_fetch_add_seq_cst(uintptr_t* p, uintptr_t v)
+{
+    return __atomic_fetch_add(p, v, __ATOMIC_SEQ_CST);
+}
+extern "C" uintptr_t cj_atomic_uintptr_load_seq_cst(uintptr_t* p)
+{
+    return __atomic_load_n(p, __ATOMIC_SEQ_CST);
+}
+extern "C" uintptr_t cj_atomic_uintptr_load_relaxed(uintptr_t* p)
+{
+    return __atomic_load_n(p, __ATOMIC_RELAXED);
+}
+extern "C" void cj_atomic_uintptr_store_seq_cst(uintptr_t* p, uintptr_t v)
+{
+    __atomic_store_n(p, v, __ATOMIC_SEQ_CST);
+}
+extern "C" void cj_atomic_u32_store_release(uint32_t* p, uint32_t v)
+{
+    __atomic_store_n(p, v, __ATOMIC_RELEASE);
+}
+
 // ObjectModel/Field.h and RefField.h keep the atomic storage inline.  These
 // bit-preserving entry points let the Cangjie value wrappers retain that layout
 // while forwarding the caller's std::memory_order value unchanged.

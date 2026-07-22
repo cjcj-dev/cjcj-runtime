@@ -11,6 +11,7 @@ foreign {
     func cj_atomic_u16_load(p: CPointer<UInt16>): UInt16
     func cj_atomic_u16_store(p: CPointer<UInt16>, value: UInt16): Unit
     func cj_atomic_i32_store(p: CPointer<Int32>, value: Int32): Unit
+    func cj_atomic_u32_store_release(p: CPointer<UInt32>, value: UInt32): Unit
     func memset(destination: CPointer<Unit>, value: Int32, count: UIntNative): CPointer<Unit>
     func write(fd: Int32, data: CPointer<UInt8>, size: UIntNative): IntNative
     func abort(): Unit
@@ -1020,10 +1021,19 @@ extend CPointer<RegionInfo> {
         return false
     }
 
-    // Heap/Allocator/RegionInfo.h:719-731
-    // GC-DEFERRED: needs Collector
+    // Heap/Allocator/RegionInfo.h:739-752. This leaf is consumed by
+    // ForwardDataManager::ForwardDataSpace::UnbindPreviousLiveInfo after GC.
     public func CheckAndClearLiveInfo(liveInfo: CPointer<Unit>): Unit {
-        unsafe { RtFatal(CString(CPointer<UInt8>(inout collectorDeferredMessages) + 2374)) }
+        if (GetRegionType() == GARBAGE_REGION) {
+            return
+        }
+        let field = unsafe { CPointer<CPointer<Unit>>(CPointer<UInt8>(this) + 32) }
+        if (unsafe { field.read(0) }.toUIntNative() == liveInfo.toUIntNative()) {
+            unsafe {
+                field.write(0, CPointer<Unit>())
+                cj_atomic_u32_store_release(CPointer<UInt32>(CPointer<UInt8>(this) + 24), 0u32)
+            }
+        }
     }
 
     // Heap/Allocator/RegionInfo.h:732-738
