@@ -89,6 +89,15 @@ done
 (cd "$TMP" && g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o Panic.o)
 (cd "$TMP" && g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o Atomic.o)
 (cd "$TMP" && g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o PagePoolMutex.o)
+(cd "$TMP" && g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o SpinLock.o)
+NATIVE_INCLUDES=(-I"$RUNTIME_ROOT/include")
+while IFS= read -r directory; do NATIVE_INCLUDES+=(-I"$directory"); done < <(find "$RUNTIME_ROOT/src" -type d)
+NATIVE_FLAGS=(-std=c++17 -O2 -pthread -DMRT_USE_CJTHREAD_RENAME
+    -I"$RUNTIME_ROOT/output/temp/include"
+    -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include"
+    "${NATIVE_INCLUDES[@]}")
+(cd "$TMP" && g++ "${NATIVE_FLAGS[@]}" -fPIC -c "$ROOT/rt0/AllocBufferNative.cpp" -o AllocBufferNative.o)
+(cd "$TMP" && g++ "${NATIVE_FLAGS[@]}" -fPIC -c "$ROOT/rt0/ScopedSaferegion.cpp" -o ScopedSaferegion.o)
 
 mkdir -p "$TMP/temps/typedef_driver"
 (cd "$TMP" && "$SELFHOST_CJC" "$ROOT/test/parity/common/typedef_driver.cj" \
@@ -96,8 +105,9 @@ mkdir -p "$TMP/temps/typedef_driver"
     --save-temps "$TMP/temps/typedef_driver" \
     "$TMP/librt.common.a" "$TMP/librt.heap.allocator.a" \
     "$TMP/librt.sync.a" "$TMP/librt.base.a" \
-    "$TMP/Panic.o" "$TMP/Atomic.o" "$TMP/PagePoolMutex.o" \
-    --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/typedef_cj")
+    "$TMP/Panic.o" "$TMP/Atomic.o" "$TMP/PagePoolMutex.o" "$TMP/SpinLock.o" \
+    "$TMP/AllocBufferNative.o" "$TMP/ScopedSaferegion.o" \
+    --link-option=-lstdc++ --link-option=-lgcc_s --link-option=-lpthread -o "$TMP/typedef_cj")
 
 "$TMP/typedef_cpp" > "$TMP/cpp.transcript"
 "$TMP/typedef_cj" > "$TMP/cj.transcript"
