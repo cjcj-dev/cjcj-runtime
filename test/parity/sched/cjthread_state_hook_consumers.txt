@@ -11,6 +11,6 @@ enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule
 enumerator_definition	all_targets	CJThread/src/runtime/schedule/include/schedule.h	352	1	    CJTHREAD_STATE_HOOK_BUTT = 4
 api_documentation	all_targets	CJThread/src/runtime/schedule/include/schedule.h	920	1	 * CJThreadStateHook enumeration. The hooks registered with the scheduling framework are
 api_declaration	all_targets	CJThread/src/runtime/schedule/include/schedule.h	927	3	int CJThreadStateHookRegister(SchdCJThreadStateHookFunc func, CJThreadStateHook type);
-registration_definition	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1130	3	int CJThreadStateHookRegister(SchdCJThreadStateHookFunc func, CJThreadStateHook type)
-upper_bound_validation	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1134	1	    if (type >= CJTHREAD_STATE_HOOK_BUTT) {
-generic_array_store	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1145	1	    g_scheduleManager.schdCJThreadStateHook[type] = func;
+registration_definition	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1136	3	int CJThreadStateHookRegister(SchdCJThreadStateHookFunc func, CJThreadStateHook type)
+upper_bound_validation	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1140	1	    if (type >= CJTHREAD_STATE_HOOK_BUTT) {
+generic_array_store	all_targets	CJThread/src/runtime/schedule/src/cjthread.cpp	1151	1	    g_scheduleManager.schdCJThreadStateHook[type] = func;

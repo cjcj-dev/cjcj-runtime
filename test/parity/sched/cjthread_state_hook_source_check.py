@@ -155,10 +155,10 @@ def check_inventory(runtime_root, inventory, inventory_mode):
             occurrences = len(TOKEN.findall(exact))
             if occurrences:
                 actual[(path, line_number)] = (occurrences, exact)
-    registration_key = ("CJThread/src/runtime/schedule/src/cjthread.cpp", 1130)
+    registration_key = ("CJThread/src/runtime/schedule/src/cjthread.cpp", 1136)
     owner_key = ("CJThread/src/runtime/schedule/include/inner/schedule_impl.h", 212)
     rename_key = ("CJThread/src/base/mid/include/schedule_rename.h", 194)
-    store_key = ("CJThread/src/runtime/schedule/src/cjthread.cpp", 1145)
+    store_key = ("CJThread/src/runtime/schedule/src/cjthread.cpp", 1151)
     if inventory_mode == "extra_registration":
         actual[("CJThread/src/runtime/schedule/src/cjthread.cpp", 1129)] = (
             3, "int CJThreadStateHookRegister(SchdCJThreadStateHookFunc, CJThreadStateHook);")

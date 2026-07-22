@@ -147,7 +147,7 @@ check_source_consumers_platforms()
         fail "authoritative misspelled C ABI rename drift"
     sed -n '10,15p' "$SCHEDULE_RENAME" | grep -Fxq '#ifdef CANGJIE' ||
         fail "rename CANGJIE build-mode context drift"
-    [[ $(sed -n '1130,1146p' "$SCHEDULE_SOURCE" | rg -c '#if|#elif|#else|#endif' || true) -eq 0 ]] ||
+    [[ $(sed -n '1136,1152p' "$SCHEDULE_SOURCE" | rg -c '#if|#elif|#else|#endif' || true) -eq 0 ]] ||
         fail "registration/store acquired conditional context"
     sed -n '210,223p' "$SCHEDULE_IMPL" | grep -Fxq '#ifdef __OHOS__' ||
         fail "OHOS owner trailing-field context drift"
