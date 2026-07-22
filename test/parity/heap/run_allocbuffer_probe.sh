@@ -48,6 +48,8 @@ compile_native_linux() {
     done
     g++ "${CPP_FLAGS[@]}" -fPIC -c "$ROOT/rt0/AllocBufferNative.cpp" \
         -o "$output/AllocBufferNative.o"
+    g++ "${CPP_FLAGS[@]}" -fPIC -c "$ROOT/rt0/ScopedSaferegion.cpp" \
+        -o "$output/ScopedSaferegion.o"
 }
 
 build_cpp_probe() {
