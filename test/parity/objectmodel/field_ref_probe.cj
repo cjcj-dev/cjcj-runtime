@@ -21,13 +21,15 @@ main(): Int64 {
     let anded = AtomicFieldFetchAndBits(atomicRaw, 0x2f, 4)
     let ored = AtomicFieldFetchOrBits(atomicRaw, 0x80, 4)
     let xored = AtomicFieldFetchXorBits(atomicRaw, 0x0f, 4)
-    println("ATOMIC load=${load} cas_ok=${casOk} cas_fail=${casFail} exchange=${exchanged} " +
+    println("ATOMIC load=${load} cas_ok=${if (casOk) { 1 } else { 0 }} " +
+        "cas_fail=${if (casFail) { 1 } else { 0 }} exchange=${exchanged} " +
         "add=${added} sub=${subbed} and=${anded} or=${ored} xor=${xored} final=${AtomicFieldLoadBits(atomicRaw, 4)}")
 
     var plainRef = RefFieldFromTaggedAddress(RefFieldPointerFromAddress(UIntNative(0x123456789ab0u64)), 1u16, 1u16)
     let plainRefPtr = unsafe { CPointer<RefField>(inout plainRef) }
     println("REF raw=${RefFieldGetFieldValue(plainRefPtr)} " +
-        "address=${RefFieldGetAddress(plainRefPtr)} tagged=${RefFieldIsTagged(plainRefPtr)} " +
+        "address=${RefFieldGetAddress(plainRefPtr)} " +
+        "tagged=${if (RefFieldIsTagged(plainRefPtr)) { 1 } else { 0 }} " +
         "tag=${RefFieldGetTagId(plainRefPtr)}")
     RefFieldSetTargetObject(plainRefPtr, RefFieldPointerFromAddress(UIntNative(0x223344556670u64)))
     println("REF_SET raw=${RefFieldGetFieldValue(plainRefPtr)} " +
@@ -42,6 +44,6 @@ main(): Int64 {
         success: MEMORY_ORDER_SEQ_CST, failure: MEMORY_ORDER_ACQUIRE)
     println("ATOMIC_REF old=${old} " +
         "final=${AtomicRefFieldGetFieldValue(atomicRefPtr)} " +
-        "cas_ok=${refCasOk} cas_fail=${refCasFail}")
+        "cas_ok=${if (refCasOk) { 1 } else { 0 }} cas_fail=${if (refCasFail) { 1 } else { 0 }}")
     return 0
 }
