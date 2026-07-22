@@ -3,12 +3,9 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-SELFHOST_CJC=/root/cj_build/cjcj/target/release/bin/cjcj::cjc
-TOOLCHAIN=/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029
-RUNTIME_LIB="$TOOLCHAIN/runtime/lib/linux_x86_64_cjnative/libcangjie-runtime.so"
-export CANGJIE_HOME="$TOOLCHAIN"
+source "$ROOT/test/compiler_identity.sh"
+RUNTIME_LIB="$RUNTIME_TOOLCHAIN_RT_LIB/libcangjie-runtime.so"
 export cjHeapSize=24GB
-export LD_LIBRARY_PATH="$(dirname "$SELFHOST_CJC")/../runtime/lib/linux_x86_64_cjnative:$TOOLCHAIN/third_party/llvm/lib:$TOOLCHAIN/runtime/lib/linux_x86_64_cjnative:$TOOLCHAIN/tools/lib:${LD_LIBRARY_PATH:-}"
 
 fail()
 {
@@ -54,7 +51,6 @@ for symbol in CJ_CJThreadPreemptOffCntAdd CJ_CJThreadPreemptOffCntSub CJ_CJThrea
         fail "candidate relocation mismatch symbol=$symbol"
 done
 
-LLVM_BIN="$TOOLCHAIN/third_party/llvm/bin"
 "$LLVM_BIN/llvm-link" "$TMP/sched_temps/rt.sched.bc" "$TMP/root_temps/cjthreadpreemption.noheap.bc" \
     -o "$TMP/linked.pre.bc"
 "$LLVM_BIN/llvm-link" "$TMP/sched_temps/rt.sched.opt.bc" "$TMP/root_temps/cjthreadpreemption.noheap.opt.bc" \
