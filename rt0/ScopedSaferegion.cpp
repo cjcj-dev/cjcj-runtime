@@ -35,14 +35,16 @@ extern "C" void CJRT_ScopedEnterSaferegionEnd(bool stateChanged)
     }
 }
 
+namespace MapleRuntime {
 extern "C" void CJRT_FreeRegionReleaseNoneLog(size_t dirtyBytes, size_t targetCachedSize)
 {
-    VLOG(MapleRuntime::REPORT, "release heap garbage memory 0 bytes, cache %zu(%zu) bytes",
+    VLOG(REPORT, "release heap garbage memory 0 bytes, cache %zu(%zu) bytes",
          dirtyBytes, targetCachedSize);
 }
 
 extern "C" void CJRT_FreeRegionReleaseLog(size_t releasedBytes, size_t dirtyBytes, size_t targetCachedSize)
 {
-    VLOG(MapleRuntime::REPORT, "release heap garbage memory %zu bytes, cache %zu(%zu) bytes",
+    VLOG(REPORT, "release heap garbage memory %zu bytes, cache %zu(%zu) bytes",
          releasedBytes, dirtyBytes, targetCachedSize);
 }
+} // namespace MapleRuntime
