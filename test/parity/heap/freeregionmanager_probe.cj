@@ -26,6 +26,11 @@ main(): Int64 {
     let dirty = manager.TakeRegion(2, SMALL_SIZED_UNITS, false)
     let dirtyFirst = !dirty.isNull() && dirty.GetUnitIdx() == 2 &&
         unsafe { (heapPointer + Int64(2 * RegionInfo.UNIT_SIZE)).read(0) == 0u8 }
+    let dirtyStart = dirty.GetRegionStart()
+    let dirtySize = dirty.GetRegionSize()
+    let allocation = dirty.Alloc(64) == dirtyStart &&
+        dirty.Alloc(dirtySize - 64) == dirtyStart + 64 && dirty.Alloc(8) == 0 &&
+        dirty.GetRegionAllocPtr() == dirtyStart + dirtySize
     let released = manager.TakeRegion(3, LARGE_SIZED_UNITS, false)
     let releasedFallback = !released.isNull() && released.GetUnitIdx() == 16 &&
         unsafe { (heapPointer + Int64(16 * RegionInfo.UNIT_SIZE)).read(0) == 0x5au8 }
@@ -48,6 +53,7 @@ main(): Int64 {
         "dirty_mutex=${16 + sizeOf<FreeRegionMutexStorage>() + sizeOf<CartesianTree>()} " +
         "dirty_tree=${16 + 2 * sizeOf<FreeRegionMutexStorage>() + sizeOf<CartesianTree>()}")
     println("FREE_REGION_PARITY dirty_first=${if (dirtyFirst) { 1 } else { 0 }} " +
+        "allocation=${if (allocation) { 1 } else { 0 }} " +
         "released_fallback=${if (releasedFallback) { 1 } else { 0 }} " +
         "physical=${if (physical) { 1 } else { 0 }} release=${if (release) { 1 } else { 0 }} " +
         "dirty_before=${dirtyBefore} dirty_max=${dirtyMax} dirty_nodes=${dirtyNodes} moved=${moved}")
@@ -55,5 +61,5 @@ main(): Int64 {
     FreeRegionManager.Destroy(manager)
     unsafe { free(storage) }
     MemMap.DestroyMemMap(CPointer<CPointer<MemMap>>(inout mapping))
-    return if (dirtyFirst && releasedFallback && physical && release) { 0 } else { 1 }
+    return if (dirtyFirst && allocation && releasedFallback && physical && release) { 0 } else { 1 }
 }

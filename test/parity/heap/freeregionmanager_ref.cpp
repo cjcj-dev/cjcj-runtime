@@ -71,6 +71,11 @@ int main()
     RegionInfo* dirty = manager.TakeRegion(2, RegionInfo::UnitRole::SMALL_SIZED_UNITS, false);
     bool dirtyFirst = dirty != nullptr && dirty->GetUnitIdx() == 2 &&
         *reinterpret_cast<uint8_t*>(heap + 2 * RegionInfo::UNIT_SIZE) == 0;
+    const uintptr_t dirtyStart = dirty->GetRegionStart();
+    const size_t dirtySize = dirty->GetRegionSize();
+    bool allocation = dirty->Alloc(64) == dirtyStart &&
+        dirty->Alloc(dirtySize - 64) == dirtyStart + 64 && dirty->Alloc(8) == 0 &&
+        dirty->GetRegionAllocPtr() == dirtyStart + dirtySize;
     RegionInfo* released = manager.TakeRegion(3, RegionInfo::UnitRole::LARGE_SIZED_UNITS, false);
     bool releasedFallback = released != nullptr && released->GetUnitIdx() == 16 &&
         *reinterpret_cast<uint8_t*>(heap + 16 * RegionInfo::UNIT_SIZE) == 0x5a;
@@ -92,8 +97,8 @@ int main()
         sizeof(FreeRegionManager), alignof(FreeRegionManager), offsetof(FreeRegionManager, regionManager),
         offsetof(FreeRegionManager, releasedUnitTreeMutex), offsetof(FreeRegionManager, releasedUnitTree),
         offsetof(FreeRegionManager, dirtyUnitTreeMutex), offsetof(FreeRegionManager, dirtyUnitTree));
-    std::printf("FREE_REGION_PARITY dirty_first=%u released_fallback=%u physical=%u release=%u dirty_before=%u dirty_max=%u dirty_nodes=%zu moved=%zu\n",
-        dirtyFirst, releasedFallback, physical, release, dirtyBefore, dirtyMax, dirtyNodes, moved);
+    std::printf("FREE_REGION_PARITY dirty_first=%u allocation=%u released_fallback=%u physical=%u release=%u dirty_before=%u dirty_max=%u dirty_nodes=%zu moved=%zu\n",
+        dirtyFirst, allocation, releasedFallback, physical, release, dirtyBefore, dirtyMax, dirtyNodes, moved);
     munmap(mapping, mapSize);
-    return dirtyFirst && releasedFallback && physical && release ? 0 : 1;
+    return dirtyFirst && allocation && releasedFallback && physical && release ? 0 : 1;
 }

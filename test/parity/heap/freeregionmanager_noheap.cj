@@ -13,7 +13,8 @@ public func FreshFreeRegionManagerPolicy(manager: CPointer<FreeRegionManager>,
     var bits = UIntNative(manager.GetDirtyUnitCount()) ^ UIntNative(manager.GetReleasedUnitCount())
     bits = bits ^ UIntNative(manager.GetDirtyMaxBlock()) ^ UIntNative(manager.GetReleasedMaxBlock())
     bits = bits ^ manager.GetDirtyNodeCount() ^ manager.GetReleasedNodeCount()
-    bits = bits ^ manager.TakeRegion(1, SMALL_SIZED_UNITS, false).toUIntNative()
+    let taken = manager.TakeRegion(1, SMALL_SIZED_UNITS, false)
+    bits = bits ^ taken.toUIntNative() ^ taken.Alloc(8)
     bits = bits ^ manager.ReleaseGarbageRegions(0)
     let _ = region
     FreeRegionManager.Destroy(manager)
