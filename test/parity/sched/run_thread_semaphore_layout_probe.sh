@@ -228,7 +228,9 @@ check_layout_source_inventory_platforms()
     ! rg -q 'toUIntNative|CPointer<UInt8>\([^)]*\)\s*[+-]' \
         "$ROOT/src/rt.sched/Thread.cj" "$ROOT/test/parity/sched/thread_semaphore_noheap_roots.cj" ||
         fail "integer pointer arithmetic in owner/member path"
-    ! rg -q '^public func |ThreadSleep\(|ThreadEntry\(|ThreadCreate\(|ThreadAlloc|CJThreadCreate\(|CJThreadResume\(|CJThreadYield\(|CJThreadDestroy\(|malloc|calloc|new ' \
+    [[ $(rg -c '^public func (CJThreadPreemptOffCntAdd|CJThreadPreemptOffCntSub|CJThreadResched)\(\): Int32' \
+        "$ROOT/src/rt.sched/Thread.cj") -eq 3 ]] || fail "preemption wrapper inventory"
+    ! rg -q 'ThreadSleep\(|ThreadEntry\(|ThreadCreate\(|ThreadAlloc|CJThreadCreate\(|CJThreadResume\(|CJThreadYield\(|CJThreadDestroy\(|malloc|calloc|new ' \
         "$ROOT/src/rt.sched/Thread.cj" || fail "forbidden scheduler/lifecycle/wrapper surface"
     ! rg -q 'CJRT_ThreadOwnerRun|ThreadSemaphore|rt\.sched:Thread|(^|[^A-Za-z0-9_])(Thread|LuaCJThread|CJThreadContext|CJThreadAttr|Dulink)([^A-Za-z0-9_]|$)' "$ROOT/contract" ||
         fail "descriptor leaked into production export contract"
