@@ -26,6 +26,7 @@ private const ABNORMAL_EH_TABLE_TAG: UInt32 = 0x55555555u32
 private const SHIFT_LENGTH: UInt64 = 7u64
 private const VALUE_MASK: UInt8 = 0x7fu8
 private const BYTE_MAX_BIT: UInt8 = 0x80u8
+private const SIGNED_FLAG: UInt8 = 0x40u8
 
 // Exception/EhTable.cpp:52-65. Decode one unsigned LEB128 value and advance
 // the caller-owned byte pointer exactly past the terminating byte.
@@ -47,6 +48,76 @@ public func ReadULEB128(data: CPointer<CPointer<UInt8>>): UInt64 {
     } while ((byte & BYTE_MAX_BIT) != 0u8)
     unsafe { data.write(p) }
     return value
+}
+
+// Exception/EhTable.cpp:68-88. Decode the signed action-table displacement,
+// including the C++ 64-bit sign extension after the terminating byte.
+@NoHeapAlloc
+public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
+    var value = 0u64
+    var shift = 0u64
+    var byte = 0u8
+    var p = unsafe { data.read() }
+    do {
+        byte = unsafe { p.read() }
+        p = unsafe { p + 1 }
+        value |= UInt64(byte & VALUE_MASK) << shift
+        shift += SHIFT_LENGTH
+    } while ((byte & BYTE_MAX_BIT) != 0u8)
+    if (shift < 64u64 && (byte & SIGNED_FLAG) != 0u8) {
+        value |= UInt64.Max << shift
+    }
+    unsafe { data.write(p) }
+    return Int64(value)
+}
+
+// Exception/EhTable.cpp:29-33. Read a four-byte unsigned type-table entry and
+// preserve its zero-extension into a native pointer value.
+@NoHeapAlloc
+public func ReadUData4(p: CPointer<UInt8>): CPointer<Unit> {
+    let value = unsafe { CPointer<UInt32>(p).read() }
+    return unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(UInt64(value))) }
+}
+
+// Exception/EhTable.cpp:35-44. The encoded UInt32 displacement is relative to
+// its own address; zero is the distinguished null catch-all entry.
+@NoHeapAlloc
+public func ReadIndirPcRelSData4(p: CPointer<UInt8>): CPointer<Unit> {
+    let offset = unsafe { CPointer<UInt32>(p).read() }
+    if (offset == 0u32) {
+        return CPointer<Unit>()
+    }
+    let address = unsafe { p + Int64(UInt64(offset)) }
+    let value = unsafe { CPointer<UInt64>(address).read() }
+    return unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(value)) }
+}
+
+// Exception/EhTable.cpp:46-51. The eight-byte encoding has no zero-offset
+// special case in the C++ implementation.
+@NoHeapAlloc
+public func ReadIndirPcRelSData8(p: CPointer<UInt8>): CPointer<Unit> {
+    let offset = unsafe { CPointer<UInt64>(p).read() }
+    let address = unsafe { p + Int64(offset) }
+    let value = unsafe { CPointer<UInt64>(address).read() }
+    return unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(value)) }
+}
+
+// Exception/EhTable.cpp:17-27. ARM32 stores a signed GOT-relative displacement;
+// every other supported target stores the absolute eight-byte pointer value.
+@When[arch == "arm"]
+@NoHeapAlloc
+public func ReadAbsPtr(p: CPointer<UInt8>): CPointer<Unit> {
+    let offset = unsafe { CPointer<Int32>(p).read() }
+    let address = unsafe { p + Int64(offset) }
+    let value = unsafe { CPointer<UInt32>(address).read() }
+    return unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(UInt64(value))) }
+}
+
+@When[arch != "arm"]
+@NoHeapAlloc
+public func ReadAbsPtr(p: CPointer<UInt8>): CPointer<Unit> {
+    let value = unsafe { CPointer<UInt64>(p).read() }
+    return unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(value)) }
 }
 
 // Exception/EhTable.h:66-72. Null and the compatibility sentinel both mark
