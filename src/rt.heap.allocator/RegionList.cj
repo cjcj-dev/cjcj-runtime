@@ -327,6 +327,36 @@ private func RegionListWriteLog(format: CPointer<UInt8>, a1: UIntNative, a2: UIn
     }
 }
 
+@When[debug]
+private func RegionListPrependLog(list: CPointer<RegionList>, region: CPointer<RegionInfo>,
+    regionType: RegionType): Unit {
+    RegionListWriteLog(CPointer<UInt8>(inout REGION_LIST_PREPEND_LOG), list.toUIntNative(),
+        ReadRegionCount(list), ReadUnitCount(list), 1, region.GetUnitCount(), region.toUIntNative(),
+        region.GetRegionStart(), GetRegionAllocatedSize(region),
+        region.GetRegionStart() + region.GetRegionSize(), UIntNative(region.GetRegionType()),
+        UIntNative(regionType))
+}
+@When[!debug]
+private func RegionListPrependLog(list: CPointer<RegionList>, region: CPointer<RegionInfo>,
+    regionType: RegionType): Unit {
+    let _ = list
+    let _ = region
+    let _ = regionType
+}
+
+@When[debug]
+private func RegionListDeleteLog(list: CPointer<RegionList>, region: CPointer<RegionInfo>): Unit {
+    RegionListWriteLog(CPointer<UInt8>(inout REGION_LIST_DELETE_LOG), list.toUIntNative(),
+        ReadRegionCount(list), ReadUnitCount(list), 1, region.GetUnitCount(), region.toUIntNative(),
+        region.GetRegionStart(), GetRegionAllocatedSize(region),
+        region.GetRegionStart() + region.GetRegionSize(), UIntNative(region.GetRegionType()), 0)
+}
+@When[!debug]
+private func RegionListDeleteLog(list: CPointer<RegionList>, region: CPointer<RegionInfo>): Unit {
+    let _ = list
+    let _ = region
+}
+
 extend CPointer<RegionList> {
     // RegionList.h:19-20; RegionManager.cpp:177-204.
     public func PrependRegion(region: CPointer<RegionInfo>, regionType: RegionType): Unit {
@@ -336,12 +366,7 @@ extend CPointer<RegionList> {
     }
     public func PrependRegionLocked(region: CPointer<RegionInfo>, regionType: RegionType): Unit {
         if (region.isNull()) { return }
-        @When[debug]
-        RegionListWriteLog(CPointer<UInt8>(inout REGION_LIST_PREPEND_LOG), this.toUIntNative(),
-            ReadRegionCount(this), ReadUnitCount(this), 1, region.GetUnitCount(), region.toUIntNative(),
-            region.GetRegionStart(), GetRegionAllocatedSize(region),
-            region.GetRegionStart() + region.GetRegionSize(), UIntNative(region.GetRegionType()),
-            UIntNative(regionType))
+        RegionListPrependLog(this, region, regionType)
         region.SetRegionType(regionType)
         SetPrevRegion(region, CPointer<RegionInfo>())
         IncCounts(1, region.GetUnitCount())
@@ -530,11 +555,7 @@ extend CPointer<RegionList> {
         let next = GetNextRegion(del)
         SetNextRegion(del, CPointer<RegionInfo>())
         SetPrevRegion(del, CPointer<RegionInfo>())
-        @When[debug]
-        RegionListWriteLog(CPointer<UInt8>(inout REGION_LIST_DELETE_LOG), this.toUIntNative(),
-            ReadRegionCount(this), ReadUnitCount(this), 1, del.GetUnitCount(), del.toUIntNative(),
-            del.GetRegionStart(), GetRegionAllocatedSize(del),
-            del.GetRegionStart() + del.GetRegionSize(), UIntNative(del.GetRegionType()), 0)
+        RegionListDeleteLog(this, del)
         DecCounts(1, del.GetUnitCount())
         if (ReadListHead(this).toUIntNative() == del.toUIntNative()) {
             RegionListAssert(prev.isNull())
