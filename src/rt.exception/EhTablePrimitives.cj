@@ -28,13 +28,6 @@ private const VALUE_MASK: UInt8 = 0x7fu8
 private const BYTE_MAX_BIT: UInt8 = 0x80u8
 private const SIGNED_FLAG: UInt8 = 0x40u8
 
-// Exception/EhTable.cpp:83-87. Keep Darwin's LLONG_MAX spelling distinct
-// from the ULLONG_MAX mask selected by every non-Apple target.
-@When[os == "macOS" || os == "iOS"]
-private const SLEB_SIGN_EXTENSION_MASK: UInt64 = 0x7fffffffffffffffu64
-@When[os != "macOS" && os != "iOS"]
-private const SLEB_SIGN_EXTENSION_MASK: UInt64 = 0xffffffffffffffffu64
-
 // Exception/EhTable.cpp:52-65. Decode one unsigned LEB128 value and advance
 // the caller-owned byte pointer exactly past the terminating byte.
 @NoHeapAlloc
@@ -58,7 +51,8 @@ public func ReadULEB128(data: CPointer<CPointer<UInt8>>): UInt64 {
 }
 
 // Exception/EhTable.cpp:68-89. Decode the signed action-table displacement,
-// including the C++ 64-bit sign extension after the terminating byte.
+// including Apple's LLONG_MAX sign extension after the terminating byte.
+@When[os == "macOS" || os == "iOS"]
 @NoHeapAlloc
 public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
     var value = 0u64
@@ -72,7 +66,27 @@ public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
         shift += SHIFT_LENGTH
     } while ((byte & BYTE_MAX_BIT) != 0u8)
     if (shift < 64u64 && (byte & SIGNED_FLAG) != 0u8) {
-        value |= SLEB_SIGN_EXTENSION_MASK << shift
+        value |= 0x7fffffffffffffffu64 << shift
+    }
+    return Int64(value)
+}
+
+// Exception/EhTable.cpp:68-89. The non-Apple arm uses ULLONG_MAX.
+@When[os != "macOS" && os != "iOS"]
+@NoHeapAlloc
+public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
+    var value = 0u64
+    var shift = 0u64
+    var byte = 0u8
+    var p = unsafe { data.read() }
+    do {
+        byte = unsafe { p.read() }
+        p = unsafe { p + 1 }
+        value |= UInt64(byte & VALUE_MASK) << (shift & 63u64)
+        shift += SHIFT_LENGTH
+    } while ((byte & BYTE_MAX_BIT) != 0u8)
+    if (shift < 64u64 && (byte & SIGNED_FLAG) != 0u8) {
+        value |= 0xffffffffffffffffu64 << shift
     }
     return Int64(value)
 }
