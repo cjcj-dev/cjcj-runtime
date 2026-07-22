@@ -20,5 +20,6 @@ object CJ_MRT_PreInitializePackage runtime-package-initializer
 object _CGPatiiHv std-package-initializer
 object _CNat6sizeOfIG_Hv intrinsic-sizeof
 object _CNat7alignOfIG_Hv intrinsic-alignof
+object _CNatXPG_12toUIntNativeHv intrinsic-pointer-address
 object __printf_chk libc-transcript
 object __stack_chk_fail libc-stack-protector
