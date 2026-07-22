@@ -14,8 +14,8 @@ extern "C" int32_t ProcessorFoundationObserve(
     int32_t globalSchNum, int32_t queueCapacity, int32_t stealRatio,
     int32_t globalAddRatio, int32_t parrayNum, int32_t stealRounds,
     int32_t runningSearchingMultiple, int32_t keyTimer, int32_t stealSleep,
-    int32_t schedCount, int32_t idle, int32_t running, int32_t exiting,
-    int32_t syscallState, size_t stateSize, size_t stateAlign,
+    int32_t schedCount, uint32_t idle, uint32_t running, uint32_t exiting,
+    uint32_t syscallState, size_t stateSize, size_t stateAlign,
     size_t freelistSize, size_t freelistAlign, size_t freelistCountOffset,
     size_t observedSize, size_t observedAlign, size_t observedTimeOffset,
     size_t infoSize, size_t infoAlign, size_t infoStateOffset,
@@ -37,7 +37,7 @@ extern "C" int32_t ProcessorFoundationObserve(
     if (idle != PROCESSOR_IDLE || running != PROCESSOR_RUNNING ||
         exiting != PROCESSOR_EXITING || syscallState != PROCESSOR_SYSCALL ||
         stateSize != sizeof(ProcessorState) || stateAlign != alignof(ProcessorState) ||
-        std::is_signed<StateUnderlying>::value == 0) return 2;
+        std::is_unsigned<StateUnderlying>::value == 0) return 2;
     if (freelistSize != sizeof(ProcessorFreelist) ||
         freelistAlign != alignof(ProcessorFreelist) ||
         freelistCountOffset != offsetof(ProcessorFreelist, cjthreadNum)) return 3;
@@ -55,7 +55,7 @@ extern "C" int32_t ProcessorFoundationObserve(
     std::printf("PROCESSOR_POLICY values=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
         globalSchNum, queueCapacity, stealRatio, globalAddRatio, parrayNum,
         stealRounds, runningSearchingMultiple, keyTimer, stealSleep, schedCount);
-    std::printf("PROCESSOR_STATE size=%zu align=%zu signed=1 values=%d,%d,%d,%d\n",
+    std::printf("PROCESSOR_STATE size=%zu align=%zu signed=0 values=%u,%u,%u,%u\n",
         stateSize, stateAlign, idle, running, exiting, syscallState);
     std::printf("PROCESSOR_FREELIST size=%zu align=%zu freeList=0 cjthreadNum=%zu\n",
         freelistSize, freelistAlign, freelistCountOffset);

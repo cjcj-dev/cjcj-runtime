@@ -19,12 +19,13 @@ public const KEY_TIMER: Int32 = 0
 public const PROCESSOR_STEAL_SLEEP_THRESHOLD: Int32 = 2
 public const PROCESSOR_SCHED_COUNT_THRESHOLD: Int32 = 100
 
-// processor.h:53-61. C++ uses the default signed enum representation.
-public type ProcessorState = Int32
-public const PROCESSOR_IDLE: ProcessorState = 0
-public const PROCESSOR_RUNNING: ProcessorState = 1
-public const PROCESSOR_EXITING: ProcessorState = 2
-public const PROCESSOR_SYSCALL: ProcessorState = 3
+// processor.h:53-61. The real-header GCC oracle selects an unsigned 4-byte
+// underlying representation for this non-negative unscoped enum.
+public type ProcessorState = UInt32
+public const PROCESSOR_IDLE: ProcessorState = 0u32
+public const PROCESSOR_RUNNING: ProcessorState = 1u32
+public const PROCESSOR_EXITING: ProcessorState = 2u32
+public const PROCESSOR_SYSCALL: ProcessorState = 3u32
 
 // processor.h:63-69. This is the complete free-list record, not its mutating
 // operations from processor.cpp:1025-1116.

@@ -85,7 +85,7 @@ cat "$TMP/cj.transcript"
 
 # Fail closed over the exact production source vocabulary and dependency boundary.
 [[ $(rg -c '^public const (GLOBAL_SCH_NUM|PROCESSOR_QUEUE_CAPACITY|PROCESSOR_STEAL_RATIO|GLOBAL_ADD_RATIO|PROCESSOR_PARRAY_NUM|PROCESSOR_STEAL_ROUNDS|RUNNING_PROCESSOR_SEARCHING_NUM_MULTIPLE|KEY_TIMER|PROCESSOR_STEAL_SLEEP_THRESHOLD|PROCESSOR_SCHED_COUNT_THRESHOLD): Int32 =' "$ROOT/src/rt.sched/Processor.cj") -eq 10 ]] || fail "policy inventory"
-[[ $(rg -c '^public const PROCESSOR_(IDLE|RUNNING|EXITING|SYSCALL): ProcessorState =' "$ROOT/src/rt.sched/Processor.cj") -eq 4 ]] || fail "state inventory"
+[[ $(rg -c '^public const PROCESSOR_(IDLE|RUNNING|EXITING|SYSCALL): ProcessorState = [0-3]u32$' "$ROOT/src/rt.sched/Processor.cj") -eq 4 ]] || fail "state inventory"
 [[ $(rg -c '^public struct Processor(Freelist|ObservedRecord|Info)' "$ROOT/src/rt.sched/Processor.cj") -eq 5 ]] || fail "record platform inventory"
 [[ $(rg -c '^public const (MID_SCHMON|ERRNO_SCHMON_ARG_INVALID|ERRNO_SCHMON_INIT_FAILED): Int32 =' "$ROOT/src/rt.sched/Schmon.cj") -eq 3 ]] || fail "schmon inventory"
 [[ $(rg -c '^public struct Processor \{' "$ROOT/src/rt.sched/Processor.cj" || true) -eq 0 ]] || fail "full Processor invented"
