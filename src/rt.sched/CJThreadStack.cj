@@ -16,12 +16,12 @@ public const CJTHREAD_MAX_STACK_SIZE: UIntNative = 1073741824
 // supplied address. As in the macros, align must be a non-zero power of two.
 @NoHeapAlloc
 public func StackAddrAlignUp(addr: UIntNative, align: UIntNative): UIntNative {
-    return (addr + align - 1) & ~(align - 1)
+    return (addr + align - 1) & !(align - 1)
 }
 
 @NoHeapAlloc
 public func StackAddrAlignDown(addr: UIntNative, align: UIntNative): UIntNative {
-    return addr & ~(align - 1)
+    return addr & !(align - 1)
 }
 
 // cjthread.h:67-91. size_t and pointer fields follow the target native width.

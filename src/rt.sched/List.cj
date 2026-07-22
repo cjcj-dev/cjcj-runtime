@@ -61,10 +61,10 @@ public func DulinkRemove(item: CPointer<Dulink>): Unit {
 }
 
 @NoHeapAlloc
-public func DulinkAdd(item: CPointer<Dulink>, where: CPointer<Dulink>): Unit {
-    DulinkSetNext(item, DulinkNext(where))
-    DulinkSetPrev(item, where)
-    DulinkSetNext(where, item)
+public func DulinkAdd(item: CPointer<Dulink>, `where`: CPointer<Dulink>): Unit {
+    DulinkSetNext(item, DulinkNext(`where`))
+    DulinkSetPrev(item, `where`)
+    DulinkSetNext(`where`, item)
     DulinkSetPrev(DulinkNext(item), item)
 }
 
