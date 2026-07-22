@@ -12,6 +12,7 @@ public struct HeapParam {
     public var allocationRate: Float64
     public var allocationWaitTime: UIntNative
 
+    @NoHeapAlloc
     public init() {
         regionSize = 0
         heapSize = 0
@@ -32,6 +33,7 @@ public struct GCParam {
     public var backupGCInterval: UInt64
     public var gcThreads: Int32
 
+    @NoHeapAlloc
     public init() {
         gcThreshold = 0
         garbageThreshold = 0.0
@@ -47,6 +49,7 @@ public struct GCParam {
 public struct LogParam {
     public var logLevel: Int32
 
+    @NoHeapAlloc
     public init() {
         logLevel = 0
     }
@@ -59,6 +62,7 @@ public struct ConcurrencyParam {
     public var coStackSize: UIntNative
     public var processorNum: UInt32
 
+    @NoHeapAlloc
     public init() {
         thStackSize = 0
         coStackSize = 0
@@ -74,6 +78,7 @@ public struct RuntimeParam {
     public var logParam: LogParam
     public var coParam: ConcurrencyParam
 
+    @NoHeapAlloc
     public init() {
         heapParam = HeapParam()
         gcParam = GCParam()
