@@ -115,7 +115,12 @@ def traverse(pre, calls, debug):
     unknown = sorted(symbol for symbol in external if not allowed_external(symbol, debug))
     if unknown:
         raise ClosureError(f'unknown external edges={unknown[:20]}')
-    return roots, operation_roots, static_roots, callback, reached, external
+    aliases = {name for name in reached
+               if re.match(r'^wrapper\.FCuPRN17rt\.heap\.allocator10RegionInfoEPuE\.[0-9]+$', name)}
+    if len(aliases) != 1:
+        raise ClosureError(f'pre callback aliases={sorted(aliases)}')
+    reached.difference_update(aliases)
+    return roots, operation_roots, static_roots, callback, aliases, reached, external
 
 
 def check_stage(stage, reached, definitions):
@@ -195,7 +200,7 @@ def main():
     try:
         pre = parse_ir(args.pre)
         calls = parse_calls(args.calls)
-        roots, operations, static, callback, reached, external = traverse(pre, calls, args.debug)
+        roots, operations, static, callback, aliases, reached, external = traverse(pre, calls, args.debug)
         check_stage('pre', reached, pre)
 
         final = {}
@@ -227,7 +232,8 @@ def main():
         total = len(reached) + len(native_defs) + len(runtime_defs)
         print(
             f'REGIONLIST_{"DEBUG_" if args.debug else ""}ROOTS operations={len(operations)} '
-            f'static_initializers={len(static)} callback_targets={len(callback)} status=PASS')
+            f'static_initializers={len(static)} callback_targets={len(callback)} '
+            f'pre_callback_aliases={len(aliases)} status=PASS')
         print(
             f'REGIONLIST_{"DEBUG_" if args.debug else ""}NOHEAP_CLOSURE '
             f'reachable_defs={total} scanned_pre={len(reached)} scanned_final={len(reached)} '
