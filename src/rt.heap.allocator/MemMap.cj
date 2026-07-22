@@ -25,8 +25,8 @@ foreign {
         protect: UInt32): CPointer<Unit>
     @When[os == "Windows"]
     func GetLastError(): UInt32
-    @When[os == "Windows"]
-    func VirtualFree(address: CPointer<Unit>, size: UIntNative, freeType: UInt32): Int32
+    // VirtualFree has one package-level declaration in RegionInfo.cj because
+    // both RegionInfo.cpp:618-628 and MemMap.cpp:71,96 use the same Win32 ABI.
 
     // MemMap.cpp:64 `new (std::nothrow) MemMap` and MemMap.h:57 `delete memMap` resolve to the
     // global operator new / operator delete. The runtime installs no operator-new override, so
