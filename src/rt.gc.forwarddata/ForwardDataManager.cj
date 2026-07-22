@@ -7,6 +7,21 @@ import rt.sync.*
 import std.overflow.*
 
 foreign {
+    @When[os != "Windows"]
+    func mmap(address: CPointer<Unit>, length: UIntNative, prot: Int32, flags: Int32,
+        fd: Int32, offset: IntNative): CPointer<Unit>
+    @When[os != "Windows"]
+    func munmap(address: CPointer<Unit>, length: UIntNative): Int32
+    @When[os == "Linux" || env == "ohos"]
+    func madvise(address: CPointer<Unit>, length: UIntNative, advice: Int32): Int32
+    @When[os == "Windows"]
+    func VirtualAlloc(address: CPointer<Unit>, size: UIntNative, allocationType: UInt32,
+        protect: UInt32): CPointer<Unit>
+    @When[os == "Windows"]
+    func VirtualFree(address: CPointer<Unit>, size: UIntNative, freeType: UInt32): Int32
+    func memset(destination: CPointer<Unit>, value: Int32, count: UIntNative): CPointer<Unit>
+    func abort(): Unit
+
     func cj_atomic_uintptr_fetch_add_seq_cst(p: CPointer<UIntNative>, value: UIntNative): UIntNative
     func cj_atomic_uintptr_load_seq_cst(p: CPointer<UIntNative>): UIntNative
     @When[os == "Windows"]
