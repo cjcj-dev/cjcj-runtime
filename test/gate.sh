@@ -12,6 +12,7 @@ export CANGJIE_HOME
 export LD_LIBRARY_PATH="$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
 
 SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/heap/run_freeregionmanager_probe.sh"
+bash "$ROOT/test/parity/exception/run_callee_saved_probe.sh"
 bash "$ROOT/test/parity/runtime/run_runtimeparam_probe.sh"
 SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_markworkstack_probe.sh"
 SELFHOST_CJC="$CJC" bash "$ROOT/test/parity/gc/run_regionbitmap_probe.sh"
