@@ -38,17 +38,7 @@ public func SizeManagerIndex(bytes: UIntNative): UIntNative {
     return UIntNative.Max
 }
 
-@NoHeapAlloc
-public func SizeManagerLimitSize(alignBytes: UIntNative): UIntNative {
-    var num = MAX_BYTES / alignBytes
-    if (num < 2) { num = 2 }
-    if (num > 512) { num = 512 }
-    return num
-}
-
-@NoHeapAlloc
-public func SizeManagerCalculatePageNum(alignBytes: UIntNative): UIntNative {
-    var npage = (SizeManagerLimitSize(alignBytes) * alignBytes) >> PAGE_SHIFT
-    if (npage == 0) { npage = 1 }
-    return npage
-}
+// COMPILER-GAP-NOHEAP-NONZERO-DIV: MemCommon.h:165-196 LimitSize and
+// CalculatePageNum require MAX_BYTES / alignBytes after CHECK(nonzero). cjc
+// still emits a reachable ArithmeticException allocation edge after such a
+// guard, and the restricted dialect has no unchecked/nonzero-proven division.
