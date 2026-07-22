@@ -22,9 +22,9 @@ CPP_SLEB_PLATFORM=$(sed -n '/^#if defined(__APPLE__)$/,/^#endif$/p' "$CPP_CC")
    $(grep -Fc 'value |= ULLONG_MAX << shift;' <<< "$CPP_SLEB_PLATFORM") -eq 1 ]] ||
     fail "C++ SLEB Apple/non-Apple constants drift"
 CJ_SLEB_SOURCE="$ROOT/src/rt.exception/EhTablePrimitives.cj"
-grep -Fq $'@When[os == "macOS" || os == "iOS"]\nprivate const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64(Int64.Max)' \
+grep -Fq $'@When[os == "macOS" || os == "iOS"]\nprivate const SLEB_SIGN_EXTENSION_MASK: UInt64 = 0x7fffffffffffffffu64' \
     "$CJ_SLEB_SOURCE" || fail "missing Cangjie SLEB Apple LLONG_MAX arm"
-grep -Fq $'@When[os != "macOS" && os != "iOS"]\nprivate const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64.Max' \
+grep -Fq $'@When[os != "macOS" && os != "iOS"]\nprivate const SLEB_SIGN_EXTENSION_MASK: UInt64 = 0xffffffffffffffffu64' \
     "$CJ_SLEB_SOURCE" || fail "missing Cangjie SLEB non-Apple ULLONG_MAX arm"
 [[ $(grep -Ec '^private const SLEB_SIGN_EXTENSION_MASK: UInt64 = ' "$CJ_SLEB_SOURCE") -eq 2 &&
    $(grep -Fc 'value |= SLEB_SIGN_EXTENSION_MASK << shift' "$CJ_SLEB_SOURCE") -eq 1 ]] ||

@@ -31,9 +31,9 @@ private const SIGNED_FLAG: UInt8 = 0x40u8
 // Exception/EhTable.cpp:83-87. Keep Darwin's LLONG_MAX spelling distinct
 // from the ULLONG_MAX mask selected by every non-Apple target.
 @When[os == "macOS" || os == "iOS"]
-private const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64(Int64.Max)
+private const SLEB_SIGN_EXTENSION_MASK: UInt64 = 0x7fffffffffffffffu64
 @When[os != "macOS" && os != "iOS"]
-private const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64.Max
+private const SLEB_SIGN_EXTENSION_MASK: UInt64 = 0xffffffffffffffffu64
 
 // Exception/EhTable.cpp:52-65. Decode one unsigned LEB128 value and advance
 // the caller-owned byte pointer exactly past the terminating byte.
