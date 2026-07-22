@@ -107,7 +107,7 @@ build_closure() {
     local output="$TMP/closure.$mode"
     mkdir -p "$output"
     local package_temps=()
-    for package in rt.base rt.sync rt.heap.allocator; do
+    for package in rt.base rt.sync; do
         local temps="$output/$package.temps"
         mkdir -p "$temps"
         "$SELFHOST_CJC" --package "$ROOT/src/$package" --output-type=staticlib "${flag[@]}" \
@@ -115,15 +115,15 @@ build_closure() {
             --import-path "$output" --output-dir "$output" -o "lib$package.a"
         package_temps+=("$temps")
     done
-    local roots="$output/regionlist.fresh.noheap"
-    mkdir -p "$roots"
-    cp "$ROOT/test/parity/heap/regionlist_fresh_noheap.cj" "$roots/Roots.cj"
-    local root_temps="$output/roots.temps"
-    mkdir -p "$root_temps"
-    "$SELFHOST_CJC" --package "$roots" --output-type=staticlib "${flag[@]}" \
-        --save-temps "$root_temps" --int-overflow wrapping -Woff unused \
-        --import-path "$output" --output-dir "$output" -o libregionlist.fresh.noheap.a
-    package_temps+=("$root_temps")
+    local heap="$output/rt.heap.allocator.noheap"
+    cp -a "$ROOT/src/rt.heap.allocator" "$heap"
+    cp "$ROOT/test/parity/heap/regionlist_fresh_noheap.cj" "$heap/FreshNoHeapRoots.cj"
+    local heap_temps="$output/rt.heap.allocator.temps"
+    mkdir -p "$heap_temps"
+    "$SELFHOST_CJC" --package "$heap" --output-type=staticlib "${flag[@]}" \
+        --save-temps "$heap_temps" --int-overflow wrapping -Woff unused \
+        --import-path "$output" --output-dir "$output" -o librt.heap.allocator.a
+    package_temps+=("$heap_temps")
 
     local package_pre=()
     for temps in "${package_temps[@]}"; do
@@ -135,8 +135,8 @@ build_closure() {
         "$LLVM_LINK" "${inputs[@]}" -o "$linked"
         package_pre+=("$linked")
     done
-    "$LLVM_LINK" --only-needed "${package_pre[3]}" "${package_pre[2]}" \
-        "${package_pre[1]}" "${package_pre[0]}" -o "$output/pre.bc"
+    "$LLVM_LINK" --only-needed "${package_pre[2]}" "${package_pre[1]}" \
+        "${package_pre[0]}" -o "$output/pre.bc"
     "$LLVM_DIS" "$output/pre.bc" -o "$output/pre.ll"
     "$LLVM_OPT" -passes=print-callgraph -disable-output "$output/pre.bc" 2> "$output/callgraph"
     awk '

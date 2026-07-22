@@ -1,6 +1,4 @@
-package regionlist.fresh.noheap
-
-import rt.heap.allocator.*
+package rt.heap.allocator
 
 @NoHeapAlloc
 @C
