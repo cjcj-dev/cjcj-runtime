@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "$#" -lt 3 ]]; then
-    printf 'usage: %s SELFHOST_CJC HYBRID STAGE [CJC_ARGS...]\n' "$0" >&2
+ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
+source "$ROOT/test/compiler_identity.sh"
+
+if [[ "$#" -lt 2 ]]; then
+    printf 'usage: %s HYBRID STAGE [CJC_ARGS...]\n' "$0" >&2
     exit 2
 fi
 
-SELFHOST_CJC=$1
-HYBRID=$2
-STAGE=$3
-shift 3
+HYBRID=$1
+STAGE=$2
+shift 2
 
 test -x "$SELFHOST_CJC"
 test -f "$HYBRID"
@@ -22,6 +24,7 @@ rm -rf "$STAGE"
 mkdir -p "$(dirname "$STAGED_CJC")" "$STAGED_RUNTIME_DIR"
 cp "$SELFHOST_CJC" "$STAGED_CJC"
 cp "$HYBRID" "$STAGED_RUNTIME"
+runtime_check_file_identity staged-compiler "$STAGED_CJC" "$COMPILER_SHA256" "$COMPILER_SIZE"
 
 printf 'MANAGED_HOST_STAGE compiler=%s runtime=%s\n' "$STAGED_CJC" "$STAGED_RUNTIME"
 sha256sum "$STAGED_CJC" "$STAGED_RUNTIME"
@@ -30,7 +33,4 @@ if [[ "$#" -eq 0 ]]; then
     exit 0
 fi
 
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-RTLIB="$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative"
-LD_LIBRARY_PATH="$STAGED_RUNTIME_DIR:$CANGJIE_HOME/third_party/llvm/lib:$RTLIB:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}" \
-    "$STAGED_CJC" "$@"
+env -u LD_PRELOAD LD_LIBRARY_PATH="$LD_LIBRARY_PATH" "$STAGED_CJC" "$@"
