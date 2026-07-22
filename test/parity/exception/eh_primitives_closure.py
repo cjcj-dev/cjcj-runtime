@@ -7,7 +7,10 @@ import sys
 from collections import deque
 from pathlib import Path
 
-ROOTS = ("EHReadULEBRoot", "EHAbnormalRoot")
+ROOTS = (
+    "EHReadULEBRoot", "EHAbnormalRoot", "EHReadSLEBRoot", "EHReadAbsPtrRoot",
+    "EHReadUData4Root", "EHReadIndir4Root", "EHReadIndir8Root", "EHFrameVarIntRoot",
+)
 PREFIXES = ("_CN12rt.exception",)
 FORBIDDEN = re.compile(
     r"(?:CJ_)?MCC_New|RawArrayAllocate|StringBuilder|std[.:]core[.:](?:String|Array)|"

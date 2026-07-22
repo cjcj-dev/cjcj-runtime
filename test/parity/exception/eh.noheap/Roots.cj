@@ -11,3 +11,33 @@ public func EHReadULEBRoot(data: CPointer<CPointer<UInt8>>): UInt64 {
 public func EHAbnormalRoot(data: CPointer<UInt8>): Bool {
     return IsAbnormalEHTable(data)
 }
+
+@C
+public func EHReadSLEBRoot(data: CPointer<CPointer<UInt8>>): Int64 {
+    return ReadSLEB128(data)
+}
+
+@C
+public func EHReadAbsPtrRoot(data: CPointer<UInt8>): CPointer<Unit> {
+    return ReadAbsPtr(data)
+}
+
+@C
+public func EHReadUData4Root(data: CPointer<UInt8>): CPointer<Unit> {
+    return ReadUData4(data)
+}
+
+@C
+public func EHReadIndir4Root(data: CPointer<UInt8>): CPointer<Unit> {
+    return ReadIndirPcRelSData4(data)
+}
+
+@C
+public func EHReadIndir8Root(data: CPointer<UInt8>): CPointer<Unit> {
+    return ReadIndirPcRelSData8(data)
+}
+
+@C
+public func EHFrameVarIntRoot(point: CPointer<CPointer<UIntNative>>, validPos: CPointer<UInt32>): UInt32 {
+    return ReadEHFrameVarInt(point, validPos)
+}
