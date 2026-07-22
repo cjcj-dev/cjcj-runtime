@@ -12,6 +12,7 @@ final CJ_MRT_PreInitializePackage runtime-package-initializer
 final _CGPatiiHv std-package-initializer
 final _CNat6sizeOfIG_Hv intrinsic-sizeof
 final _CNat7alignOfIG_Hv intrinsic-alignof
+final _CNatXPG_12toUIntNativeHv intrinsic-pointer-address
 object CJ_MCC_C2NStub runtime-native-transition
 object CJ_MCC_HandleSafepoint runtime-safepoint
 object CJ_MCC_StackGrowStub runtime-stack-growth
