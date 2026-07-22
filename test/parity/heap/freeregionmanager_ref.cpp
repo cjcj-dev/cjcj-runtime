@@ -11,6 +11,13 @@
 
 using namespace MapleRuntime;
 
+namespace MapleRuntime {
+const size_t RegionInfo::UNIT_SIZE = 4096;
+const size_t RegionInfo::LARGE_OBJECT_DEFAULT_THRESHOLD = 8 * RegionInfo::UNIT_SIZE;
+size_t RegionInfo::UnitInfo::totalUnitCount = 0;
+uintptr_t RegionInfo::UnitInfo::heapStartAddress = 0;
+}
+
 int main()
 {
     constexpr size_t units = 24;
