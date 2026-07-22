@@ -71,6 +71,17 @@ if(NOT EXISTS "${CANGJIE_RUNTIME_SOURCE}/src/Cangjie.h")
     message(FATAL_ERROR "invalid CANGJIE_RUNTIME_SOURCE: ${CANGJIE_RUNTIME_SOURCE}")
 endif()
 
+if(RT0_ARCH MATCHES "^x86_64_")
+    set(RT0_CJTHREAD_CONTEXT_INCLUDE
+        "${CANGJIE_RUNTIME_SOURCE}/src/CJThread/src/runtime/schedule/include/inner/gas/x86/x86_64")
+elseif(RT0_ARCH MATCHES "^aarch64_")
+    set(RT0_CJTHREAD_CONTEXT_INCLUDE
+        "${CANGJIE_RUNTIME_SOURCE}/src/CJThread/src/runtime/schedule/include/inner/gas/arm/arm64")
+elseif(RT0_ARCH MATCHES "^arm_")
+    set(RT0_CJTHREAD_CONTEXT_INCLUDE
+        "${CANGJIE_RUNTIME_SOURCE}/src/CJThread/src/runtime/schedule/include/inner/gas/arm/arm32")
+endif()
+
 file(GLOB RT0_ARCH_SOURCES CONFIGURE_DEPENDS "arch/${RT0_ARCH}/*.S")
 
 if(MINGW OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -102,6 +113,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 list(APPEND RT0_PLATFORM_SOURCES
+    AllocBufferNative.cpp
     os/Loader.h
     os/Path.h
     signal/SignalHandler.h
@@ -138,6 +150,10 @@ target_include_directories(cjcj_rt0 PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/os"
     "${CMAKE_CURRENT_SOURCE_DIR}/os/Windows"
     "${CANGJIE_RUNTIME_SOURCE}/src"
+    "${CANGJIE_RUNTIME_SOURCE}/src/CJThread/src/runtime/schedule/include"
+    "${CANGJIE_RUNTIME_SOURCE}/src/CJThread/src/base/log/include"
+    "${CANGJIE_RUNTIME_SOURCE}/src/CJThread/src/base/mid/include"
+    "${RT0_CJTHREAD_CONTEXT_INCLUDE}"
     "${CANGJIE_RUNTIME_SOURCE}/third_party/third_party_bounds_checking_function/include")
 target_compile_options(cjcj_rt0 PRIVATE
     $<$<CONFIG:Release>:-O2>
