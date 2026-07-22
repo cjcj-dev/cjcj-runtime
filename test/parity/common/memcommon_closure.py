@@ -7,7 +7,7 @@ import sys
 from collections import deque
 from pathlib import Path
 
-ROOTS = ("MemCommonRoundRoot", "MemCommonIndexRoot", "MemCommonLimitRoot", "MemCommonPagesRoot")
+ROOTS = ("MemCommonRoundRoot", "MemCommonIndexRoot")
 PREFIXES = ("_CN9rt.common",)
 FORBIDDEN = re.compile(
     r"(?:CJ_)?MCC_New|RawArrayAllocate|StringBuilder|std[.:]core[.:](?:String|Array)|"
