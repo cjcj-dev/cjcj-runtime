@@ -26,9 +26,13 @@ int main()
     FreeRegionManager manager(owner);
     manager.Initialize(units);
 
-    manager.AddGarbageUnits(2, 4);
-    manager.AddGarbageUnits(10, 2);
-    manager.AddReleaseUnits(16, 3);
+    // The standalone oracle has no initialized runtime ThreadLocalData, while
+    // Add* faithfully enters ScopedEnterSaferegion(true). Seed the exact two
+    // production trees through the private test view; the Cangjie probe and
+    // noheap root still exercise the public Add* paths.
+    manager.dirtyUnitTree.MergeInsert(2, 4, true);
+    manager.dirtyUnitTree.MergeInsert(10, 2, true);
+    manager.releasedUnitTree.MergeInsert(16, 3, true);
     *reinterpret_cast<uint8_t*>(heap + 2 * RegionInfo::UNIT_SIZE) = 0xa5;
     *reinterpret_cast<uint8_t*>(heap + 16 * RegionInfo::UNIT_SIZE) = 0x5a;
     RegionInfo* dirty = manager.TakeRegion(2, RegionInfo::UnitRole::SMALL_SIZED_UNITS, false);
@@ -38,7 +42,7 @@ int main()
     bool releasedFallback = released != nullptr && released->GetUnitIdx() == 16 &&
         *reinterpret_cast<uint8_t*>(heap + 16 * RegionInfo::UNIT_SIZE) == 0x5a;
 
-    manager.AddReleaseUnits(20, 2);
+    manager.releasedUnitTree.MergeInsert(20, 2, true);
     *reinterpret_cast<uint8_t*>(heap + 20 * RegionInfo::UNIT_SIZE) = 0x7c;
     RegionInfo* prepared = manager.TakeRegion(2, RegionInfo::UnitRole::SMALL_SIZED_UNITS, true);
     bool physical = prepared != nullptr && prepared->GetUnitIdx() == 20 &&
