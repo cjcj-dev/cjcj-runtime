@@ -2,14 +2,12 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-SELFHOST_CJC=/root/cj_build/cjcj/target/release/bin/cjcj::cjc
+source "$ROOT/test/compiler_identity.sh"
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
-CANGJIE_HOME=/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029
-SELFHOST_RUNTIME=/root/cj_build/cjcj/target/release/runtime/lib/linux_x86_64_cjnative
-LLVM="$CANGJIE_HOME/third_party/llvm/bin"
-export PATH=/root/.cjv/bin:$PATH
-export CANGJIE_HOME
-export LD_LIBRARY_PATH="$SELFHOST_RUNTIME:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative:$CANGJIE_HOME/tools/lib:${LD_LIBRARY_PATH:-}"
+CJC_BIN_DIR=$(cd "$(dirname "$SELFHOST_CJC")" && pwd)
+SELFHOST_RUNTIME="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
+LLVM="$LLVM_BIN"
+export LD_LIBRARY_PATH="$SELFHOST_RUNTIME:$LD_LIBRARY_PATH"
 export cjHeapSize=24GB
 
 if [[ "$(uname -s)" != "Linux" || "$(uname -m)" != "x86_64" ]]; then
