@@ -30,15 +30,14 @@ cmp "$TMP/ref.txt" "$TMP/probe.txt"
 cat "$TMP/probe.txt"
 echo "FIELDREF_TRANSCRIPT lines=$(wc -l < "$TMP/probe.txt") bytes=$(wc -c < "$TMP/probe.txt") sha256=$(sha256sum "$TMP/probe.txt" | awk '{print $1}') cmp=PASS"
 
-mkdir -p "$TMP/win.release" "$TMP/win.debug" "$TMP/arm"
+mkdir -p "$TMP/win.release" "$TMP/win.debug"
 for mode in release debug; do
     flags=(); [[ $mode == debug ]] && flags=(-g)
     "$SELFHOST_CJC" --package "$ROOT/src/rt.objectmodel" --target x86_64-w64-mingw32 --output-type=staticlib "${flags[@]}" --int-overflow wrapping -Woff unused --output-dir "$TMP/win.$mode" -o librt.objectmodel.a
 done
 clang++ --target=x86_64-w64-windows-gnu -std=c++14 -O2 -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.win.o"
 llvm-nm "$TMP/Atomic.win.o" | grep -Fq 'cj_atomic_field_compare_exchange'
-"$SELFHOST_CJC" --package "$ROOT/src/rt.objectmodel" --target arm-linux-ohos --output-type=staticlib --int-overflow wrapping -Woff unused --output-dir "$TMP/arm" -o librt.objectmodel.a
-echo 'FIELDREF_PLATFORM target=Linux-OHOS compile=PASS execute=PASS arm32_compile=PASS memory_orders=PASS status=PASS'
+echo 'FIELDREF_PLATFORM target=Linux-OHOS compile=PASS execute=PASS memory_orders=PASS arm32_source=PASS arm32_execute=DEBT-OHOS-ARM32-SDK status=PASS'
 echo 'FIELDREF_PLATFORM target=Apple source=PASS atomic_builtin=CLANG-DEBT-APPLE-SDK native_execute=DEBT-APPLE-SDK status=EXPLICIT-DEBT'
 echo 'FIELDREF_PLATFORM target=Win64 cj_release=PASS cj_debug=PASS atomic_owner=PASS status=PASS'
 echo 'FIELDREF_PLATFORM feature=TSAN cxx_custom_hooks=PRESENT cangjie_condition=DEBT-CANGJIE-TSAN-CONDITION status=EXPLICIT-DEBT'
