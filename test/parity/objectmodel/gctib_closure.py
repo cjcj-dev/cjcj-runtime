@@ -24,7 +24,7 @@ try:
     missing_native_edges = native - external
     if missing_native_edges: raise closure.ClosureError(f'missing native edges={sorted(missing_native_edges)}')
     allowed = (r'^external node$', r'^llvm\.', r'^CJ_MCC_', r'^CJ_MRT_', r'^CJRT_GCTibShift', r'^__cangjie_',
-        r'^__stack_chk_fail$', r'^_CNat', r'^_CNap', r'^_CGPat')
+        r'^__stack_chk_fail$', r'^abort$', r'^_CNat', r'^_CNap', r'^_CGPat')
     unknown = sorted(s for s in external if not any(re.match(p, s) for p in allowed))
     if unknown: raise closure.ClosureError(f'unknown external edges={unknown[:20]}')
     closure.check_stage('pre', reached, pre)

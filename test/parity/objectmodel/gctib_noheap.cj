@@ -6,4 +6,9 @@ public func GCTibNoHeapRoot(gctib: CPointer<GCTib>, contentAddress: UIntNative,
     GCTibForEachBitmapWord(gctib, contentAddress, visitor, context)
     GCTibForEachBitmapWordInRange(gctib, contentAddress, visitor, context,
         contentAddress + sizeOf<RefField>(), contentAddress + sizeOf<RefField>() * 8)
+    BaseObjectForEachRefField(CPointer<BaseObject>(gctib), visitor, context)
+    BaseObjectForEachRefInStruct(CPointer<BaseObject>(gctib), visitor, context,
+        contentAddress, contentAddress + sizeOf<RefField>() * 8)
+    MArrayForEachRefFieldInRange(CPointer<MArray>(gctib), visitor, context,
+        contentAddress, UInt64(contentAddress + sizeOf<RefField>() * 8))
 }
