@@ -103,7 +103,7 @@ public struct LiveInfo {
 }
 
 private func PartAddress(bitmap: CPointer<RegionBitmap>, index: UInt64): CPointer<UInt16> {
-    return unsafe { CPointer<UInt16>(CPointer<UInt8>(bitmap) + Int64(index * 2)) }
+    return CPointer<UInt16>(bitmap.toUIntNative() + UIntNative(index * 2))
 }
 
 private func LiveBytesAddress(bitmap: CPointer<RegionBitmap>): CPointer<UInt64> {
@@ -115,7 +115,7 @@ private func WordCountAddress(bitmap: CPointer<RegionBitmap>): CPointer<UInt64> 
 }
 
 private func MarkWordAddress(bitmap: CPointer<RegionBitmap>, index: UInt64): CPointer<UInt64> {
-    return unsafe { CPointer<UInt64>(CPointer<UInt8>(bitmap) + BITMAP_HEADER_SIZE + Int64(index * 8)) }
+    return CPointer<UInt64>(bitmap.toUIntNative() + UIntNative(BITMAP_HEADER_SIZE) + UIntNative(index * 8))
 }
 
 private func PopCount(value: UInt64): UInt64 {
@@ -148,13 +148,13 @@ public func RegionBitmapGetBitMaskInfo(start: UInt64, byteCnt: UInt64, maskInfo:
     let maskBitCnt = byteCnt.wrappingDiv(MARKED_BYTES_PER_BIT)
     if (maskBitCnt >= headBitCnt) {
         let tailBitCnt = maskBitCnt - headBitCnt
-        result.headMaskBits = UInt64.Max ^ ((1u64 << headMaskBitStart) - 1)
+        result.headMaskBits = UInt64.Max ^ (1u64.wrappingShl(headMaskBitStart) - 1)
         result.tailWordCnt = (tailBitCnt + BITS_PER_WORD - 1).wrappingDiv(BITS_PER_WORD)
-        result.lastMaskBits = (1u64 << tailBitCnt.wrappingMod(BITS_PER_WORD)) - 1
+        result.lastMaskBits = 1u64.wrappingShl(tailBitCnt.wrappingMod(BITS_PER_WORD)) - 1
     } else {
         let headMaskBitEnd = headMaskBitStart + maskBitCnt
-        let headMaskBits = (1u64 << headMaskBitEnd) - 1
-        result.headMaskBits = (headMaskBits >> headMaskBitStart) << headMaskBitStart
+        let headMaskBits = 1u64.wrappingShl(headMaskBitEnd) - 1
+        result.headMaskBits = headMaskBits.wrappingShr(headMaskBitStart).wrappingShl(headMaskBitStart)
         result.tailWordCnt = 0
         result.lastMaskBits = 0
     }
@@ -227,42 +227,50 @@ public func RegionBitmapMarkBits(bitmap: CPointer<RegionBitmap>, start: UInt64, 
 public func RegionBitmapIsMarked(bitmap: CPointer<RegionBitmap>, start: UInt64): Bool {
     let index = start.wrappingDiv(MARKED_BYTES_PER_BIT).wrappingDiv(BITS_PER_WORD)
     let bit = start.wrappingDiv(MARKED_BYTES_PER_BIT).wrappingMod(BITS_PER_WORD)
-    return (unsafe { cj_atomic_u64_load_seq_cst(MarkWordAddress(bitmap, index)) } & (1u64 << bit)) != 0
+    return (unsafe { cj_atomic_u64_load_seq_cst(MarkWordAddress(bitmap, index)) } & 1u64.wrappingShl(bit)) != 0
 }
 
 public func RegionBitmapGetPreMaskInfo(offset: UInt64, regionSize: UInt64,
     maskInfo: CPointer<PreMaskInfo>): Unit {
-    let index = IntNative(offset.wrappingDiv(BITS_PER_WORD * MARKED_BYTES_PER_BIT))
+    let index = offset.wrappingDiv(BITS_PER_WORD * MARKED_BYTES_PER_BIT)
     var markWordSize = regionSize.wrappingDiv(MARKED_BYTES_PER_BIT * BITS_PER_WORD)
     let calFactor = if (markWordSize < 16u64) { markWordSize } else { 16u64 }
     if (markWordSize.wrappingMod(calFactor) != 0) {
         markWordSize += calFactor - markWordSize.wrappingMod(calFactor)
     }
-    let step = IntNative(markWordSize.wrappingDiv(calFactor))
-    var result = PreMaskInfo()
-    result.index = index
-    result.partIndex = Int8(index.wrappingDiv(step) - 1)
-    result.mask = (1u64 << offset.wrappingDiv(MARKED_BYTES_PER_BIT).wrappingMod(BITS_PER_WORD)) - 1
-    result.stepSize = step
-    unsafe { maskInfo.write(0, result) }
+    let step = markWordSize.wrappingDiv(calFactor)
+    var partIndex = UInt8.Max
+    var remaining = index
+    while (remaining >= step) {
+        partIndex++
+        remaining -= step
+    }
+    unsafe {
+        CPointer<UInt8>(maskInfo).write(0, partIndex)
+        CPointer<UInt64>(CPointer<UInt8>(maskInfo) + 8).write(0,
+            1u64.wrappingShl(offset.wrappingDiv(MARKED_BYTES_PER_BIT).wrappingMod(BITS_PER_WORD)) - 1)
+        CPointer<UInt64>(CPointer<UInt8>(maskInfo) + 16).write(0, step)
+        CPointer<UInt64>(CPointer<UInt8>(maskInfo) + 24).write(0, index)
+    }
 }
 
 public func RegionBitmapGetPreLiveBytes(bitmap: CPointer<RegionBitmap>, maskInfo: CPointer<PreMaskInfo>): UInt64 {
-    let info = unsafe { maskInfo.read(0) }
+    let mask = unsafe { CPointer<UInt64>(CPointer<UInt8>(maskInfo) + 8).read(0) }
+    let stepSize = unsafe { CPointer<UInt64>(CPointer<UInt8>(maskInfo) + 16).read(0) }
+    var index = unsafe { CPointer<UInt64>(CPointer<UInt8>(maskInfo) + 24).read(0) }
     var preLiveBits: UInt64 = 0
-    var partStartIndex: IntNative = 0
-    var partIndex = info.partIndex
-    while (partIndex >= 0) {
+    var partStartIndex: UInt64 = 0
+    var partIndex = unsafe { CPointer<UInt8>(maskInfo).read(0) }
+    while (partIndex != UInt8.Max) {
         preLiveBits += UInt64(unsafe { cj_atomic_u16_fetch_add_seq_cst(PartAddress(bitmap, UInt64(partIndex)), 0) })
         partIndex--
-        partStartIndex += info.stepSize
+        partStartIndex += stepSize
     }
-    var index = info.index
-    var liveBits = PopCount(unsafe { cj_atomic_u64_load_seq_cst(MarkWordAddress(bitmap, UInt64(index))) } & info.mask)
+    var liveBits = PopCount(unsafe { cj_atomic_u64_load_seq_cst(MarkWordAddress(bitmap, index)) } & mask)
     if (index == partStartIndex) { return (preLiveBits + liveBits) * MARKED_BYTES_PER_BIT }
     index--
     while (index >= partStartIndex) {
-        liveBits += PopCount(unsafe { cj_atomic_u64_load_seq_cst(MarkWordAddress(bitmap, UInt64(index))) })
+        liveBits += PopCount(unsafe { cj_atomic_u64_load_seq_cst(MarkWordAddress(bitmap, index)) })
         index--
     }
     return (preLiveBits + liveBits) * MARKED_BYTES_PER_BIT
