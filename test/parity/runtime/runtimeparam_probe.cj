@@ -3,7 +3,6 @@ import rt.runtime.*
 foreign {
     func memset(destination: CPointer<Unit>, value: Int32, count: UIntNative): CPointer<Unit>
     func write(fd: Int32, data: CPointer<UInt8>, size: UIntNative): IntNative
-    func RuntimeParamOracle(out: CPointer<RuntimeParam>): Unit
 }
 
 main(): Int64 {
@@ -37,27 +36,5 @@ main(): Int64 {
         let _ = write(1, CPointer<UInt8>(CPointer<RuntimeParam>(inout value)), sizeOf<RuntimeParam>())
     }
 
-    var cppOwner = RuntimeParam()
-    unsafe { RuntimeParamOracle(CPointer<RuntimeParam>(inout cppOwner)) }
-    let cjOwner = GetRuntimeParam()
-    let ownerEqual = unsafe {
-        let cppBytes = CPointer<UInt8>(CPointer<RuntimeParam>(inout cppOwner))
-        var cjOwnerValue = cjOwner
-        let cjBytes = CPointer<UInt8>(CPointer<RuntimeParam>(inout cjOwnerValue))
-        var equal = true
-        var i: Int64 = 0
-        while (i < Int64(sizeOf<RuntimeParam>())) {
-            if (cppBytes.read(i) != cjBytes.read(i)) {
-                equal = false
-            }
-            i += 1
-        }
-        equal
-    }
-    println("RUNTIMEPARAM_OWNER bytes=${sizeOf<RuntimeParam>()} cmp=${ownerEqual} " +
-        "heap=${GetHeapParam().heapSize == cjOwner.heapParam.heapSize} " +
-        "gc=${GetGCParam().gcThreshold == cjOwner.gcParam.gcThreshold} " +
-        "log=${GetLogParam().logLevel == cjOwner.logParam.logLevel} " +
-        "concurrency=${GetConcurrencyParam().processorNum == cjOwner.coParam.processorNum}")
-    return if (ownerEqual) { 0 } else { 1 }
+    return 0
 }

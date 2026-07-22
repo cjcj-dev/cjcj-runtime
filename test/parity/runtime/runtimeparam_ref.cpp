@@ -1,15 +1,8 @@
 // Cangjie.h:194-341 and CangjieRuntime.h:36,46-49 executable oracle.
 #include "Cangjie.h"
-#include "CangjieRuntime.h"
-
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
-
-extern "C" void RuntimeParamOracle(RuntimeParam* out)
-{
-    *out = MapleRuntime::CangjieRuntime::GetRuntimeParam();
-}
 
 int main()
 {

@@ -1,17 +1,5 @@
 package rt.runtime
 
-foreign {
-    // Common/Runtime.h:36-42,106 and CangjieRuntime.cpp:95. This is the existing
-    // C++ singleton data symbol; it is not a new bridge ABI.
-    let _ZN12MapleRuntime7Runtime7runtimeE: CPointer<Unit>
-
-    // CangjieRuntime.h:49. The C++ member returns RuntimeParam by value. A
-    // foreign function whose first explicit argument is `this` has the same
-    // target ABI (including the target-selected aggregate return convention).
-    func _ZNK12MapleRuntime14CangjieRuntime15GetRuntimeParamEv(
-        runtime: CPointer<Unit>): RuntimeParam
-}
-
 // Cangjie.h:194-246. All public configuration records are C ABI values and
 // remain allocation-free when copied by the allocator policy.
 @C
@@ -92,35 +80,4 @@ public struct RuntimeParam {
         logParam = LogParam()
         coParam = ConcurrencyParam()
     }
-}
-
-// CangjieRuntime.h:36,46-49. These functions deliberately preserve the
-// original by-value copies. Callers have the same initialized-runtime
-// precondition as Runtime::Current().
-@NoHeapAlloc
-public func GetRuntimeParam(): RuntimeParam {
-    return unsafe {
-        _ZNK12MapleRuntime14CangjieRuntime15GetRuntimeParamEv(
-            _ZN12MapleRuntime7Runtime7runtimeE)
-    }
-}
-
-@NoHeapAlloc
-public func GetHeapParam(): HeapParam {
-    return GetRuntimeParam().heapParam
-}
-
-@NoHeapAlloc
-public func GetGCParam(): GCParam {
-    return GetRuntimeParam().gcParam
-}
-
-@NoHeapAlloc
-public func GetLogParam(): LogParam {
-    return GetRuntimeParam().logParam
-}
-
-@NoHeapAlloc
-public func GetConcurrencyParam(): ConcurrencyParam {
-    return GetRuntimeParam().coParam
 }
