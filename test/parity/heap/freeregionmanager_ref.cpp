@@ -16,6 +16,32 @@ const size_t RegionInfo::UNIT_SIZE = 4096;
 const size_t RegionInfo::LARGE_OBJECT_DEFAULT_THRESHOLD = 8 * RegionInfo::UNIT_SIZE;
 size_t RegionInfo::UnitInfo::totalUnitCount = 0;
 uintptr_t RegionInfo::UnitInfo::heapStartAddress = 0;
+
+size_t FreeRegionManager::ReleaseGarbageRegions(size_t targetCachedSize)
+{
+    size_t dirtyBytes = dirtyUnitTree.GetTotalCount() * RegionInfo::UNIT_SIZE;
+    if (dirtyBytes <= targetCachedSize) {
+        VLOG(REPORT, "release heap garbage memory 0 bytes, cache %zu(%zu) bytes", dirtyBytes, targetCachedSize);
+        return 0;
+    }
+    size_t releasedBytes = 0;
+    while (dirtyBytes > targetCachedSize) {
+        std::lock_guard<std::mutex> lock1(dirtyUnitTreeMutex);
+        auto node = dirtyUnitTree.RootNode();
+        if (node == nullptr) break;
+        Index idx = node->GetIndex();
+        UnitCount num = node->GetCount();
+        dirtyUnitTree.ReleaseRootNode();
+        std::lock_guard<std::mutex> lock2(releasedUnitTreeMutex);
+        CHECK_DETAIL(releasedUnitTree.MergeInsert(idx, num, true),
+            "failed to release garbage units[%u+%u, %u)", idx, num, idx + num);
+        releasedBytes += num * RegionInfo::UNIT_SIZE;
+        dirtyBytes = dirtyUnitTree.GetTotalCount() * RegionInfo::UNIT_SIZE;
+    }
+    VLOG(REPORT, "release heap garbage memory %zu bytes, cache %zu(%zu) bytes",
+        releasedBytes, dirtyBytes, targetCachedSize);
+    return releasedBytes;
+}
 }
 
 int main()
