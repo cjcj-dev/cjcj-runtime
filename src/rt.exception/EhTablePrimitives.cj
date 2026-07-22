@@ -28,6 +28,13 @@ private const VALUE_MASK: UInt8 = 0x7fu8
 private const BYTE_MAX_BIT: UInt8 = 0x80u8
 private const SIGNED_FLAG: UInt8 = 0x40u8
 
+// Exception/EhTable.cpp:83-87. Keep Darwin's LLONG_MAX spelling distinct
+// from the ULLONG_MAX mask selected by every non-Apple target.
+@When[os == "macOS" || os == "iOS"]
+private const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64(Int64.Max)
+@When[os != "macOS" && os != "iOS"]
+private const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64.Max
+
 // Exception/EhTable.cpp:52-65. Decode one unsigned LEB128 value and advance
 // the caller-owned byte pointer exactly past the terminating byte.
 @NoHeapAlloc
@@ -50,7 +57,7 @@ public func ReadULEB128(data: CPointer<CPointer<UInt8>>): UInt64 {
     return value
 }
 
-// Exception/EhTable.cpp:68-88. Decode the signed action-table displacement,
+// Exception/EhTable.cpp:68-89. Decode the signed action-table displacement,
 // including the C++ 64-bit sign extension after the terminating byte.
 @NoHeapAlloc
 public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
@@ -65,7 +72,7 @@ public func ReadSLEB128(data: CPointer<CPointer<UInt8>>): Int64 {
         shift += SHIFT_LENGTH
     } while ((byte & BYTE_MAX_BIT) != 0u8)
     if (shift < 64u64 && (byte & SIGNED_FLAG) != 0u8) {
-        value |= UInt64.Max << shift
+        value |= SLEB_SIGN_EXTENSION_MASK << shift
     }
     return Int64(value)
 }

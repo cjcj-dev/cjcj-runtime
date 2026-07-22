@@ -2,16 +2,15 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
-SELFHOST_CJC=${SELFHOST_CJC:-/root/cj_build/cjcj/target/release/bin/cjcj::cjc}
+source "$ROOT/test/compiler_identity.sh"
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 CPP_RUNTIME_LIB="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative"
-CANGJIE_HOME=${CANGJIE_HOME:-/root/.cjv/toolchains/nightly-1.2.0-alpha.20260619020029}
-LLVM_BIN="$CANGJIE_HOME/third_party/llvm/bin"
-CJC_BIN_DIR=$(cd "${SELFHOST_CJC%/*}" && pwd -P)
-SELFHOST_RT="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
-export CANGJIE_HOME LD_LIBRARY_PATH="$SELFHOST_RT:$CANGJIE_HOME/third_party/llvm/lib:$CANGJIE_HOME/runtime/lib/linux_x86_64_cjnative:${LD_LIBRARY_PATH:-}" cjHeapSize=24GB
+export cjHeapSize=24GB
 fail() { echo "run_memcommon_probe: FAIL $*" >&2; exit 1; }
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || fail "executable target must be Linux x86_64"
+printf 'MEMCOMMON_COMPILER path=%s source=%s sha256=%s size=%s toolchain_root=%s toolchain=%s llvm_bin=%s runtime_lib=%s status=PASS\n' \
+    "$SELFHOST_CJC" "$COMPILER_SOURCE" "$COMPILER_SHA256" "$COMPILER_SIZE" \
+    "$CANGJIE_HOME" "$COMPILER_BUILD_TOOLCHAIN" "$LLVM_BIN" "$RUNTIME_TOOLCHAIN_RT_LIB"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_memcommon.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
@@ -46,7 +45,7 @@ while IFS= read -r include_dir; do cpp_includes+=(-I "$include_dir"); done < <(f
 g++ -std=c++14 -O2 "${cpp_includes[@]}" "$ROOT/test/parity/common/memcommon_ref.cpp" \
     -L "$CPP_RUNTIME_LIB" -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/mem_cpp"
 "$TMP/mem_cj" > "$TMP/cj.transcript"
-LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$CANGJIE_HOME/third_party/llvm/lib" "$TMP/mem_cpp" > "$TMP/cpp.transcript"
+LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$LD_LIBRARY_PATH" "$TMP/mem_cpp" > "$TMP/cpp.transcript"
 cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || { diff -u "$TMP/cpp.transcript" "$TMP/cj.transcript" >&2 || true; fail "byte transcript mismatch"; }
 cat "$TMP/cj.transcript"
 echo "MEMCOMMON_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") cmp=identical status=PASS"

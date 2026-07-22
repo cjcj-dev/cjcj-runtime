@@ -5,9 +5,6 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 source "$ROOT/test/compiler_identity.sh"
 RUNTIME_ROOT=/root/cj_build/cangjie_runtime/runtime
 CPP_RUNTIME_LIB="$RUNTIME_ROOT/target/common/linux_release_x86_64/runtime/lib/linux_x86_64_cjnative"
-CJC_BIN_DIR=$(cd "${SELFHOST_CJC%/*}" && pwd -P)
-SELFHOST_RT="$CJC_BIN_DIR/../runtime/lib/linux_x86_64_cjnative"
-export LD_LIBRARY_PATH="$SELFHOST_RT:$LD_LIBRARY_PATH"
 export cjHeapSize=24GB
 fail() { echo "run_eh_primitives_probe: FAIL $*" >&2; exit 1; }
 [[ $(uname -s) == Linux && $(uname -m) == x86_64 ]] || fail "executable target must be Linux x86_64"
@@ -20,6 +17,18 @@ CPP_CC="$RUNTIME_ROOT/src/Exception/EhTable.cpp"
 [[ $(sed -n '52,65p' "$CPP_CC" | grep -Ec '^#if|^#ifdef|^#elif') -eq 0 ]] || fail "unexpected ULEB platform branch"
 [[ $(sed -n '17,27p' "$CPP_CC" | grep -Ec '^#ifdef __arm__$') -eq 1 ]] || fail "missing C++ ReadAbsPtr ARM branch"
 [[ $(sed -n '68,88p' "$CPP_CC" | grep -Ec '^#if defined\(__APPLE__\)$') -eq 1 ]] || fail "missing C++ SLEB Apple branch"
+CPP_SLEB_PLATFORM=$(sed -n '/^#if defined(__APPLE__)$/,/^#endif$/p' "$CPP_CC")
+[[ $(grep -Fc 'value |= LLONG_MAX << shift;' <<< "$CPP_SLEB_PLATFORM") -eq 1 &&
+   $(grep -Fc 'value |= ULLONG_MAX << shift;' <<< "$CPP_SLEB_PLATFORM") -eq 1 ]] ||
+    fail "C++ SLEB Apple/non-Apple constants drift"
+CJ_SLEB_SOURCE="$ROOT/src/rt.exception/EhTablePrimitives.cj"
+grep -Fq $'@When[os == "macOS" || os == "iOS"]\nprivate const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64(Int64.Max)' \
+    "$CJ_SLEB_SOURCE" || fail "missing Cangjie SLEB Apple LLONG_MAX arm"
+grep -Fq $'@When[os != "macOS" && os != "iOS"]\nprivate const SLEB_SIGN_EXTENSION_MASK: UInt64 = UInt64.Max' \
+    "$CJ_SLEB_SOURCE" || fail "missing Cangjie SLEB non-Apple ULLONG_MAX arm"
+[[ $(grep -Ec '^private const SLEB_SIGN_EXTENSION_MASK: UInt64 = ' "$CJ_SLEB_SOURCE") -eq 2 &&
+   $(grep -Fc 'value |= SLEB_SIGN_EXTENSION_MASK << shift' "$CJ_SLEB_SOURCE") -eq 1 ]] ||
+    fail "Cangjie SLEB platform mask selection drift"
 [[ $(grep -Ec '^@When\[arch (==|!=) "arm"\]$' "$ROOT/src/rt.exception/EhTablePrimitives.cj") -eq 2 ]] ||
     fail "incomplete Cangjie ttype-reader width branches"
 [[ $(grep -Ec '^@When\[arch (==|!=) "arm"\]$' "$ROOT/src/rt.exception/EhFramePrimitives.cj") -eq 2 ]] ||
@@ -50,7 +59,7 @@ g++ -std=c++14 -O2 "${cpp_includes[@]}" \
     "$ROOT/test/parity/exception/eh_primitives_ref.cpp" -L "$CPP_RUNTIME_LIB" \
     -Wl,-rpath,"$CPP_RUNTIME_LIB" -lcangjie-runtime -o "$TMP/eh_cpp"
 "$TMP/eh_cj" > "$TMP/cj.transcript"
-LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$CANGJIE_HOME/third_party/llvm/lib" \
+LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$LD_LIBRARY_PATH" \
     "$TMP/eh_cpp" > "$TMP/cpp.transcript"
 cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || {
     diff -u "$TMP/cpp.transcript" "$TMP/cj.transcript" >&2 || true
