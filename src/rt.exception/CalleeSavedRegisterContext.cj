@@ -19,8 +19,8 @@ public struct CalleeSavedRegisterContext {
     }
 
     @NoHeapAlloc
-    public func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
-        unsafe { CPointer<UInt64>(this).write(Int64(idx), value) }
+    public mut func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
+        unsafe { CPointer<UInt64>(inout this.rbx).write(Int64(idx), value) }
     }
 }
 
@@ -42,8 +42,8 @@ public struct CalleeSavedRegisterContext {
     }
 
     @NoHeapAlloc
-    public func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
-        unsafe { CPointer<UInt64>(this).write(Int64(idx), value) }
+    public mut func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
+        unsafe { CPointer<UInt64>(inout this.x19).write(Int64(idx), value) }
     }
 }
 
@@ -65,8 +65,8 @@ public struct CalleeSavedRegisterContext {
     }
 
     @NoHeapAlloc
-    public func SetValueByIdx(idx: UInt32, value: UInt32): Unit {
-        unsafe { CPointer<UInt32>(this).write(Int64(idx), value) }
+    public mut func SetValueByIdx(idx: UInt32, value: UInt32): Unit {
+        unsafe { CPointer<UInt32>(inout this.r4).write(Int64(idx), value) }
     }
 }
 
@@ -98,13 +98,13 @@ public struct CalleeSavedRegisterContext {
     }
 
     @NoHeapAlloc
-    public func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
-        unsafe { CPointer<UInt64>(this).write(Int64(idx), value) }
+    public mut func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
+        unsafe { CPointer<UInt64>(inout this.rbx).write(Int64(idx), value) }
     }
 
     @NoHeapAlloc
-    public func SetXMMValueByIdx(xmmIdx: UInt32, value: CPointer<XMMReg>): Unit {
-        let slot = unsafe { CPointer<UInt64>(this) + Int64(8u32 + 2u32 * xmmIdx) }
+    public mut func SetXMMValueByIdx(xmmIdx: UInt32, value: CPointer<XMMReg>): Unit {
+        let slot = unsafe { CPointer<UInt64>(inout this.rbx) + Int64(8u32 + 2u32 * xmmIdx) }
         unsafe { slot.write(value.read().low); slot.write(1, value.read().high) }
     }
 }

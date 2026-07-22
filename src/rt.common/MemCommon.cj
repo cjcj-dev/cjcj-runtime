@@ -10,7 +10,7 @@ public const MIN_ALIGN_NUM: Int32 = 8
 
 @NoHeapAlloc
 private func SizeRoundUp(bytes: UIntNative, alignNum: UIntNative): UIntNative {
-    return (bytes + alignNum - 1) & ~(alignNum - 1)
+    return (bytes + alignNum - 1) & (UIntNative.Max ^ (alignNum - 1))
 }
 
 @NoHeapAlloc
