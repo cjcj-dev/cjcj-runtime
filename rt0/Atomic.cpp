@@ -2,7 +2,7 @@
 // This source file is part of the Cangjie project, licensed under Apache-2.0
 // with Runtime Library Exception.
 
-#include <cstdint>
+#include <stdint.h>
 
 // Value-storage atomics used by Cangjie runtime structs that must retain the
 // target C++ inline std::atomic layout. GCC/Clang __atomic builtins lower for
