@@ -20,9 +20,10 @@ def main():
         operations = sorted(name for name in pre if 'RuntimeParamNoHeapRoot' in name)
         if len(operations) != 1:
             raise closure.ClosureError(f'operation roots={operations}')
-        static = sorted(name for name in pre if name.startswith(('_CGP10rt.runtime', '_CGV10rt.runtime')))
-        if not static:
-            raise closure.ClosureError('no emitted package/static initialization roots')
+        # `_CGP...` functions are generic package-initialization machinery, not
+        # this package's static definitions. Actual Cangjie static accessors use
+        # `_CGV`; this POD-only package emits none.
+        static = sorted(name for name in pre if name.startswith('_CGV10rt.runtime'))
         reached = set(operations + static)
         queue = deque(reached)
         external = set()
