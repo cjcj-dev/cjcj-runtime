@@ -33,11 +33,11 @@ private func GCTibSignBit(): UIntNative { return UIntNative(0x8000000000000000u6
 
 @When[arch == "arm"]
 private func GCTibAlignRangeStart(address: UIntNative): UIntNative {
-    return address.wrappingAdd(3) & (UIntNative.Max ^ UIntNative(3))
+    return (address + 3) & (UIntNative.Max ^ UIntNative(3))
 }
 @When[arch != "arm"]
 private func GCTibAlignRangeStart(address: UIntNative): UIntNative {
-    return address.wrappingAdd(7) & (UIntNative.Max ^ UIntNative(7))
+    return (address + 7) & (UIntNative.Max ^ UIntNative(7))
 }
 
 private func GCTibPointer(address: UIntNative): CPointer<UInt8> {
@@ -55,7 +55,7 @@ public func ShortGCTibForEachBitmapWord(short: CPointer<ShortGCTib>, fieldAddres
     while (gcInfo != 0) {
         if ((gcInfo & 1) != 0) { GCTibVisit(visitor, current, context) }
         gcInfo >>= 1
-        current = current.wrappingAdd(sizeOf<RefField>())
+        current += sizeOf<RefField>()
     }
 }
 
@@ -63,13 +63,13 @@ public func ShortGCTibForEachBitmapWordInRange(short: CPointer<ShortGCTib>, base
     visitor: GCTibVisitor, context: CPointer<Unit>, rangeStart: UIntNative, rangeEnd: UIntNative): Unit {
     var gcInfo = unsafe { short.read().bitmap } & (UIntNative.Max ^ GCTibSignBit())
     let startPosition = (rangeStart - baseAddress) / sizeOf<RefField>()
-    gcInfo >>= UInt32(startPosition)
+    gcInfo >>= startPosition
     var current = rangeStart
     while (gcInfo != 0) {
         if (current >= rangeEnd) { return }
         if ((gcInfo & 1) != 0) { GCTibVisit(visitor, current, context) }
         gcInfo >>= 1
-        current = current.wrappingAdd(sizeOf<RefField>())
+        current += sizeOf<RefField>()
     }
 }
 
@@ -83,7 +83,7 @@ public func StdGCTibVisitRefField(bitmapWord: CPointer<UInt8>, fieldAddress: CPo
     var address = unsafe { fieldAddress.read() }
     if ((bits & 1) != 0) { GCTibVisit(visitor, address, context) }
     bits >>= 1
-    address = address.wrappingAdd(sizeOf<RefField>())
+    address += sizeOf<RefField>()
     unsafe {
         bitmapWord.write(0, bits)
         fieldAddress.write(0, address)
@@ -96,7 +96,7 @@ public func StdGCTibVisitAllField(bitmapWord: CPointer<UInt8>, fieldAddress: CPo
     var address = unsafe { fieldAddress.read() }
     GCTibVisit(visitor, address, context)
     bits >>= 1
-    address = address.wrappingAdd(sizeOf<RefField>())
+    address += sizeOf<RefField>()
     unsafe {
         bitmapWord.write(0, bits)
         fieldAddress.write(0, address)
@@ -116,7 +116,7 @@ public func StdGCTibForEachBitmapWord(standard: CPointer<StdGCTib>, contentAddre
             StdGCTibVisitRefField(CPointer<UInt8>(inout bitmapWord), CPointer<UIntNative>(inout fieldAddress),
                 visitor, context)
         }
-        baseAddress = baseAddress.wrappingAdd(sizeOf<RefField>() * 8)
+        baseAddress += sizeOf<RefField>() * 8
         index++
     }
 }
@@ -133,7 +133,7 @@ public func StdGCTibForEachBitmapWordInRange(standard: CPointer<StdGCTib>, conte
         var bitmapWord = unsafe { (words + Int64(index)).read() }
         var fieldAddress = baseAddress
         if (index == startIndex && bitmapWord != 0) {
-            bitmapWord >>= UInt32((rangeStart - baseAddress) / sizeOf<RefField>())
+            bitmapWord >>= UInt8((rangeStart - baseAddress) / sizeOf<RefField>())
             fieldAddress = rangeStart
         }
         while (bitmapWord != 0) {
@@ -141,7 +141,7 @@ public func StdGCTibForEachBitmapWordInRange(standard: CPointer<StdGCTib>, conte
             StdGCTibVisitRefField(CPointer<UInt8>(inout bitmapWord), CPointer<UIntNative>(inout fieldAddress),
                 visitor, context)
         }
-        baseAddress = baseAddress.wrappingAdd(mapWordSize)
+        baseAddress += mapWordSize
         index++
     }
 }
