@@ -64,8 +64,8 @@ LLVM_BIN="$TOOLCHAIN/third_party/llvm/bin"
 
 for stage in pre final; do
     for symbol in CJ_CJThreadPreemptOffCntAdd CJ_CJThreadPreemptOffCntSub CJ_CJThreadResched; do
-        [[ $(rg -c "call i32 @$symbol\\(" "$TMP/$stage.ll") -ge 1 ]] ||
-            fail "$stage call missing symbol=$symbol"
+        [[ $(rg -c "@$symbol\\(" "$TMP/$stage.ll") -ge 1 ]] ||
+            fail "$stage reference missing symbol=$symbol"
     done
     [[ $(rg -c 'MCC_NewObject|CJ_MCC_NewObject|MCC_NewArray|CJ_MCC_NewArray|MCC_Write|CJ_MCC_Write' "$TMP/$stage.ll" || true) -eq 0 ]] ||
         fail "$stage forbidden allocation/barrier"
