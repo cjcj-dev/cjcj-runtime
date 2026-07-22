@@ -49,7 +49,7 @@ public func DulinkInit(dulink: CPointer<Dulink>): Unit {
 
 @NoHeapAlloc
 public func DulinkIsEmpty(dulink: CPointer<Dulink>): Bool {
-    return DulinkNext(dulink) == dulink
+    return DulinkNext(dulink).toUIntNative() == dulink.toUIntNative()
 }
 
 @NoHeapAlloc

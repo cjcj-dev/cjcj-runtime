@@ -43,8 +43,8 @@ func ListRun(): Int32 {
     DulinkPushHead(hp, CPointer<Unit>(bp))
     DulinkAdd(cp, ap)
     result |= unsafe { SchedLowdepsObserveList(1, hp, ap, bp, cp, op) }
-    result |= if (DulinkGetIndexByNext(hp, 2) == ap &&
-        DulinkGetIndexByPrev(hp, 1) == cp) { 0 } else { 2 }
+    result |= if (DulinkGetIndexByNext(hp, 2).toUIntNative() == ap.toUIntNative() &&
+        DulinkGetIndexByPrev(hp, 1).toUIntNative() == cp.toUIntNative()) { 0 } else { 2 }
     DulinkRemove(ap)
     result |= unsafe { SchedLowdepsObserveList(2, hp, ap, bp, cp, op) }
     DulinkPopHead(hp)

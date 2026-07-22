@@ -7,7 +7,7 @@ package rt.sched
 // schedule.h:358-363 and cjthread.h:30-34.
 public const CJTHREAD_KEYS_MAX: UInt32 = 9u32
 public const CJTHREAD_ARG_ALIGN: UIntNative = 16
-public const CJTHREAD_INIT_ID: UInt64 = UInt64.Max
+public const CJTHREAD_INIT_ID: UInt64 = 18446744073709551615u64
 public const CJTHREAD_SANITIZER_CONTEXT_OFFSET: UIntNative = 16
 public const CJTHREAD_NAME_SIZE: UInt32 = 32u32
 public const CJTHREAD_MAX_STACK_SIZE: UIntNative = 1073741824
