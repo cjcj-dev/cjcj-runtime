@@ -38,7 +38,7 @@ func ListRun(): Int32 {
     DulinkInit(bp)
     DulinkInit(cp)
     DulinkInit(op)
-    var result = if (DulinkIsEmpty(hp)) { 0 } else { 1 }
+    var result: Int32 = if (DulinkIsEmpty(hp)) { 0 } else { 1 }
     DulinkPushtail(hp, CPointer<Unit>(ap))
     DulinkPushHead(hp, CPointer<Unit>(bp))
     DulinkAdd(cp, ap)
@@ -79,7 +79,7 @@ func LinkRun(): Int32 {
     LinkInit(ap)
     LinkInit(bp)
     LinkInit(cp)
-    var result = if (LinkIsEmpty(hp)) { 0 } else { 4 }
+    var result: Int32 = if (LinkIsEmpty(hp)) { 0 } else { 4 }
     LinkPushHead(hp, CPointer<Unit>(ap))
     LinkPushHead(hp, CPointer<Unit>(bp))
     LinkPushTail(ap, CPointer<Unit>(cp))
