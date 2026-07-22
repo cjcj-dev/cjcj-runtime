@@ -147,7 +147,7 @@ public func RegionBitmapGetBitMaskInfo(start: UInt64, byteCnt: UInt64, maskInfo:
     if (maskBitCnt >= headBitCnt) {
         let tailBitCnt = maskBitCnt - headBitCnt
         unsafe {
-            maskInfo.read(0).headMaskBits = ~((1u64 << headMaskBitStart) - 1)
+            maskInfo.read(0).headMaskBits = UInt64.Max ^ ((1u64 << headMaskBitStart) - 1)
             maskInfo.read(0).tailWordCnt = (tailBitCnt + BITS_PER_WORD - 1) / BITS_PER_WORD
             maskInfo.read(0).lastMaskBits = (1u64 << (tailBitCnt % BITS_PER_WORD)) - 1
         }
