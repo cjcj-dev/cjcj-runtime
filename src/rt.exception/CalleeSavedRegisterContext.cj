@@ -1,7 +1,10 @@
 package rt.exception
 
-// Exception/CalleeSavedRegisterContext.h:22-112. Each target definition keeps
-// SetValueByIdx as the C++ native-word slot write used by stack-map restoration.
+// Exception/CalleeSavedRegisterContext.h:22-105. Target-exact context storage.
+// COMPILER-GAP-CALLEE-SAVED-SLOT-STORE: SetValueByIdx/Win64 SetXMMValueByIdx
+// require pointer indexing from an @C value receiver. selfhost cjc currently
+// emits an invalid addrspacecast for that operation; do not replace it with an
+// invented per-register switch. The storage ABI remains useful to Layer0 stubs.
 @When[(os == "Linux" || os == "macOS" || os == "iOS") && arch == "x86_64"]
 @C
 public struct CalleeSavedRegisterContext {
@@ -18,10 +21,6 @@ public struct CalleeSavedRegisterContext {
         r15 = 0u64; rbp = 0u64; rsp = 0u64
     }
 
-    @NoHeapAlloc
-    public mut func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
-        unsafe { CPointer<UInt64>(inout this.rbx).write(Int64(idx), value) }
-    }
 }
 
 @When[arch == "aarch64"]
@@ -41,10 +40,6 @@ public struct CalleeSavedRegisterContext {
         d14 = 0u64; d15 = 0u64; sp = 0u64
     }
 
-    @NoHeapAlloc
-    public mut func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
-        unsafe { CPointer<UInt64>(inout this.x19).write(Int64(idx), value) }
-    }
 }
 
 @When[arch == "arm"]
@@ -64,10 +59,6 @@ public struct CalleeSavedRegisterContext {
         d14 = 0u64; d15 = 0u64; sp = 0u32
     }
 
-    @NoHeapAlloc
-    public mut func SetValueByIdx(idx: UInt32, value: UInt32): Unit {
-        unsafe { CPointer<UInt32>(inout this.r4).write(Int64(idx), value) }
-    }
 }
 
 @When[os == "Windows" && arch == "x86_64"]
@@ -97,14 +88,4 @@ public struct CalleeSavedRegisterContext {
         rbp = 0u64; rsp = 0u64
     }
 
-    @NoHeapAlloc
-    public mut func SetValueByIdx(idx: UInt32, value: UInt64): Unit {
-        unsafe { CPointer<UInt64>(inout this.rbx).write(Int64(idx), value) }
-    }
-
-    @NoHeapAlloc
-    public mut func SetXMMValueByIdx(xmmIdx: UInt32, value: CPointer<XMMReg>): Unit {
-        let slot = unsafe { CPointer<UInt64>(inout this.rbx) + Int64(8u32 + 2u32 * xmmIdx) }
-        unsafe { slot.write(value.read().low); slot.write(1, value.read().high) }
-    }
 }
