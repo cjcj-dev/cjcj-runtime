@@ -1,6 +1,10 @@
 package rt.exception
 
-import rt.base.*
+@When[arch == "arm"]
+private type EHFrameArchUInt = UInt32
+
+@When[arch != "arm"]
+private type EHFrameArchUInt = UInt64
 
 // Exception/EhFrameInfo.h:186-216. Stack-map values begin with a nibble tag:
 // 0..11 are inline; 12..15 select the following 8/16/24/32 payload bits.
@@ -35,7 +39,7 @@ public func ReadEHFrameVarInt(point: CPointer<CPointer<UIntNative>>, validPos: C
         bitsLen = 24u32
     }
     let bitsMask = if (bitsLen == 32u32) { UInt32.Max } else { (1u32 << bitsLen) - 1u32 }
-    let value = UInt32(unsafe { CPointer<ArchUInt>(p).read() } >> (4u32 * pos)) & bitsMask
+    let value = UInt32(unsafe { CPointer<EHFrameArchUInt>(p).read() } >> (4u32 * pos)) & bitsMask
     p = unsafe { p + Int64(bitsLen >> 3u32) }
     unsafe { point.write(CPointer<UIntNative>(p)) }
     return value
