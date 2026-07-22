@@ -40,7 +40,10 @@ g++ -std=c++14 -O2 -I "$RUNTIME_ROOT/src" \
 "$TMP/eh_cj" > "$TMP/cj.transcript"
 LD_LIBRARY_PATH="$CPP_RUNTIME_LIB:$CANGJIE_HOME/third_party/llvm/lib" \
     "$TMP/eh_cpp" > "$TMP/cpp.transcript"
-cmp "$TMP/cpp.transcript" "$TMP/cj.transcript"
+cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || {
+    diff -u "$TMP/cpp.transcript" "$TMP/cj.transcript" >&2 || true
+    fail "byte transcript mismatch"
+}
 cat "$TMP/cj.transcript"
 echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") cmp=identical status=PASS"
 
