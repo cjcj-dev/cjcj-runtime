@@ -1,6 +1,7 @@
 package rt.heap.allocator
 
 foreign {
+    func CJRT_FreeRegionManagerVTableAddressPoint(): CPointer<Unit>
     func CJRT_PagePoolMutexTryLock(storage: CPointer<Unit>): Bool
     func CJRT_ScopedEnterSaferegionOnlyMutatorBegin(): Bool
     func CJRT_ScopedEnterSaferegionEnd(stateChanged: Bool): Unit
@@ -58,31 +59,32 @@ struct FreeRegionMutexStorage {
 }
 
 @When[os == "Linux" || env == "ohos"]
-private const FREE_REGION_RELEASED_TREE_OFFSET: Int64 = 48
+private const FREE_REGION_RELEASED_TREE_OFFSET: Int64 = 56
 @When[os == "Linux" || env == "ohos"]
-private const FREE_REGION_DIRTY_MUTEX_OFFSET: Int64 = 176
+private const FREE_REGION_DIRTY_MUTEX_OFFSET: Int64 = 184
 @When[os == "Linux" || env == "ohos"]
-private const FREE_REGION_DIRTY_TREE_OFFSET: Int64 = 216
+private const FREE_REGION_DIRTY_TREE_OFFSET: Int64 = 224
 
 @When[os == "macOS" || os == "iOS"]
-private const FREE_REGION_RELEASED_TREE_OFFSET: Int64 = 72
+private const FREE_REGION_RELEASED_TREE_OFFSET: Int64 = 80
 @When[os == "macOS" || os == "iOS"]
-private const FREE_REGION_DIRTY_MUTEX_OFFSET: Int64 = 200
+private const FREE_REGION_DIRTY_MUTEX_OFFSET: Int64 = 208
 @When[os == "macOS" || os == "iOS"]
-private const FREE_REGION_DIRTY_TREE_OFFSET: Int64 = 264
+private const FREE_REGION_DIRTY_TREE_OFFSET: Int64 = 272
 
 @When[os == "Windows"]
-private const FREE_REGION_RELEASED_TREE_OFFSET: Int64 = 16
+private const FREE_REGION_RELEASED_TREE_OFFSET: Int64 = 24
 @When[os == "Windows"]
-private const FREE_REGION_DIRTY_MUTEX_OFFSET: Int64 = 144
+private const FREE_REGION_DIRTY_MUTEX_OFFSET: Int64 = 152
 @When[os == "Windows"]
-private const FREE_REGION_DIRTY_TREE_OFFSET: Int64 = 152
+private const FREE_REGION_DIRTY_TREE_OFFSET: Int64 = 160
 
 // FreeRegionManager.h:19-168. The RegionManager reference is represented by
 // its native address. Both CartesianTree values and both std::mutex values are
 // embedded in original field order with target-selected mutex layout.
 @C
 public struct FreeRegionManager {
+    var vtable: CPointer<Unit>
     var regionManager: CPointer<Unit>
     var releasedUnitTreeMutex: FreeRegionMutexStorage
     var releasedUnitTree: CartesianTree
@@ -90,6 +92,7 @@ public struct FreeRegionManager {
     var dirtyUnitTree: CartesianTree
 
     public init() {
+        vtable = CPointer<Unit>()
         regionManager = CPointer<Unit>()
         releasedUnitTreeMutex = FreeRegionMutexStorage()
         releasedUnitTree = CartesianTree()
@@ -102,8 +105,9 @@ public struct FreeRegionManager {
     public static func Construct(manager: CPointer<FreeRegionManager>,
         owner: CPointer<Unit>): Unit {
         unsafe {
-            CPointer<CPointer<Unit>>(manager).write(0, owner)
-            CJRT_PagePoolMutexConstruct(CPointer<Unit>(CPointer<UInt8>(manager) + 8))
+            CPointer<CPointer<Unit>>(manager).write(0, CJRT_FreeRegionManagerVTableAddressPoint())
+            CPointer<CPointer<Unit>>(CPointer<UInt8>(manager) + 8).write(0, owner)
+            CJRT_PagePoolMutexConstruct(CPointer<Unit>(CPointer<UInt8>(manager) + 16))
             CPointer<CartesianTree>(CPointer<UInt8>(manager) +
                 FREE_REGION_RELEASED_TREE_OFFSET).write(0, CartesianTree())
             CJRT_PagePoolMutexConstruct(CPointer<Unit>(CPointer<UInt8>(manager) +
@@ -135,7 +139,7 @@ private var FREE_REGION_MERGE_FATAL: VArray<UInt8, $36> = [
 ]
 
 private func FreeRegionReleasedMutex(manager: CPointer<FreeRegionManager>): CPointer<Unit> {
-    return unsafe { CPointer<Unit>(CPointer<UInt8>(manager) + 8) }
+    return unsafe { CPointer<Unit>(CPointer<UInt8>(manager) + 16) }
 }
 
 private func FreeRegionReleasedTree(manager: CPointer<FreeRegionManager>): CPointer<CartesianTree> {

@@ -5,6 +5,14 @@
 #include "Common/ScopedObjectAccess.h"
 #include "Base/LogFile.h"
 
+extern "C" void* _ZTVN12MapleRuntime17FreeRegionManagerE[];
+
+extern "C" void* CJRT_FreeRegionManagerVTableAddressPoint()
+{
+    // Itanium C++ ABI: object vptr skips offset-to-top and typeinfo entries.
+    return &_ZTVN12MapleRuntime17FreeRegionManagerE[2];
+}
+
 // Common/ScopedObjectAccess.h:18-36. These two leaves carry the exact state of
 // ScopedEnterSaferegion(true) across the restricted Cangjie boundary without
 // allocating a managed guard or inventing a callback ABI.

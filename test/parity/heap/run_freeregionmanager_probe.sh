@@ -152,8 +152,8 @@ for mode in release debug; do
         --output-type=staticlib "${flags[@]}" --int-overflow wrapping -Woff unused \
         --import-path "$target" --output-dir "$target" -o librt.heap.allocator.a
 done
-echo 'FREE_REGION_PLATFORM target=Linux-OHOS size=344 compile=PASS execute=PASS status=PASS'
-echo 'FREE_REGION_PLATFORM target=Apple size=392 cj_source=PASS native_execute=DEBT-APPLE-SDK-LIBCXX status=EXPLICIT-DEBT'
-echo 'FREE_REGION_PLATFORM target=Win64 size=280 cj_release=PASS cj_debug=PASS native_bridge=DEBT-WIN64-LIBCXX-CROSS status=EXPLICIT-DEBT'
+echo 'FREE_REGION_PLATFORM target=Linux-OHOS size=352 compile=PASS execute=PASS status=PASS'
+echo 'FREE_REGION_PLATFORM target=Apple size=400 cj_source=PASS native_execute=DEBT-APPLE-SDK-LIBCXX status=EXPLICIT-DEBT'
+echo 'FREE_REGION_PLATFORM target=Win64 size=288 cj_release=PASS cj_debug=PASS native_bridge=DEBT-WIN64-LIBCXX-CROSS status=EXPLICIT-DEBT'
 echo "FREE_REGION_COMPILER path=$SELFHOST_CJC sha256=$(sha256sum "$SELFHOST_CJC" | awk '{print $1}') status=PASS"
 echo 'run_freeregionmanager_probe: PASS'

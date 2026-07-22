@@ -7,6 +7,7 @@ import regionlist_fresh_closure as closure
 
 
 NATIVE = {
+    'CJRT_FreeRegionManagerVTableAddressPoint',
     'CJRT_PagePoolMutexConstruct', 'CJRT_PagePoolMutexDestroy',
     'CJRT_PagePoolMutexLock', 'CJRT_PagePoolMutexUnlock',
     'CJRT_PagePoolMutexTryLock',

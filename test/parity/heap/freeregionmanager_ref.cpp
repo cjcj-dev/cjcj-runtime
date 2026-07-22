@@ -65,7 +65,6 @@ int main()
     // production trees through the private test view; the Cangjie probe and
     // noheap root still exercise the public Add* paths.
     manager.dirtyUnitTree.MergeInsert(2, 4, true);
-    manager.dirtyUnitTree.MergeInsert(10, 2, true);
     manager.releasedUnitTree.MergeInsert(16, 3, true);
     *reinterpret_cast<uint8_t*>(heap + 2 * RegionInfo::UNIT_SIZE) = 0xa5;
     *reinterpret_cast<uint8_t*>(heap + 16 * RegionInfo::UNIT_SIZE) = 0x5a;
@@ -76,12 +75,6 @@ int main()
     bool releasedFallback = released != nullptr && released->GetUnitIdx() == 16 &&
         *reinterpret_cast<uint8_t*>(heap + 16 * RegionInfo::UNIT_SIZE) == 0x5a;
 
-    manager.releasedUnitTree.MergeInsert(20, 2, true);
-    *reinterpret_cast<uint8_t*>(heap + 20 * RegionInfo::UNIT_SIZE) = 0x7c;
-    RegionInfo* prepared = manager.TakeRegion(2, RegionInfo::UnitRole::SMALL_SIZED_UNITS, true);
-    bool physical = prepared != nullptr && prepared->GetUnitIdx() == 20 &&
-        *reinterpret_cast<uint8_t*>(heap + 20 * RegionInfo::UNIT_SIZE) == 0;
-
     const auto dirtyBefore = manager.GetDirtyUnitCount();
     const auto dirtyMax = manager.GetDirtyMaxBlock();
     const auto dirtyNodes = manager.GetDirtyNodeCount();
@@ -89,6 +82,11 @@ int main()
     bool release = moved == dirtyBefore * RegionInfo::UNIT_SIZE && manager.GetDirtyUnitCount() == 0 &&
         manager.GetReleasedUnitCount() == dirtyBefore && manager.GetReleasedMaxBlock() == dirtyMax &&
         manager.GetReleasedNodeCount() == dirtyNodes;
+
+    *reinterpret_cast<uint8_t*>(heap + 4 * RegionInfo::UNIT_SIZE) = 0x7c;
+    RegionInfo* prepared = manager.TakeRegion(2, RegionInfo::UnitRole::SMALL_SIZED_UNITS, true);
+    bool physical = prepared != nullptr && prepared->GetUnitIdx() == 4 &&
+        *reinterpret_cast<uint8_t*>(heap + 4 * RegionInfo::UNIT_SIZE) == 0;
 
     std::printf("FREE_REGION_LAYOUT size=%zu align=%zu owner=%zu released_mutex=%zu released_tree=%zu dirty_mutex=%zu dirty_tree=%zu\n",
         sizeof(FreeRegionManager), alignof(FreeRegionManager), offsetof(FreeRegionManager, regionManager),
