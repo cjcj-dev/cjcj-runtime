@@ -1,7 +1,5 @@
 package rt.objectmodel
 
-import rt.common.*
-
 // Common/BaseObject.h:18-101. The only inline owner is the eight-byte StateWord.
 @C
 public struct BaseObject {
@@ -68,9 +66,21 @@ private func TypeInfoBytes(typeInfo: CPointer<TypeInfo>): CPointer<UInt8> {
 }
 
 @NoHeapAlloc
+@When[arch == "arm"]
 public func BaseObjectGetTypeInfo(object: CPointer<BaseObject>): CPointer<TypeInfo> {
-    let stateWord = CPointer<StateWord>(object)
-    return CPointer<TypeInfo>(stateWord.GetTypeInfo())
+    let address = UIntNative(unsafe { CPointer<UInt32>(object).read() })
+    var bits = address
+    return unsafe { CPointer<CPointer<TypeInfo>>(CPointer<UIntNative>(inout bits)).read() }
+}
+
+@NoHeapAlloc
+@When[arch != "arm"]
+public func BaseObjectGetTypeInfo(object: CPointer<BaseObject>): CPointer<TypeInfo> {
+    let bytes = CPointer<UInt8>(object)
+    let low = UInt64(unsafe { CPointer<UInt32>(bytes).read() })
+    let high = UInt64(unsafe { CPointer<UInt16>(bytes + 4).read() })
+    var bits = UIntNative((high << 32) | low)
+    return unsafe { CPointer<CPointer<TypeInfo>>(CPointer<UIntNative>(inout bits)).read() }
 }
 
 @NoHeapAlloc
