@@ -1,5 +1,7 @@
 package rt.objectmodel
 
+import std.overflow.*
+
 // Common/BaseObject.h:18-101. The only inline owner is the eight-byte StateWord.
 @C
 public struct BaseObject {
@@ -90,7 +92,7 @@ public func TypeInfoGetType(typeInfo: CPointer<TypeInfo>): Int8 {
 
 @NoHeapAlloc
 public func TypeInfoGetGCTib(typeInfo: CPointer<TypeInfo>): CPointer<GCTib> {
-    return CPointer<GCTib>(TypeInfoBytes(typeInfo) + TypeInfoGCTibOffset())
+    return unsafe { CPointer<GCTib>(TypeInfoBytes(typeInfo) + TypeInfoGCTibOffset()) }
 }
 
 @NoHeapAlloc
