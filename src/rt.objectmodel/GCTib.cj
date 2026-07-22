@@ -72,7 +72,7 @@ private func GCTibPointer(address: UIntNative): CPointer<UInt8> {
     return CPointer<UInt8>(RefFieldPointerFromAddress(address))
 }
 
-private func GCTibVisit(visitor: GCTibVisitor, fieldAddress: UIntNative, context: CPointer<Unit>): Unit {
+func GCTibVisit(visitor: GCTibVisitor, fieldAddress: UIntNative, context: CPointer<Unit>): Unit {
     unsafe { visitor(CPointer<RefField>(GCTibPointer(fieldAddress)), context) }
 }
 
