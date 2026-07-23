@@ -10,7 +10,7 @@ from pathlib import Path
 ROOTS = (
     "EHReadULEBRoot", "EHAbnormalRoot", "EHReadSLEBRoot", "EHReadAbsPtrRoot",
     "EHReadUData4Root", "EHReadIndir4Root", "EHReadIndir8Root", "EHFrameVarIntRoot",
-    "EHTableScanRoot", "EHContextLayoutRoot",
+    "EHTableScanRoot", "EHContextLayoutRoot", "EHContextStoreRoot",
 )
 PREFIXES = ("_CN12rt.exception",)
 FORBIDDEN = re.compile(
