@@ -1,10 +1,8 @@
 package rt.exception
 
+import rt.base.*
+
 // Exception/CalleeSavedRegisterContext.h:22-105. Target-exact context storage.
-// COMPILER-GAP-CALLEE-SAVED-SLOT-STORE: SetValueByIdx/Win64 SetXMMValueByIdx
-// require pointer indexing from an @C value receiver. selfhost cjc currently
-// emits an invalid addrspacecast for that operation; do not replace it with an
-// invented per-register switch. The storage ABI remains useful to Layer0 stubs.
 @When[(os == "Linux" || os == "macOS" || os == "iOS") && arch == "x86_64"]
 @C
 public struct CalleeSavedRegisterContext {
@@ -21,6 +19,27 @@ public struct CalleeSavedRegisterContext {
         r15 = 0u64; rbp = 0u64; rsp = 0u64
     }
 
+}
+
+// Exception/CalleeSavedRegisterContext.h:107-112. The explicit context pointer
+// is the free-function spelling of the C++ member function's `this` pointer.
+@NoHeapAlloc
+public func SetValueByIdx(context: CPointer<CalleeSavedRegisterContext>, idx: UInt32,
+    value: ArchUInt): Unit {
+    unsafe { CPointer<ArchUInt>(context).write(Int64(idx), value) }
+}
+
+// Exception/CalleeSavedRegisterContext.h:96-104.
+@When[os == "Windows" && arch == "x86_64"]
+@NoHeapAlloc
+public func SetXMMValueByIdx(context: CPointer<CalleeSavedRegisterContext>, xmmIdx: UInt32,
+    value: CPointer<XMMReg>): Unit {
+    let calleeSaveXMMAddrStart = unsafe { CPointer<UInt64>(context) + 8 }
+    let slotAddr = unsafe { calleeSaveXMMAddrStart + Int64(2u32 * xmmIdx) }
+    unsafe {
+        slotAddr.write(0, value.read().low)
+        slotAddr.write(1, value.read().high)
+    }
 }
 
 @When[arch == "aarch64"]
