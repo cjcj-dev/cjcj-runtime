@@ -97,6 +97,25 @@ main(): Int64 {
         unsafe { CPointer<ScanResult>(inout caught) })
     println("EHSCAN ${cleanup.typeIndex} ${cleanup.landingPad - UInt64(codeStart.toUIntNative())} ${cleanup.isCaught} " +
         "${caught.typeIndex} ${caught.landingPad - UInt64(codeStart.toUIntNative())} ${caught.isCaught}")
+    var context = CalleeSavedRegisterContext()
+    let contextPtr = unsafe { CPointer<CalleeSavedRegisterContext>(inout context) }
+    SetValueByIdx(contextPtr, 0u32, 0x0102030405060708u64)
+    SetValueByIdx(contextPtr, 1u32, 0x1112131415161718u64)
+    SetValueByIdx(contextPtr, 2u32, 0x2122232425262728u64)
+    SetValueByIdx(contextPtr, 3u32, 0x3132333435363738u64)
+    SetValueByIdx(contextPtr, 4u32, 0x4142434445464748u64)
+    SetValueByIdx(contextPtr, 5u32, 0x5152535455565758u64)
+    SetValueByIdx(contextPtr, 6u32, 0x6162636465666768u64)
+    print("CALLEE_BYTES")
+    unsafe {
+        let contextBytes = CPointer<UInt8>(contextPtr)
+        var contextByteIndex: Int64 = 0
+        while (contextByteIndex < Int64(sizeOf<CalleeSavedRegisterContext>())) {
+            print(" ${(contextBytes + contextByteIndex).read()}")
+            contextByteIndex += 1
+        }
+    }
+    println()
     println("CALLEE_CONTEXT ${sizeOf<CalleeSavedRegisterContext>()} ${alignOf<CalleeSavedRegisterContext>()}")
     return 0
 }
