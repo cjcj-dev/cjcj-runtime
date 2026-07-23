@@ -7,6 +7,8 @@
 
 using namespace MapleRuntime;
 
+// Heap/Allocator/RegionManager.cpp:543 uses the same public
+// Heap::GetHeap().GetCollector() path to the current C++ Collector.
 extern "C" uint8_t CJ_RT_TryUpdateRefField(void* object, uintptr_t* field, void** toVersion)
 {
     auto* result = static_cast<BaseObject*>(*toVersion);
