@@ -5,7 +5,6 @@ foreign {
         bitmap: CPointer<Unit>, large: UInt8, markedOffset: Int64): CPointer<Unit>
     func CJRT_TestIsMarkedObjectAddress(region: CPointer<Unit>, object: CPointer<Unit>): UInt8
     func CJRT_TestIsMarkedObjectOffset(region: CPointer<Unit>, offset: UIntNative): UInt8
-    func abort(): Unit
 }
 
 func CheckMarked(large: Bool, markedOffset: Int64, queryOffset: UIntNative): Unit {

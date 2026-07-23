@@ -8,7 +8,7 @@ EXPECTED=(TryUpdateRefField TryUntagRefField IsOldPointer IsCurrentPointer FindT
 
 inventory() {
     local input=$1
-    sed -n 's/.*CJ_RT_\([A-Za-z0-9_]*\).*/\1/p' "$input" | sort -u
+    grep -o 'CJ_RT_[A-Za-z0-9_]*(' "$input" | sed 's/^CJ_RT_//;s/($//' | sort -u
 }
 check_inventory() {
     local input=$1 label=$2 expected_file=$TMP/expected actual_file=$TMP/actual
