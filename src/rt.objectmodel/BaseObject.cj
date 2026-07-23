@@ -164,7 +164,7 @@ public func BaseObjectGetSize(object: CPointer<BaseObject>): UIntNative {
     } else {
         TypeInfoGetInstanceSize(typeInfo).wrappingAdd(TypeInfoPointerSize())
     }
-    return size.wrappingAdd(7) & ~UIntNative(7)
+    return size.wrappingAdd(7) & (UIntNative.Max - 7)
 }
 
 @NoHeapAlloc
