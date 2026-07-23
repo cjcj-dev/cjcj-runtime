@@ -1,5 +1,7 @@
 package rt.heap.allocator
 
+import rt.gc.*
+
 func CheckMarked(large: Bool, markedOffset: Int64, queryOffset: UIntNative): Unit {
     let unitCount: UIntNative = 10
     let metadataSize = unitCount * sizeOf<UnitInfo>()
