@@ -12,7 +12,8 @@ trap 'find "$TMP" -depth -delete' EXIT
 CJTHREAD_INCLUDE_ARGS=()
 while IFS= read -r include_dir; do CJTHREAD_INCLUDE_ARGS+=("-I$include_dir"); done < <(find "$RUNTIME_ROOT/src/CJThread/src" -type d)
 CPP_FLAGS=(-std=c++17 -O2 -DMRT_USE_CJTHREAD_RENAME -I"$RUNTIME_ROOT/include" -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" "${CJTHREAD_INCLUDE_ARGS[@]}")
-g++ "${CPP_FLAGS[@]}" -fPIC -c "$ROOT/test/parity/heap/regioninfo_marked_bridge.cpp" -o "$TMP/RegionInfoMarkedBridge.o"
+g++ "${CPP_FLAGS[@]}" "$ROOT/test/parity/heap/regioninfo_marked_ref.cpp" -o "$TMP/ref"
+"$TMP/ref" > "$TMP/ref.txt"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$TMP/Futex.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
@@ -30,8 +31,9 @@ cp "$ROOT/test/parity/heap/regioninfo_marked_probe.cj" "$TMP/rt.heap.allocator.p
 "$SELFHOST_CJC" --package "$TMP/rt.heap.allocator.probe" --import-path "$TMP" --int-overflow wrapping -Woff unused \
     "$TMP/librt.gc.a" "$TMP/librt.sync.a" "$TMP/librt.base.a" "$TMP/Atomic.o" "$TMP/Futex.o" \
     "$TMP/Panic.o" "$TMP/SpinLock.o" "$TMP/PagePoolMutex.o" "$TMP/AllocBufferNative.o" \
-    "$TMP/ScopedSaferegion.o" "$TMP/RegionInfoMarkedBridge.o" \
-    -L"$CPP_RUNTIME_LIB" --link-option=-lcangjie-runtime --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
-"$TMP/probe" | tee "$TMP/transcript.txt"
-[[ $(grep -c '^REGIONINFO_MARKED ' "$TMP/transcript.txt") -eq 6 ]]
-echo "REGIONINFO_MARKED_PARITY cases=6 sha256=$(sha256sum "$TMP/transcript.txt" | awk '{print $1}') status=PASS"
+    "$TMP/ScopedSaferegion.o" --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
+"$TMP/probe" > "$TMP/cj.txt"
+cmp "$TMP/ref.txt" "$TMP/cj.txt"
+cat "$TMP/cj.txt"
+[[ $(grep -c '^REGIONINFO_MARKED ' "$TMP/cj.txt") -eq 6 ]]
+echo "REGIONINFO_MARKED_PARITY cases=6 sha256=$(sha256sum "$TMP/cj.txt" | awk '{print $1}') cmp=PASS status=PASS"
