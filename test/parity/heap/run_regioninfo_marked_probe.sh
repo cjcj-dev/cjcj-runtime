@@ -11,7 +11,7 @@ trap 'find "$TMP" -depth -delete' EXIT
 
 CJTHREAD_INCLUDE_ARGS=()
 while IFS= read -r include_dir; do CJTHREAD_INCLUDE_ARGS+=("-I$include_dir"); done < <(find "$RUNTIME_ROOT/src/CJThread/src" -type d)
-CPP_FLAGS=(-std=c++17 -O2 -DMRT_USE_CJTHREAD_RENAME -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" "${CJTHREAD_INCLUDE_ARGS[@]}")
+CPP_FLAGS=(-std=c++17 -O2 -DMRT_USE_CJTHREAD_RENAME -I"$RUNTIME_ROOT/include" -I"$RUNTIME_ROOT/src" -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" "${CJTHREAD_INCLUDE_ARGS[@]}")
 g++ "${CPP_FLAGS[@]}" -fPIC -c "$ROOT/test/parity/heap/regioninfo_marked_bridge.cpp" -o "$TMP/RegionInfoMarkedBridge.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/Atomic.cpp" -o "$TMP/Atomic.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$TMP/Futex.o"
