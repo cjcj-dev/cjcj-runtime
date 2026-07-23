@@ -34,8 +34,9 @@ def section(text, begin, end):
     return text[start:stop]
 
 
-def fields(text, pattern):
-    result = [(name, ty) for ty, name in re.findall(pattern, text)]
+def fields(text, pattern, type_first=True):
+    matches = re.findall(pattern, text)
+    result = [(name, ty) for ty, name in matches] if type_first else matches
     if not result:
         raise Failure("empty context field list")
     return result
@@ -84,7 +85,7 @@ def main():
             r"public struct CalleeSavedRegisterContext\s*\{(.*?)(?=\n\s*public init\s*\()", cj, re.S)
         if len(cj_records) != 4:
             raise Failure(f"expected four Cangjie context records, got {len(cj_records)}")
-        cj_fields = [fields(record, r"public var\s+(\w+)\s*:\s*(UInt32|UInt64|XMMReg)")
+        cj_fields = [fields(record, r"public var\s+(\w+)\s*:\s*(UInt32|UInt64|XMMReg)", False)
             for record in cj_records]
         for idx, (cpp_arm, cj_arm) in enumerate(zip(cpp_fields, cj_fields)):
             normalized_cpp = [(name, {"uint32_t": "UInt32", "uint64_t": "UInt64"}.get(ty, ty))
