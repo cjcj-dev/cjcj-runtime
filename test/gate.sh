@@ -7,7 +7,9 @@ OUT=${OUT:-"$ROOT/out/gate"}
 REPO=${REPO:-/root/cj_build/cjcj}
 RUNTIME_ROOT=${RUNTIME_ROOT:-/root/cj_build/cangjie_runtime/runtime}
 
+bash "$ROOT/test/runtime_build_gate.sh" full
 bash "$ROOT/test/parity/sched/run_sched_lowdeps_probe.sh"
+bash "$ROOT/test/parity/sched/run_trace_vocab_probe.sh"
 bash "$ROOT/test/parity/heap/run_freeregionmanager_probe.sh"
 bash "$ROOT/test/parity/exception/run_eh_primitives_probe.sh"
 bash "$ROOT/test/parity/runtime/run_runtimeparam_probe.sh"
