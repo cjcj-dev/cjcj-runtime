@@ -35,9 +35,24 @@ grep -Fq $'@When[os != "macOS" && os != "iOS"]\n@NoHeapAlloc\npublic func ReadSL
 [[ $(grep -Ec '^@When\[arch (==|!=) "arm"\]$' "$ROOT/src/rt.exception/EhFramePrimitives.cj") -eq 2 ]] ||
     fail "incomplete Cangjie frame-reader width branches"
 echo "EH_PLATFORM linux_x86_64=EXECUTED apple=SOURCE_AUDITED windows=SOURCE_AUDITED arm=SOURCE_AUDITED table_width_branches=2 frame_width_branches=2 status=PASS"
-[[ $(grep -Ec '^@When\[.*arch == "x86_64".*\]$|^@When\[arch == "aarch64"\]$|^@When\[arch == "arm"\]$|^@When\[os == "Windows" && arch == "x86_64"\]$' \
-    "$ROOT/src/rt.exception/CalleeSavedRegisterContext.cj") -eq 5 ]] || fail "incomplete callee-saved platform arms"
+CPP_CONTEXT="$RUNTIME_ROOT/src/Exception/CalleeSavedRegisterContext.h"
+CJ_CONTEXT="$ROOT/src/rt.exception/CalleeSavedRegisterContext.cj"
+[[ $(grep -Fc 'public struct CalleeSavedRegisterContext' "$CJ_CONTEXT") -eq 4 &&
+   $(grep -Fc 'public struct XMMReg' "$CJ_CONTEXT") -eq 1 ]] || fail "incomplete callee-saved storage arms"
+[[ $(grep -Fc 'public func SetValueByIdx' "$CJ_CONTEXT") -eq 1 &&
+   $(grep -Fc 'public func SetXMMValueByIdx' "$CJ_CONTEXT") -eq 1 ]] || fail "incomplete callee-saved slot writers"
+grep -Fq '@When[(os == "Linux" || os == "macOS" || os == "iOS") && arch == "x86_64"]' \
+    "$CJ_CONTEXT" || fail "missing Linux/Apple x86_64 context arm"
+grep -Fq '@When[arch == "aarch64"]' "$CJ_CONTEXT" || fail "missing AArch64 context arm"
+grep -Fq '@When[arch == "arm"]' "$CJ_CONTEXT" || fail "missing ARM32 context arm"
+[[ $(grep -Fc '@When[os == "Windows" && arch == "x86_64"]' "$CJ_CONTEXT") -eq 3 ]] ||
+    fail "incomplete Win64 storage/writer arms"
+for cpp_arm in '#if (defined(__linux__) || defined(__APPLE__)) && defined(__x86_64__)' \
+    '#elif defined(__aarch64__)' '#elif defined(__arm__)' '#elif defined(_WIN64)'; do
+    grep -Fq "$cpp_arm" "$CPP_CONTEXT" || fail "missing C++ context arm: $cpp_arm"
+done
 echo "EH_CONTEXT_PLATFORM linux_x86_64=EXECUTED apple_x86_64=SOURCE_AUDITED aarch64=SOURCE_AUDITED arm=SOURCE_AUDITED win64=SOURCE_AUDITED status=PASS"
+echo "EH_CONTEXT_WRITERS set_value_free=1 win64_xmm_free=1 cpp_members=2 status=PASS"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_eh_primitives.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
