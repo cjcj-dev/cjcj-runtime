@@ -71,6 +71,11 @@ extern "C" uintptr_t cj_atomic_uintptr_load_relaxed(uintptr_t* p)
 {
     return __atomic_load_n(p, __ATOMIC_RELAXED);
 }
+
+extern "C" uintptr_t cj_atomic_uintptr_load_acquire(uintptr_t* p)
+{
+    return __atomic_load_n(p, __ATOMIC_ACQUIRE);
+}
 extern "C" void cj_atomic_uintptr_store_seq_cst(uintptr_t* p, uintptr_t v)
 {
     __atomic_store_n(p, v, __ATOMIC_SEQ_CST);

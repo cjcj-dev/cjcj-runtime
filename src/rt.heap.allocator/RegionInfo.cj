@@ -1,6 +1,7 @@
 package rt.heap.allocator
 
 import rt.base.*
+import rt.gc.*
 import std.overflow.*
 
 foreign {
@@ -12,6 +13,12 @@ foreign {
     func cj_atomic_u16_store(p: CPointer<UInt16>, value: UInt16): Unit
     func cj_atomic_i32_store(p: CPointer<Int32>, value: Int32): Unit
     func cj_atomic_u32_store_release(p: CPointer<UInt32>, value: UInt32): Unit
+    @When[os == "Linux" || env == "ohos"]
+    func cj_atomic_uintptr_load_acquire(p: CPointer<UIntNative>): UIntNative
+    @When[os == "macOS" || os == "iOS"]
+    func cj_atomic_uintptr_load_acquire(p: CPointer<UIntNative>): UIntNative
+    @When[os == "Windows"]
+    func cj_atomic_uintptr_load_acquire(p: CPointer<UIntNative>): UIntNative
     func memset(destination: CPointer<Unit>, value: Int32, count: UIntNative): CPointer<Unit>
     func write(fd: Int32, data: CPointer<UInt8>, size: UIntNative): IntNative
     func abort(): Unit
@@ -824,11 +831,12 @@ extend CPointer<RegionInfo> {
         return 0
     }
 
-    // Heap/Allocator/RegionInfo.h:146-153
-    // GC-DEFERRED: needs Collector
-    public func GetLiveInfo(): CPointer<Unit> {
-        unsafe { RtFatal(CString(CPointer<UInt8>(inout collectorDeferredMessages) + 461)) }
-        return CPointer<Unit>()
+    // Heap/Allocator/RegionInfo.h:146-153.
+    public func GetLiveInfo(): CPointer<LiveInfo> {
+        let field = unsafe { CPointer<UIntNative>(CPointer<UInt8>(this) + 32) }
+        let liveInfo = unsafe { cj_atomic_uintptr_load_acquire(field) }
+        if (liveInfo == 1) { return CPointer<LiveInfo>() }
+        return unsafe { CPointer<LiveInfo>(CPointer<UInt8>() + Int64(liveInfo)) }
     }
 
     // Heap/Allocator/RegionInfo.h:155-177
@@ -838,11 +846,16 @@ extend CPointer<RegionInfo> {
         return CPointer<Unit>()
     }
 
-    // Heap/Allocator/RegionInfo.h:179-190
-    // GC-DEFERRED: needs Collector
-    public func GetMarkBitmap(): CPointer<Unit> {
-        unsafe { RtFatal(CString(CPointer<UInt8>(inout collectorDeferredMessages) + 588)) }
-        return CPointer<Unit>()
+    // Heap/Allocator/RegionInfo.h:181-192.
+    public func GetMarkBitmap(): CPointer<RegionBitmap> {
+        let liveInfo = GetLiveInfo()
+        if (liveInfo.isNull()) { return CPointer<RegionBitmap>() }
+        let field = unsafe {
+            CPointer<UIntNative>(CPointer<UInt8>(liveInfo) + Int64(sizeOf<CPointer<Unit>>()))
+        }
+        let bitmap = unsafe { cj_atomic_uintptr_load_acquire(field) }
+        if (bitmap == 1) { return CPointer<RegionBitmap>() }
+        return unsafe { CPointer<RegionBitmap>(CPointer<UInt8>() + Int64(bitmap)) }
     }
 
     // Heap/Allocator/RegionInfo.h:192-215
@@ -928,18 +941,32 @@ extend CPointer<RegionInfo> {
         return false
     }
 
-    // Heap/Allocator/RegionInfo.h:393-404
-    // GC-DEFERRED: needs Collector
+    // Heap/Allocator/RegionInfo.h:395-406.
     public func IsMarkedObject(obj: CPointer<Unit>): Bool {
-        unsafe { RtFatal(CString(CPointer<UInt8>(inout collectorDeferredMessages) + 1311)) }
-        return false
+        if (IsLargeRegion()) {
+            let bits = unsafe { this.read().metadata.regionStateBitField.fieldVal }
+            return (bits & (1u16 << UInt16(MARKED_REGION_FLAG))) != 0u16
+        }
+        let markBitmap = GetMarkBitmap()
+        if (markBitmap.isNull()) { return false }
+        let offset = GetAddressOffset(obj.toUIntNative())
+        return RegionBitmapIsMarked(markBitmap, UInt64(offset))
     }
 
-    // Heap/Allocator/RegionInfo.h:406-416
-    // GC-DEFERRED: needs Collector
+    // Heap/Allocator/RegionInfo.h:408-418.
     public func IsMarkedObject(offset: UIntNative): Bool {
-        unsafe { RtFatal(CString(CPointer<UInt8>(inout collectorDeferredMessages) + 1311)) }
-        return false
+        if (IsLargeRegion()) {
+            let bits = unsafe { this.read().metadata.regionStateBitField.fieldVal }
+            return (bits & (1u16 << UInt16(MARKED_REGION_FLAG))) != 0u16
+        }
+        let markBitmap = GetMarkBitmap()
+        if (markBitmap.isNull()) { return false }
+        return RegionBitmapIsMarked(markBitmap, UInt64(offset))
+    }
+
+    // Heap/Allocator/RegionInfo.h:447-451.
+    public func GetAddressOffset(address: UIntNative): UIntNative {
+        return address - GetRegionStart()
     }
 
     // Heap/Allocator/RegionInfo.h:418-434
