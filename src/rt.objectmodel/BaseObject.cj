@@ -59,6 +59,15 @@ private func TypeInfoComponentOffset(): Int64 { return 36 }
 private func TypeInfoComponentOffset(): Int64 { return 64 }
 
 @When[arch == "arm"]
+private func TypeInfoGetInstanceSize(typeInfo: CPointer<TypeInfo>): UIntNative {
+    return UIntNative(unsafe { CPointer<UInt32>(TypeInfoBytes(typeInfo) + 8).read() })
+}
+@When[arch != "arm"]
+private func TypeInfoGetInstanceSize(typeInfo: CPointer<TypeInfo>): UIntNative {
+    return UIntNative(unsafe { CPointer<UInt32>(TypeInfoBytes(typeInfo) + 12).read() })
+}
+
+@When[arch == "arm"]
 private func TypeInfoPointerSize(): UIntNative { return 8 }
 @When[arch != "arm"]
 private func TypeInfoPointerSize(): UIntNative { return 8 }
@@ -142,6 +151,20 @@ public func MArrayGetElementSize(array: CPointer<MArray>): UIntNative {
     let component = TypeInfoGetComponentTypeInfo(BaseObjectGetTypeInfo(CPointer<BaseObject>(array)))
     if (TypeInfoIsRef(component)) { return sizeOf<CPointer<Unit>>() }
     return UIntNative(unsafe { CPointer<UInt32>(TypeInfoBytes(component) + TypeInfoTypeOffset() + 4).read() })
+}
+
+// Common/BaseObject.cpp:139-150; MArray.inline.h:22,33-48;
+// ObjectModel/MClass.inline.h:85; Common/PageAllocator.h:50-51.
+@NoHeapAlloc
+public func BaseObjectGetSize(object: CPointer<BaseObject>): UIntNative {
+    let typeInfo = BaseObjectGetTypeInfo(object)
+    let size = if (TypeInfoIsRawArray(typeInfo)) {
+        UIntNative(MArrayGetLength(CPointer<MArray>(object))).wrappingMul(
+            MArrayGetElementSize(CPointer<MArray>(object))).wrappingAdd(MARRAY_CONTENT_OFFSET)
+    } else {
+        TypeInfoGetInstanceSize(typeInfo).wrappingAdd(TypeInfoPointerSize())
+    }
+    return size.wrappingAdd(7) & ~UIntNative(7)
 }
 
 @NoHeapAlloc
