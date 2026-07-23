@@ -54,7 +54,7 @@ if [[ "$CPP_ACTUAL_LAYOUT" != "$CPP_LAYOUT" ]]; then
     exit 1
 fi
 
-for pkg in rt.base rt.sync rt.heap.allocator; do
+for pkg in rt.base rt.sync rt.gc rt.heap.allocator; do
     (cd "$IMP" && "$SELFHOST_CJC" --package "$ROOT/src/$pkg" --output-type=staticlib \
         --int-overflow wrapping -Woff unused --import-path "$IMP" --output-dir "$IMP" -o "lib$pkg.a")
 done
@@ -263,7 +263,7 @@ main(): Int64 {
 EOF
 
 (cd "$IMP" && "$SELFHOST_CJC" --package "$STUB_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
-    "$IMP/librt.sync.a" "$IMP/librt.base.a" \
+    "$IMP/librt.gc.a" "$IMP/librt.sync.a" "$IMP/librt.base.a" \
     "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$STUB_OUT")
 "$STUB_OUT"
@@ -282,7 +282,7 @@ main(): Int64 {
 EOF
 
 (cd "$IMP" && "$SELFHOST_CJC" --package "$ABORT_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
-    "$IMP/librt.sync.a" "$IMP/librt.base.a" \
+    "$IMP/librt.gc.a" "$IMP/librt.sync.a" "$IMP/librt.base.a" \
     "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$ABORT_OUT")
 set +e
@@ -303,7 +303,7 @@ echo "REGIONINFO_DEFERRED_ABORT PASS rc=$ABORT_RC message=RegionInfo::MarkObject
 cp -a "$ROOT/src/rt.heap.allocator" "$PROBE_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_probe.cj" "$PROBE_SRC/RegionInfoProbe.cj"
 (cd "$IMP" && "$SELFHOST_CJC" --package "$PROBE_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
-    "$IMP/librt.sync.a" "$IMP/librt.base.a" \
+    "$IMP/librt.gc.a" "$IMP/librt.sync.a" "$IMP/librt.base.a" \
     "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$OUT")
 
@@ -495,7 +495,7 @@ main(): Int64 {
 EOF
 
 (cd "$IMP" && "$SELFHOST_CJC" --package "$INIT_SRC" --import-path "$IMP" --int-overflow wrapping -Woff unused \
-    "$IMP/librt.sync.a" "$IMP/librt.base.a" \
+    "$IMP/librt.gc.a" "$IMP/librt.sync.a" "$IMP/librt.base.a" \
     "${NATIVE_OBJECTS[@]}" \
     --link-option=-lstdc++ --link-option=-lgcc_s -o "$NOHEAP_OUT")
 "$NOHEAP_OUT" > "$CJ_INIT_TRANSCRIPT"
