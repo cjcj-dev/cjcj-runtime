@@ -57,8 +57,11 @@ echo "EH_CONTEXT_WRITERS set_value_free=1 win64_xmm_free=1 cpp_members=2 status=
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_eh_primitives.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/exception" "$TMP/root"
-"$SELFHOST_CJC" --package "$ROOT/src/rt.base" --output-type=staticlib -O2 \
-    --int-overflow wrapping --output-dir "$TMP" -o "$TMP/librt.base.a"
+(
+    cd "$TMP"
+    "$SELFHOST_CJC" --package "$ROOT/src/rt.base" --output-type=staticlib -O2 \
+        --int-overflow wrapping --output-dir "$TMP" -o librt.base.a
+)
 (
     cd "$TMP"
     "$SELFHOST_CJC" --package "$ROOT/src/rt.exception" --output-type=staticlib -O2 \
