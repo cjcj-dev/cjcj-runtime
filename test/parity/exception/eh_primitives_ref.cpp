@@ -122,6 +122,20 @@ int main()
         cleanup.isCaught ? "true" : "false", static_cast<unsigned long long>(caught.typeIndex),
         static_cast<unsigned long long>(caught.landingPad - reinterpret_cast<uintptr_t>(code)),
         caught.isCaught ? "true" : "false");
+    MapleRuntime::CalleeSavedRegisterContext context{};
+    context.SetValueByIdx(0, 0x0102030405060708ULL);
+    context.SetValueByIdx(1, 0x1112131415161718ULL);
+    context.SetValueByIdx(2, 0x2122232425262728ULL);
+    context.SetValueByIdx(3, 0x3132333435363738ULL);
+    context.SetValueByIdx(4, 0x4142434445464748ULL);
+    context.SetValueByIdx(5, 0x5152535455565758ULL);
+    context.SetValueByIdx(6, 0x6162636465666768ULL);
+    std::printf("CALLEE_BYTES");
+    const auto* contextBytes = reinterpret_cast<const uint8_t*>(&context);
+    for (size_t i = 0; i < sizeof(context); ++i) {
+        std::printf(" %u", static_cast<unsigned int>(contextBytes[i]));
+    }
+    std::printf("\n");
     std::printf("CALLEE_CONTEXT %zu %zu\n", sizeof(MapleRuntime::CalleeSavedRegisterContext),
         alignof(MapleRuntime::CalleeSavedRegisterContext));
     return 0;
