@@ -53,6 +53,8 @@ for cpp_arm in '#if (defined(__linux__) || defined(__APPLE__)) && defined(__x86_
 done
 echo "EH_CONTEXT_PLATFORM linux_x86_64=EXECUTED apple_x86_64=SOURCE_AUDITED aarch64=SOURCE_AUDITED arm=SOURCE_AUDITED win64=SOURCE_AUDITED status=PASS"
 echo "EH_CONTEXT_WRITERS set_value_free=1 win64_xmm_free=1 cpp_members=2 status=PASS"
+python3 "$ROOT/test/parity/exception/callee_saved_context_platform_parity.py" \
+    --cpp "$CPP_CONTEXT" --cj "$CJ_CONTEXT"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/rt_eh_primitives.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
@@ -91,6 +93,12 @@ cmp "$TMP/cpp.transcript" "$TMP/cj.transcript" || {
     diff -u "$TMP/cpp.transcript" "$TMP/cj.transcript" >&2 || true
     fail "byte transcript mismatch"
 }
+csr_cj=$(grep '^CALLEE_BYTES ' "$TMP/cj.transcript")
+csr_cpp=$(grep '^CALLEE_BYTES ' "$TMP/cpp.transcript")
+[[ $(grep -c '^CALLEE_BYTES ' "$TMP/cj.transcript") -eq 1 &&
+   $(awk '{print NF}' <<< "$csr_cj") -eq 57 && "$csr_cj" == "$csr_cpp" ]] ||
+    fail "CSR executable byte parity"
+echo "CSR_EXEC_PARITY platform=linux_x86_64 records=1 bytes=56 sha256=$(sha256sum <<< "$csr_cj" | awk '{print $1}') cmp=identical status=PASS"
 cat "$TMP/cj.transcript"
 echo "EH_PARITY records=$(wc -l < "$TMP/cj.transcript") bytes=$(stat -c %s "$TMP/cj.transcript") sha256=$(sha256sum "$TMP/cj.transcript" | awk '{print $1}') cmp=identical status=PASS"
 
