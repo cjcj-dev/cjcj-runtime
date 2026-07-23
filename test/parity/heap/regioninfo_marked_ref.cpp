@@ -19,7 +19,8 @@ uintptr_t RegionInfo::UnitInfo::heapStartAddress = 0;
 static void CheckMarked(bool large, int64_t markedOffset, size_t queryOffset)
 {
     constexpr size_t unitCount = 10;
-    const size_t metadataSize = unitCount * sizeof(RegionInfo::UnitInfo);
+    // RegionInfo.h:65: sizeof(RegionInfo) must equal sizeof(UnitInfo).
+    const size_t metadataSize = unitCount * sizeof(RegionInfo);
     auto* arena = static_cast<uint8_t*>(std::malloc(metadataSize + unitCount * RegionInfo::UNIT_SIZE));
     std::memset(arena, 0, metadataSize + unitCount * RegionInfo::UNIT_SIZE);
     const uintptr_t heapStart = reinterpret_cast<uintptr_t>(arena + metadataSize);
