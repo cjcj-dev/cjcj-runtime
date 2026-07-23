@@ -835,7 +835,7 @@ extend CPointer<RegionInfo> {
     public func GetLiveInfo(): CPointer<LiveInfo> {
         let field = unsafe { CPointer<UIntNative>(CPointer<UInt8>(this) + 32) }
         let liveInfo = unsafe { cj_atomic_uintptr_load_acquire(field) }
-        if (liveInfo == 1) { return CPointer<LiveInfo>() }
+        if (liveInfo == 0x1234) { return CPointer<LiveInfo>() }
         return unsafe { CPointer<LiveInfo>(CPointer<UInt8>() + Int64(liveInfo)) }
     }
 
@@ -854,7 +854,7 @@ extend CPointer<RegionInfo> {
             CPointer<UIntNative>(CPointer<UInt8>(liveInfo) + Int64(sizeOf<CPointer<Unit>>()))
         }
         let bitmap = unsafe { cj_atomic_uintptr_load_acquire(field) }
-        if (bitmap == 1) { return CPointer<RegionBitmap>() }
+        if (bitmap == 0x1234) { return CPointer<RegionBitmap>() }
         return unsafe { CPointer<RegionBitmap>(CPointer<UInt8>() + Int64(bitmap)) }
     }
 
