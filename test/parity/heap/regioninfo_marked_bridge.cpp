@@ -10,10 +10,11 @@ using namespace MapleRuntime;
 extern "C" void* CJRT_TestSetupMarkedRegion(void* arena, void* liveInfoStorage,
     void* bitmapStorage, uint8_t large, int64_t markedOffset)
 {
-    auto heapStart = reinterpret_cast<uintptr_t>(arena) + sizeof(RegionInfo);
-    RegionInfo::Initialize(1, heapStart);
+    constexpr size_t unitCount = 10;
+    auto heapStart = reinterpret_cast<uintptr_t>(arena) + unitCount * sizeof(RegionInfo);
+    RegionInfo::Initialize(unitCount, heapStart);
     auto role = large != 0 ? RegionInfo::UnitRole::LARGE_SIZED_UNITS : RegionInfo::UnitRole::SMALL_SIZED_UNITS;
-    RegionInfo* region = RegionInfo::InitRegion(0, 1, role);
+    RegionInfo* region = RegionInfo::InitRegion(4, 1, role);
     if (large != 0) {
         region->SetMarkedRegionFlag(markedOffset >= 0 ? 1 : 0);
     } else if (markedOffset >= 0) {

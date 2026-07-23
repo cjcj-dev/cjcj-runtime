@@ -8,16 +8,20 @@ foreign {
 }
 
 func CheckMarked(large: Bool, markedOffset: Int64, queryOffset: UIntNative): Unit {
-    var arena = VArray<UInt64, $523>(repeat: 0)
+    let unitCount: UIntNative = 10
+    let metadataSize = unitCount * sizeOf<UnitInfo>()
+    let arenaSize = metadataSize + unitCount * RegionInfo.UNIT_SIZE
+    let arena = CPointer<UInt8>(unsafe { malloc(arenaSize) })
+    unsafe { let _ = memset(CPointer<Unit>(arena), 0, arenaSize) }
     var liveInfo = VArray<UInt64, $4>(repeat: 0)
     var bitmap = VArray<UInt64, $16>(repeat: 0)
-    let arenaPointer = unsafe { CPointer<Unit>(CPointer<UInt64>(inout arena)) }
+    let arenaPointer = CPointer<Unit>(arena)
     let region = unsafe { CJRT_TestSetupMarkedRegion(arenaPointer,
         CPointer<Unit>(CPointer<UInt64>(inout liveInfo)), CPointer<Unit>(CPointer<UInt64>(inout bitmap)),
         if (large) { 1u8 } else { 0u8 }, markedOffset) }
-    let heapStart = arenaPointer.toUIntNative() + sizeOf<RegionInfo>()
-    RegionInfo.Initialize(1, heapStart)
-    let object = unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(heapStart + queryOffset)) }
+    let heapStart = arenaPointer.toUIntNative() + metadataSize
+    RegionInfo.Initialize(unitCount, heapStart)
+    let object = unsafe { CPointer<Unit>(CPointer<UInt8>() + Int64(heapStart + 4 * RegionInfo.UNIT_SIZE + queryOffset)) }
     let cppAddress = unsafe { CJRT_TestIsMarkedObjectAddress(region, object) }
     let cppOffset = unsafe { CJRT_TestIsMarkedObjectOffset(region, queryOffset) }
     let cjAddress = CPointer<RegionInfo>(region).IsMarkedObject(object)
@@ -27,6 +31,7 @@ func CheckMarked(large: Bool, markedOffset: Int64, queryOffset: UIntNative): Uni
     let expectedAddress = cppAddress != 0u8
     let expectedOffset = cppOffset != 0u8
     if (cjAddress != expectedAddress || cjOffset != expectedOffset) { unsafe { abort() } }
+    unsafe { free(arenaPointer) }
 }
 
 main(): Int64 {
