@@ -64,7 +64,18 @@ g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$IMP/Panic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Atomic.cpp" -o "$IMP/Atomic.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$IMP/SpinLock.o"
 g++ -std=c++14 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$IMP/PagePoolMutex.o"
-NATIVE_OBJECTS=("$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" "$IMP/SpinLock.o" "$IMP/PagePoolMutex.o")
+g++ -std=c++14 -O2 -fPIC -DMRT_USE_CJTHREAD_RENAME \
+    -I/root/cj_build/cangjie_runtime/runtime/include \
+    -I/root/cj_build/cangjie_runtime/runtime/src \
+    -I/root/cj_build/cangjie_runtime/runtime/third_party/third_party_bounds_checking_function/include \
+    "${CJTHREAD_INCLUDE_ARGS[@]}" -c "$ROOT/rt0/AllocBufferNative.cpp" -o "$IMP/AllocBufferNative.o"
+g++ -std=c++14 -O2 -fPIC -DMRT_USE_CJTHREAD_RENAME \
+    -I/root/cj_build/cangjie_runtime/runtime/include \
+    -I/root/cj_build/cangjie_runtime/runtime/src \
+    -I/root/cj_build/cangjie_runtime/runtime/third_party/third_party_bounds_checking_function/include \
+    "${CJTHREAD_INCLUDE_ARGS[@]}" -c "$ROOT/rt0/ScopedSaferegion.cpp" -o "$IMP/ScopedSaferegion.o"
+NATIVE_OBJECTS=("$IMP/Futex.o" "$IMP/Panic.o" "$IMP/Atomic.o" "$IMP/SpinLock.o" "$IMP/PagePoolMutex.o" \
+    "$IMP/AllocBufferNative.o" "$IMP/ScopedSaferegion.o")
 
 cp -a "$ROOT/src/rt.heap.allocator" "$NOHEAP_SRC"
 cp "$ROOT/test/parity/heap/regioninfo_noheap_probe.cj" "$NOHEAP_SRC/RegionInfoNoHeapProbe.cj"

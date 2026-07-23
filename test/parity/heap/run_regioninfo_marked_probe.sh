@@ -18,6 +18,8 @@ g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Futex.cpp" -o "$TMP/Futex.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/Panic.cpp" -o "$TMP/Panic.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/SpinLock.cpp" -o "$TMP/SpinLock.o"
 g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/os/Linux/PagePoolMutex.cpp" -o "$TMP/PagePoolMutex.o"
+g++ "${CPP_FLAGS[@]}" -fPIC -c "$ROOT/rt0/AllocBufferNative.cpp" -o "$TMP/AllocBufferNative.o"
+g++ "${CPP_FLAGS[@]}" -fPIC -c "$ROOT/rt0/ScopedSaferegion.cpp" -o "$TMP/ScopedSaferegion.o"
 
 for pkg in rt.base rt.sync rt.gc; do
     "$SELFHOST_CJC" --package "$ROOT/src/$pkg" --output-type=staticlib --int-overflow wrapping -Woff unused \
@@ -27,7 +29,8 @@ cp -a "$ROOT/src/rt.heap.allocator" "$TMP/rt.heap.allocator.probe"
 cp "$ROOT/test/parity/heap/regioninfo_marked_probe.cj" "$TMP/rt.heap.allocator.probe/Probe.cj"
 "$SELFHOST_CJC" --package "$TMP/rt.heap.allocator.probe" --import-path "$TMP" --int-overflow wrapping -Woff unused \
     "$TMP/librt.gc.a" "$TMP/librt.sync.a" "$TMP/librt.base.a" "$TMP/Atomic.o" "$TMP/Futex.o" \
-    "$TMP/Panic.o" "$TMP/SpinLock.o" "$TMP/PagePoolMutex.o" "$TMP/RegionInfoMarkedBridge.o" \
+    "$TMP/Panic.o" "$TMP/SpinLock.o" "$TMP/PagePoolMutex.o" "$TMP/AllocBufferNative.o" \
+    "$TMP/ScopedSaferegion.o" "$TMP/RegionInfoMarkedBridge.o" \
     -L"$CPP_RUNTIME_LIB" --link-option=-lcangjie-runtime --link-option=-lstdc++ --link-option=-lgcc_s -o "$TMP/probe"
 "$TMP/probe" | tee "$TMP/transcript.txt"
 [[ $(grep -c '^REGIONINFO_MARKED ' "$TMP/transcript.txt") -eq 6 ]]

@@ -5,7 +5,6 @@ foreign {
     func CJRT_TestInitSizeArray(object: CPointer<Unit>, arrayTypeInfo: CPointer<Unit>,
         componentTypeInfo: CPointer<Unit>, componentKind: Int8, componentSize: UInt32, length: UInt64): Unit
     func CJRT_TestBaseObjectGetSize(object: CPointer<Unit>): UIntNative
-    func abort(): Unit
 }
 
 func CheckClass(instanceSize: UInt32): Unit {

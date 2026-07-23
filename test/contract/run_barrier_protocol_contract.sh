@@ -40,7 +40,7 @@ grep -Fq 'BARRIER_PROTOCOL_INVENTORY FAIL label=negative' "$TMP/negative.log"
 
 CJTHREAD_INCLUDE_ARGS=()
 while IFS= read -r include_dir; do CJTHREAD_INCLUDE_ARGS+=("-I$include_dir"); done < <(find "$RUNTIME_ROOT/src/CJThread/src" -type d)
-g++ -std=c++17 -O2 -fPIC -DMRT_USE_CJTHREAD_RENAME -I"$ROOT/contract" -I"$RUNTIME_ROOT/src" \
+g++ -std=c++17 -O2 -fPIC -DMRT_USE_CJTHREAD_RENAME -I"$ROOT/contract" -I"$RUNTIME_ROOT/include" -I"$RUNTIME_ROOT/src" \
     -I"$RUNTIME_ROOT/output/temp/include" -I"$RUNTIME_ROOT/third_party/third_party_bounds_checking_function/include" \
     "${CJTHREAD_INCLUDE_ARGS[@]}" -c "$ROOT/rt0/BarrierProtocol.cpp" -o "$TMP/BarrierProtocol.o"
 nm --defined-only "$TMP/BarrierProtocol.o" | awk '$3 ~ /^CJ_RT_/ {print $3}' | sort > "$TMP/object.symbols"
