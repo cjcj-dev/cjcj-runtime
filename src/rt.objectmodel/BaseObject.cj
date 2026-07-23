@@ -54,7 +54,7 @@ private func TypeInfoGCTibOffset(): Int64 { return 12 }
 private func TypeInfoGCTibOffset(): Int64 { return 16 }
 
 @When[arch == "arm"]
-private func TypeInfoComponentOffset(): Int64 { return 36 }
+private func TypeInfoComponentOffset(): Int64 { return 40 }
 @When[arch != "arm"]
 private func TypeInfoComponentOffset(): Int64 { return 64 }
 
