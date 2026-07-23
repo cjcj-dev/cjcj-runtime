@@ -3,24 +3,33 @@
 # contract, and gate runners. Sourcing validates and activates the published
 # Linux-x86_64 tuple; every mismatch fails closed before compilation.
 
-RUNTIME_COMPILER_ROOT=/root/cj_build/runtime_compilers/3479da98334436e1949d2a3bbc3fd6d53ffb2fb4
+# Superseded 2026-07-24: the 2026-07-22 publication was
+# path=/root/cj_build/runtime_compilers/3479da98334436e1949d2a3bbc3fd6d53ffb2fb4/bin/cjcj::cjc
+# source=3479da98334436e1949d2a3bbc3fd6d53ffb2fb4
+# sha256=fb54b5011a01c1e975910c861f19091c1a66a981ab0cfa13683d9dcac63f0d09
+# size=49566664
+# toolchain=nightly-1.2.0-alpha.20260712020030 + patched dynamic LLVM sha256 8f685b53f65df0284b75e8723246085aa20e3f6b8b06e4c02b44110755b8c444
+# Re-baselined because ec4e20a8 carries the managed @FastNative/@NoHeapAlloc contract.
+RUNTIME_COMPILER_ROOT=/root/cj_build/runtime_compilers/ec4e20a847ad463cba50baf80fe0e07ea4483176
 SELFHOST_CJC="$RUNTIME_COMPILER_ROOT/bin/cjcj::cjc"
-COMPILER_SOURCE=3479da98334436e1949d2a3bbc3fd6d53ffb2fb4
-COMPILER_SHA256=fb54b5011a01c1e975910c861f19091c1a66a981ab0cfa13683d9dcac63f0d09
+COMPILER_SOURCE=ec4e20a847ad463cba50baf80fe0e07ea4483176
+COMPILER_SHA256=da0d394eed36e33eb15a6125b42b8273febd79a16f5cb669aa3b5cd34242d402
 COMPILER_SHA="$COMPILER_SHA256"
-COMPILER_SIZE=49566664
+COMPILER_SIZE=50033200
 
 RUNTIME_TOOLCHAIN_ROOT="$RUNTIME_COMPILER_ROOT/compatible-toolchain-linux-x86_64"
-COMPILER_BUILD_TOOLCHAIN='nightly-1.2.0-alpha.20260712020030 + patched LLVM sha256 8f685b53f65df0284b75e8723246085aa20e3f6b8b06e4c02b44110755b8c444'
+COMPILER_BUILD_TOOLCHAIN='nightly-1.2.0-alpha.20260721165458 + fixed static LLVM llc sha256 d498353a70b3ef4e674dd68d1375a4f4ce39d3d2a1ce8e1ce71c10cafef9b9fd'
 RUNTIME_LLVM_LIB="$RUNTIME_TOOLCHAIN_ROOT/third_party/llvm/lib/libLLVM-15.so"
-RUNTIME_LLVM_SHA256=8f685b53f65df0284b75e8723246085aa20e3f6b8b06e4c02b44110755b8c444
-RUNTIME_LLVM_SIZE=72348408
+RUNTIME_LLVM_SHA256=39819f28c84aa435c55ca22c9852ada0ef0124d141ab50ac8c4e87d4eabdb6cc
+RUNTIME_LLVM_SIZE=72692416
 RUNTIME_LLVM_OPT="$RUNTIME_TOOLCHAIN_ROOT/third_party/llvm/bin/opt"
 RUNTIME_LLVM_LLC="$RUNTIME_TOOLCHAIN_ROOT/third_party/llvm/bin/llc"
-RUNTIME_LLC_SHA256=d448ad71e0a7e51325d0c3fc743a8ad2d2f9fdd3a68a1c4725e19f76faa57615
-RUNTIME_LLC_SIZE=112808
-RUNTIME_LLC_DT_NEEDED=libLLVM-15.so
+RUNTIME_LLC_SHA256=d498353a70b3ef4e674dd68d1375a4f4ce39d3d2a1ce8e1ce71c10cafef9b9fd
+RUNTIME_LLC_SIZE=39259304
+RUNTIME_LLC_LIBLLVM_DT_NEEDED_COUNT=0
 RUNTIME_LLC_RUNPATH='$ORIGIN/../lib'
+RUNTIME_LLC_VERSION=15.0.4
+RUNTIME_LLC_TARGET=x86_64-unknown-linux-gnu
 COMPILER_ACCEPTANCE_SCOPE='Linux-x86_64 runtime package/ABI/parity runners; non-Linux remains execution debt'
 
 runtime_identity_fail()
@@ -67,9 +76,25 @@ runtime_check_llvm_resolution()
         runtime_identity_fail "$label resolved LLVM outside tuple expected=$RUNTIME_LLVM_LIB actual=$resolved" || return 1
 }
 
+runtime_check_static_llc()
+{
+    local tool=$1 needed_count version_output
+    [[ -x "$tool" ]] || runtime_identity_fail "llc is not executable path=$tool" || return 1
+    needed_count=$(readelf -d "$tool" |
+        grep -Ec 'Shared library: \[libLLVM[^]]*\]' || true)
+    [[ "$needed_count" == "$RUNTIME_LLC_LIBLLVM_DT_NEEDED_COUNT" ]] ||
+        runtime_identity_fail "llc libLLVM DT_NEEDED expected=$RUNTIME_LLC_LIBLLVM_DT_NEEDED_COUNT actual=$needed_count" || return 1
+    version_output=$("$tool" --version 2>&1) ||
+        runtime_identity_fail "llc --version failed path=$tool" || return 1
+    grep -Fqx "  LLVM version $RUNTIME_LLC_VERSION" <<< "$version_output" ||
+        runtime_identity_fail "llc version expected=$RUNTIME_LLC_VERSION" || return 1
+    grep -Fqx "  Default target: $RUNTIME_LLC_TARGET" <<< "$version_output" ||
+        runtime_identity_fail "llc target expected=$RUNTIME_LLC_TARGET" || return 1
+}
+
 activate_runtime_compiler()
 {
-    local actual_source writable_entry absolute_link needed_count actual_runpath
+    local actual_source writable_entry absolute_link actual_runpath
 
     [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]] ||
         runtime_identity_fail "unsupported execution platform os=$(uname -s) arch=$(uname -m) debt=non-Linux" || return 1
@@ -100,10 +125,7 @@ activate_runtime_compiler()
         runtime_identity_fail "llc path is outside toolchain path=$RUNTIME_LLVM_LLC" || return 1
     runtime_check_file_identity llc "$RUNTIME_LLVM_LLC" "$RUNTIME_LLC_SHA256" "$RUNTIME_LLC_SIZE" || return 1
 
-    needed_count=$(readelf -d "$RUNTIME_LLVM_LLC" |
-        grep -Fc "Shared library: [$RUNTIME_LLC_DT_NEEDED]" || true)
-    [[ "$needed_count" == 1 ]] ||
-        runtime_identity_fail "llc DT_NEEDED expected=$RUNTIME_LLC_DT_NEEDED count=$needed_count" || return 1
+    runtime_check_static_llc "$RUNTIME_LLVM_LLC" || return 1
     actual_runpath=$(readelf -d "$RUNTIME_LLVM_LLC" |
         sed -n 's/.*Library runpath: \[\(.*\)\]/\1/p')
     [[ "$actual_runpath" == "$RUNTIME_LLC_RUNPATH" ]] ||
@@ -120,13 +142,13 @@ activate_runtime_compiler()
     export RUNTIME_COMPILER_ROOT SELFHOST_CJC COMPILER_SOURCE COMPILER_SHA256 COMPILER_SHA COMPILER_SIZE
     export RUNTIME_TOOLCHAIN_ROOT COMPILER_BUILD_TOOLCHAIN RUNTIME_LLVM_LIB
     export RUNTIME_LLVM_SHA256 RUNTIME_LLVM_SIZE RUNTIME_LLVM_OPT RUNTIME_LLVM_LLC
-    export RUNTIME_LLC_SHA256 RUNTIME_LLC_SIZE RUNTIME_LLC_DT_NEEDED RUNTIME_LLC_RUNPATH
+    export RUNTIME_LLC_SHA256 RUNTIME_LLC_SIZE RUNTIME_LLC_LIBLLVM_DT_NEEDED_COUNT
+    export RUNTIME_LLC_RUNPATH RUNTIME_LLC_VERSION RUNTIME_LLC_TARGET
     export COMPILER_ACCEPTANCE_SCOPE CANGJIE_HOME REFERENCE_CJC CJC TOOLCHAIN LLVM_BIN
     export RUNTIME_TOOLCHAIN_RT_LIB LD_LIBRARY_PATH PATH
 
     runtime_check_llvm_resolution compiler "$SELFHOST_CJC" || return 1
     runtime_check_llvm_resolution opt "$RUNTIME_LLVM_OPT" || return 1
-    runtime_check_llvm_resolution llc "$RUNTIME_LLVM_LLC" || return 1
 }
 
 activate_runtime_compiler || exit 1
