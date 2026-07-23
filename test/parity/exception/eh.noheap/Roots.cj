@@ -1,5 +1,6 @@
 package eh.noheap
 
+import rt.base.*
 import rt.exception.*
 
 @C
@@ -51,4 +52,10 @@ public func EHTableScanRoot(table: CPointer<EHTable>, pc: CPointer<UInt32>, exce
 @C
 public func EHContextLayoutRoot(): UIntNative {
     return sizeOf<CalleeSavedRegisterContext>() + alignOf<CalleeSavedRegisterContext>()
+}
+
+@C
+public func EHContextStoreRoot(context: CPointer<CalleeSavedRegisterContext>, idx: UInt32,
+    value: ArchUInt): Unit {
+    SetValueByIdx(context, idx, value)
 }
