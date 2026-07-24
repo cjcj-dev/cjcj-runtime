@@ -12,8 +12,8 @@ fail() { echo "runtime_build_gate: FAIL $*" >&2; exit 1; }
 [[ $MODE == full || $MODE == delta ]] || fail "mode must be full or delta"
 
 EXPECTED=(
-    rt.base rt.sync rt.heap.allocator rt.common rt.demangle rt.stackmap rt.abi
-    rt.exception rt.gc rt.objectmodel rt.runtime rt.sched rt.gc.forwarddata
+    rt.base rt.sync rt.gc rt.objectmodel rt.heap.allocator rt.common rt.demangle rt.stackmap
+    rt.abi rt.exception rt.runtime rt.sched rt.gc.forwarddata
 )
 mapfile -t DISCOVERED < <(find "$ROOT/src" -mindepth 1 -maxdepth 1 -type d \
     -exec sh -c 'find "$1" -maxdepth 1 -type f -name "*.cj" -print -quit | grep -q .' _ {} \; \
