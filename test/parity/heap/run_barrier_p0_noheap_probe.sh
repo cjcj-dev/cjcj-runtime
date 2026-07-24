@@ -109,6 +109,7 @@ g++ -std=c++17 -O2 -fPIC -c "$ROOT/rt0/GCTibShift.cpp" -o "$TMP/GCTibShift.o"
     "$TMP/Futex.o" "$TMP/Panic.o" "$TMP/Atomic.o" "$TMP/SpinLock.o" "$TMP/PagePoolMutex.o" \
     -L"$CPP_RUNTIME_LIB" --link-option=-lcangjie-runtime --link-option=-lstdc++ \
     --link-option=-lgcc_s -o "$TMP/root_probe"
+echo "BARRIER_P0_EVIDENCE_BINDING head=$(git -C "$ROOT" rev-parse HEAD) final_bc_sha256=$(sha256sum "$TMP/closure.final.bc" | awk '{print $1}') root_probe_sha256=$(sha256sum "$TMP/root_probe" | awk '{print $1}')"
 "$TMP/root_probe"
 echo "BARRIER_P0_NOHEAP_COMPILER path=$SELFHOST_CJC sha256=$(sha256sum "$SELFHOST_CJC" | awk '{print $1}') status=PASS"
 echo 'run_barrier_p0_noheap_probe: PASS'
