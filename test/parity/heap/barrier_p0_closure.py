@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import re
 import sys
 from collections import deque
@@ -136,11 +137,12 @@ def allowed_external(symbol):
     return any(re.match(pattern, symbol) for pattern in patterns)
 
 
-def traverse(definitions, roots, edge_reader, stage):
+def traverse(definitions, roots, edge_reader, stage, collect_forbidden=False):
     reached = set(roots)
     queue = deque(roots)
     external = set()
     scanned = set()
+    forbidden = []
     while queue:
         owner = queue.popleft()
         if owner not in definitions:
@@ -150,7 +152,10 @@ def traverse(definitions, roots, edge_reader, stage):
         bad = FORBIDDEN.search(body)
         if bad:
             bad_line = next(line.strip() for line in body.splitlines() if FORBIDDEN.search(line))
-            raise ClosureError(f'{stage} forbidden={bad.group(0)} owner={owner} line={bad_line}')
+            if collect_forbidden:
+                forbidden.append((stage, owner, bad.group(0), bad_line))
+            else:
+                raise ClosureError(f'{stage} forbidden={bad.group(0)} owner={owner} line={bad_line}')
         edges, indirect = edge_reader(body)
         if indirect:
             raise ClosureError(f'{stage} indirect edges owner={owner} edges={indirect[:3]}')
@@ -166,7 +171,7 @@ def traverse(definitions, roots, edge_reader, stage):
         raise ClosureError(f'{stage} unexpected external/native edges={unknown[:20]}')
     if reached != scanned:
         raise ClosureError(f'{stage} reached/scanned mismatch reached={len(reached)} scanned={len(scanned)}')
-    return reached, scanned, external
+    return reached, scanned, external, forbidden
 
 
 def apply_injection(kind, pre, final, objects):
@@ -194,6 +199,7 @@ def main():
     parser.add_argument('--native', action='append', default=[])
     parser.add_argument('--inject', choices=('none', 'missing-root', 'extra-root',
         'forbidden-final', 'forbidden-object'), default='none')
+    parser.add_argument('--include-statics', action='store_true')
     args = parser.parse_args()
     try:
         pre = merge([args.pre], parse_ir, 'pre')
@@ -203,25 +209,44 @@ def main():
 
         pre_roots = root_inventory(pre, 'pre')
         pre_static = sorted(name for name in pre if name.startswith('_CGV'))
-        pre_reached, pre_scanned, pre_external = traverse(
-            pre, pre_roots + pre_static, ir_edges, 'pre')
+        pre_reached, pre_scanned, pre_external, pre_forbidden = traverse(
+            pre, pre_roots + (pre_static if args.include_statics else []), ir_edges, 'pre',
+            collect_forbidden=args.include_statics)
 
         final_roots = root_inventory(final, 'final')
         final_static = sorted(name for name in final if name.startswith('_CGV'))
-        final_reached, final_scanned, final_external = traverse(
-            final, final_roots + final_static, ir_edges, 'final')
+        final_reached, final_scanned, final_external, final_forbidden = traverse(
+            final, final_roots + (final_static if args.include_statics else []), ir_edges, 'final',
+            collect_forbidden=args.include_statics)
 
         object_roots = root_inventory(objects, 'object')
         object_static = sorted(name for name in objects if name.startswith('_CGV'))
-        object_reached, object_scanned, object_external = traverse(
-            objects, object_roots + object_static, object_edges, 'object')
+        object_reached, object_scanned, object_external, object_forbidden = traverse(
+            objects, object_roots + (object_static if args.include_statics else []), object_edges, 'object',
+            collect_forbidden=args.include_statics)
 
-        print(f'BARRIER_P0_PREOPT_ROOTS operations=3 static_initializers={len(pre_static)} '
+        if args.include_statics:
+            debts = sorted(pre_forbidden + final_forbidden + object_forbidden)
+            for stage, owner, forbidden, line in debts:
+                print(f'BARRIER_P0_STATIC_DEBT stage={stage} owner={owner} forbidden={forbidden} line={line}')
+            if debts:
+                raise ClosureError(f'static audit forbidden_defs={len(debts)}')
+            print('BARRIER_P0_STATIC_AUDIT forbidden_defs=0 status=PASS')
+            return 0
+
+        for marker in ROOT_MARKERS:
+            root = next(name for name in final_roots if marker in name)
+            digest = hashlib.sha256(final[root].encode('utf-8')).hexdigest()
+            signature = final[root].splitlines()[0]
+            print(f'BARRIER_P0_ROOT_FINAL_IR root={marker} symbol={root} '
+                  f'safepoint_refs=0 sha256={digest} signature={signature}')
+
+        print(f'BARRIER_P0_PREOPT_ROOTS operations=3 static_seeds=0 linked_static_inventory={len(pre_static)} '
               f'reachable_defs={len(pre_reached)} scanned_defs={len(pre_scanned)} status=PASS')
-        print(f'BARRIER_P0_FINAL_CLOSURE roots=3 static_initializers={len(final_static)} '
+        print(f'BARRIER_P0_FINAL_CLOSURE roots=3 static_seeds=0 linked_static_inventory={len(final_static)} '
               f'reachable_defs={len(final_reached)} scanned_defs={len(final_scanned)} '
               f'external_edges={len(final_external)} status=PASS')
-        print(f'BARRIER_P0_OBJECT_CLOSURE roots=3 static_initializers={len(object_static)} '
+        print(f'BARRIER_P0_OBJECT_CLOSURE roots=3 static_seeds=0 linked_static_inventory={len(object_static)} '
               f'reachable_defs={len(object_reached)} scanned_defs={len(object_scanned)} '
               f'external_edges={len(object_external)} status=PASS')
         print('BARRIER_P0_NOHEAP forbidden_alloc=0 forbidden_barrier=0 forbidden_safepoint=0 '

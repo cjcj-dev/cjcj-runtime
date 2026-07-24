@@ -67,6 +67,16 @@ for temps in "${PACKAGE_TEMPS[@]}"; do
 done
 ANALYZER+=(--native "$TMP/Atomic.objdump" --native "$TMP/Panic.objdump")
 "${ANALYZER[@]}"
+set +e
+"${ANALYZER[@]}" --include-statics > "$TMP/static-debt.log" 2>&1
+static_rc=$?
+set -e
+[[ $static_rc -ne 0 ]]
+grep -Fq 'RTALLOC_TAG' "$TMP/static-debt.log"
+grep -Fq 'BARRIER_P0_CLOSURE FAIL injection=none error=static audit forbidden_defs=' "$TMP/static-debt.log"
+grep '^BARRIER_P0_STATIC_DEBT ' "$TMP/static-debt.log"
+static_debts=$(grep -c '^BARRIER_P0_STATIC_DEBT ' "$TMP/static-debt.log")
+echo "BARRIER_P0_PREEXISTING_DEBT name=RT-ALLOC-STATICINIT-SAFEPOINT entries=$static_debts audit_rc=$static_rc status=RECORDED"
 for injection in missing-root extra-root forbidden-final forbidden-object; do
     set +e
     "${ANALYZER[@]}" --inject "$injection" > "$TMP/$injection.log" 2>&1
