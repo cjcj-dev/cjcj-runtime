@@ -10,7 +10,7 @@ from pathlib import Path
 DEFINE = re.compile(r'^define\b.*?@(?:"([^"]+)"|([^ (]+))\(')
 OBJECT_DEFINE = re.compile(r'^[0-9a-fA-F]+ <(.+)>:$')
 IR_EDGE = re.compile(r'\b(?:call|invoke)\b[^@\n]*@(?:"([^"]+)"|([-A-Za-z0-9_.$]+))\(')
-OBJECT_EDGE = re.compile(r'\bcall\w*\s+[0-9a-fA-F]+\s+<([^>]+)>')
+OBJECT_EDGE = re.compile(r'\b(?:call|jmp)\w*\s+[0-9a-fA-F]+\s+<([^>]+)>')
 RELOCATION = re.compile(r'R_X86_64_(?:PLT32|PC32)\s+([^\s]+)')
 FORBIDDEN = re.compile(
     r'MCC_New|CJ_MCC_New|MCC_Write|CJ_MCC_Write|write.?barrier|safepoint|'
@@ -113,12 +113,23 @@ def ir_edges(body):
 
 def object_edges(body):
     edges = set()
-    for match in OBJECT_EDGE.finditer(body):
-        target = match.group(1).split('@plt', 1)[0].split('@@', 1)[0]
-        edges.add(re.sub(r'\+0x[0-9a-fA-F]+$', '', target))
-    for match in RELOCATION.finditer(body):
-        target = re.sub(r'[-+]0x[0-9a-fA-F]+$', '', match.group(1))
-        edges.add(target.split('@', 1)[0])
+    pending_branch = False
+    for line in body.splitlines():
+        branch = OBJECT_EDGE.search(line)
+        if branch:
+            target = branch.group(1).split('@plt', 1)[0].split('@@', 1)[0]
+            edges.add(re.sub(r'\+0x[0-9a-fA-F]+$', '', target))
+            pending_branch = True
+            continue
+        relocation = RELOCATION.search(line)
+        if relocation:
+            if pending_branch:
+                target = re.sub(r'[-+]0x[0-9a-fA-F]+$', '', relocation.group(1))
+                edges.add(target.split('@', 1)[0])
+            pending_branch = False
+            continue
+        if line.strip():
+            pending_branch = False
     return edges, []
 
 
