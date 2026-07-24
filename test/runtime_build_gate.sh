@@ -25,7 +25,7 @@ mapfile -t EXPECTED_SORTED < <(printf '%s\n' "${EXPECTED[@]}" | sort)
     fail "package inventory drift"
 }
 SOURCE_COUNT=$(find "$ROOT/src" -mindepth 2 -maxdepth 2 -type f -name '*.cj' | wc -l)
-[[ $SOURCE_COUNT -eq 57 ]] || fail "source count expected=57 actual=$SOURCE_COUNT"
+[[ $SOURCE_COUNT -eq 58 ]] || fail "source count expected=58 actual=$SOURCE_COUNT"
 
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/runtime_build_gate.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
